@@ -1,8 +1,12 @@
 import { Pool, type PoolClient } from 'pg'
 
-export const databaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://postgres@127.0.0.1:5432/nordic_pet?sslmode=disable'
+import { projectDatabaseUrl } from '@/lib/db-url'
+
+/**
+ * Адрес проверок. Проходит ту же проверку, что и пересоздание базы:
+ * проверки тоже пишут в таблицы, и чужую базу им трогать нечем.
+ */
+export const databaseUrl = projectDatabaseUrl()
 
 export const pool = new Pool({ connectionString: databaseUrl })
 

@@ -4,27 +4,27 @@ import { pool, rows } from './support'
 afterAll(() => pool.end())
 
 test('роли Supabase заведены — без них на S6 нечем закрыть доступ', async () => {
-  const найдено = await rows<{ rolname: string }>(
+  const found = await rows<{ rolname: string }>(
     `select rolname from pg_roles
       where rolname in ('anon', 'authenticated', 'service_role')
       order by rolname`,
   )
-  expect(найдено.map((r) => r.rolname)).toEqual(['anon', 'authenticated', 'service_role'])
+  expect(found.map((r) => r.rolname)).toEqual(['anon', 'authenticated', 'service_role'])
 })
 
 test('схемы raw и fact существуют, схемы dev не существует', async () => {
-  const найдено = await rows<{ nspname: string }>(
+  const found = await rows<{ nspname: string }>(
     `select nspname from pg_namespace
       where nspname in ('raw', 'fact', 'dev') order by nspname`,
   )
-  expect(найдено.map((r) => r.nspname)).toEqual(['fact', 'raw'])
+  expect(found.map((r) => r.nspname)).toEqual(['fact', 'raw'])
 })
 
 test('в схеме raw ровно семь таблиц источника', async () => {
-  const найдено = await rows<{ tablename: string }>(
+  const found = await rows<{ tablename: string }>(
     `select tablename from pg_tables where schemaname = 'raw' order by tablename`,
   )
-  expect(найдено.map((r) => r.tablename)).toEqual([
+  expect(found.map((r) => r.tablename)).toEqual([
     'ads',
     'costs',
     'fees',
@@ -36,7 +36,7 @@ test('в схеме raw ровно семь таблиц источника', as
 })
 
 test('сырой слой не чинит источник: все его колонки — текст', async () => {
-  const неверные = await rows(
+  const wrongTypes = await rows(
     `select table_name || '.' || column_name as "место", data_type as "тип"
        from information_schema.columns
       where table_schema = 'raw'
@@ -44,11 +44,11 @@ test('сырой слой не чинит источник: все его кол
         and data_type <> 'text'
       order by 1`,
   )
-  expect(неверные).toEqual([])
+  expect(wrongTypes).toEqual([])
 })
 
 test('адресные колонки обязательны — адрес не бывает пустым', async () => {
-  const необязательные = await rows(
+  const nullableAddresses = await rows(
     `select table_name || '.' || column_name as "место"
        from information_schema.columns
       where table_schema = 'raw'
@@ -56,5 +56,5 @@ test('адресные колонки обязательны — адрес не
         and is_nullable = 'YES'
       order by 1`,
   )
-  expect(необязательные).toEqual([])
+  expect(nullableAddresses).toEqual([])
 })
