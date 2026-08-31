@@ -67,6 +67,8 @@ schema_paths = []
 enabled = true
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
+# Путь один. Указывать файл дважды бесполезно: проверено прогоном — CLI схлопывает
+# повторяющиеся пути и применяет посев один раз. Второй прогон посева делает npm run db:reset.
 sql_paths = ["./seed.sql"]
 
 [db.network_restrictions]

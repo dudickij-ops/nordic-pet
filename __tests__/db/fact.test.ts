@@ -119,18 +119,17 @@ test('факта без сырой строки не бывает: цепочк�
 
 // Число без валюты — не деньги. Проверяется у каждой таблицы фактов, где деньги есть.
 describe.each([
-  { table: 'orders', columns: "(row_no, gross, currency)", values: "(1, 10.00, null)" },
-  { table: 'refunds', columns: '(row_no, amount, currency)', values: '(1, 10.00, null)' },
-  { table: 'costs', columns: '(row_no, cost, currency)', values: '(1, 4.00, null)' },
-  { table: 'fees', columns: '(row_no, fixed, currency)', values: '(1, 0.25, null)' },
-  { table: 'opex', columns: '(row_no, amount, currency)', values: '(1, 99.00, null)' },
+  { table: 'orders', columns: '(row_no, gross, currency)', values: '(501, 10.00, null)' },
+  { table: 'refunds', columns: '(row_no, amount, currency)', values: '(501, 10.00, null)' },
+  { table: 'costs', columns: '(row_no, cost, currency)', values: '(501, 4.00, null)' },
+  { table: 'fees', columns: '(row_no, fixed, currency)', values: '(501, 0.25, null)' },
+  { table: 'opex', columns: '(row_no, amount, currency)', values: '(501, 99.00, null)' },
 ])('fact.$table', ({ table, columns, values }) => {
   test('сумма без валюты запрещена ограничением', async () => {
     await inRollback(async (client) => {
-      // сырая строка-опора, чтобы упереться именно в валюту, а не во внешний ключ
-      await client.query(
-        `insert into raw.${table} (row_no) values (1)`,
-      )
+      // сырая строка-опора с адресом, не занятым посевом: упереться надо в валюту,
+      // а не в первичный ключ и не во внешний
+      await client.query(`insert into raw.${table} (row_no) values (501)`)
 
       await expect(
         client.query(`insert into fact.${table} ${columns} values ${values}`),
@@ -141,12 +140,12 @@ describe.each([
 
 test('fact.ads: трата без валюты запрещена ограничением', async () => {
   await inRollback(async (client) => {
-    await client.query(`insert into raw.ads (file_name, row_no) values ('файл.csv', 1)`)
+    await client.query(`insert into raw.ads (file_name, row_no) values ('файл.csv', 501)`)
 
     await expect(
       client.query(
         `insert into fact.ads (file_name, row_no, spend, currency)
-         values ('файл.csv', 1, 10.00, null)`,
+         values ('файл.csv', 501, 10.00, null)`,
       ),
     ).rejects.toThrow(/ads_currency_required/)
   })
