@@ -12,5 +12,10 @@ coverage/
 *credentials*.json
 gcp-key*.json
 
+# Объявления типов, которые фреймворк порождает сам при каждой сборке.
+# Так же с ними поступает и собственный шаблон фреймворка.
+next-env.d.ts
+*.tsbuildinfo
+
 .DS_Store
 *.log
