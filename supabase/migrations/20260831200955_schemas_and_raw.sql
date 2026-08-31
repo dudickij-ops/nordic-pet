@@ -9,7 +9,9 @@ revoke all on schema fact from public;
 
 -- Все колонки источника — text. Ни одного приведения типа: разбор живёт в S4.
 -- row_no и file_name — адрес строки в источнике, а не её содержимое.
--- updated_at меняется только тогда, когда содержимое строки стало другим.
+-- updated_at меняется только тогда, когда содержимое строки стало другим,
+-- и хранит момент записи по часам, а не время начала транзакции: now() внутри одной
+-- транзакции одинаков для всех строк, и «строка изменилась» стало бы неразличимо.
 
 create table raw.orders (
   row_no       integer primary key,
@@ -20,7 +22,7 @@ create table raw.orders (
   gross_eur    text,
   discount_eur text,
   gateway      text,
-  updated_at   timestamptz not null default now()
+  updated_at   timestamptz not null default clock_timestamp()
 );
 
 create table raw.refunds (
@@ -30,7 +32,7 @@ create table raw.refunds (
   sku         text,
   units       text,
   amount_eur  text,
-  updated_at  timestamptz not null default now()
+  updated_at  timestamptz not null default clock_timestamp()
 );
 
 create table raw.costs (
@@ -38,7 +40,7 @@ create table raw.costs (
   sku        text,
   cost_eur   text,
   valid_from text,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default clock_timestamp()
 );
 
 create table raw.fees (
@@ -46,7 +48,7 @@ create table raw.fees (
   gateway   text,
   percent   text,
   fixed_eur text,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default clock_timestamp()
 );
 
 create table raw.opex (
@@ -54,14 +56,14 @@ create table raw.opex (
   month      text,
   category   text,
   amount_eur text,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default clock_timestamp()
 );
 
 create table raw.fx (
   row_no      integer primary key,
   date        text,
   usd_per_eur text,
-  updated_at  timestamptz not null default now()
+  updated_at  timestamptz not null default clock_timestamp()
 );
 
 -- У рекламы адрес составной: площадка различима только по имени файла,
@@ -72,6 +74,6 @@ create table raw.ads (
   date       text,
   campaign   text,
   spend_usd  text,
-  updated_at timestamptz not null default now(),
+  updated_at timestamptz not null default clock_timestamp(),
   primary key (file_name, row_no)
 );
