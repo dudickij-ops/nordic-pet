@@ -45,10 +45,5 @@ begin
              (excluded.date, excluded.order_id, excluded.sku, excluded.units,
               excluded.gross_eur, excluded.discount_eur, excluded.gateway);
 
-  delete from raw.orders t
-   where not exists (
-     select 1 from jsonb_array_elements(p_rows) as r
-      where (r->>'row_no')::integer = t.row_no
-   );
 end;
 $$;
