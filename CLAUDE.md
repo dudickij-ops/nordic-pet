@@ -9,7 +9,7 @@ folder. Data flows source → raw tables → fact tables → metrics → screen.
 npm run dev            # local app
 npm test               # unit tests
 npm run lint           # lint, must be clean before a PR
-supabase db reset      # rebuild the database from migrations + seed
+npm run db:reset       # rebuild the database from migrations + seed
 ```
 
 ## Rules
