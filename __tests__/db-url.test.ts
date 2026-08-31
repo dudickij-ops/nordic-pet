@@ -48,12 +48,22 @@ describe('адрес базы проекта', () => {
     ['host', 'postgresql://postgres@127.0.0.1:5432/nordic_pet?host=192.0.2.1'],
     ['port', 'postgresql://postgres@127.0.0.1:5432/nordic_pet?port=5999'],
     ['service', 'postgresql://postgres@127.0.0.1:5432/nordic_pet?service=прод'],
+    ['options', 'postgresql://postgres@127.0.0.1:5432/nordic_pet?options=-c%20search_path=x'],
   ])('отвергает подмену через параметр %s', (_name, url) => {
     expect(() => assertProjectDatabase(url)).toThrow(/запрещён параметр/)
   })
 
-  it('пропускает sslmode — он ничего не перекрывает', () => {
-    expect(() => assertProjectDatabase(LOCAL)).not.toThrow()
+  // Решётку разбор адреса отрезает, а клиент базы — нет.
+  it('отвергает подмену через решётку', () => {
+    expect(() =>
+      assertProjectDatabase('postgresql://postgres@127.0.0.1:5432/nordic_pet#?dbname=hospital'),
+    ).toThrow(/решётк/)
+  })
+
+  it('отвергает другой порт на том же хосте: другой порт — другой сервер', () => {
+    expect(() => assertProjectDatabase('postgresql://postgres@127.0.0.1:6543/nordic_pet')).toThrow(
+      /порт/,
+    )
   })
 
   it('называет в ошибке ту базу, которую отверг', () => {

@@ -7,6 +7,9 @@ const PROJECT_DATABASE = 'nordic_pet'
  */
 const ALLOWED_PARAMETERS = new Set(['sslmode'])
 
+/** Порт, на котором живёт база проекта. */
+const LOCAL_PORT = '5432'
+
 /** Локальный хост во всех написаниях, в которых его отдаёт разбор адреса. */
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]'])
 
@@ -62,6 +65,25 @@ export function assertProjectDatabase(url: string): string {
   // с hospital, `?host=…` и `?port=…` уводят на другую машину. Разбор адреса этого
   // не показывает — в пути по-прежнему написано nordic_pet. Поэтому разрешён ровно
   // один параметр, а всё остальное отвергается, даже если выглядит безобидно.
+  // Решётка обходит разбор с другой стороны: `new URL` отрезает всё после неё в hash,
+  // а libpq считает это частью адреса — `…/nordic_pet#?dbname=чужая` соединяется с чужой.
+  if (parsed.hash !== '') {
+    throw new Error(
+      'в адресе базы запрещена решётка: разбор адреса отрезает всё после неё, ' +
+        'а клиент базы — нет, и адрес с виду на nordic_pet увёл бы на чужую базу',
+    )
+  }
+
+  // Порт проверяется наравне с хостом: другой порт на том же хосте — другой сервер,
+  // то есть чужие данные. Отвергать `?port=` и пропускать `:6543` было бы половиной защиты.
+  const port = parsed.port === '' ? LOCAL_PORT : parsed.port
+  if (port !== LOCAL_PORT) {
+    throw new Error(
+      `база ${PROJECT_DATABASE} живёт на порту ${LOCAL_PORT}, а адрес указывает на ${port}: ` +
+        'другой порт — другой сервер',
+    )
+  }
+
   for (const key of parsed.searchParams.keys()) {
     if (!ALLOWED_PARAMETERS.has(key)) {
       throw new Error(

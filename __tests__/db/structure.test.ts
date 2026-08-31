@@ -115,6 +115,10 @@ test('заведение ролей стоит в миграции, а не то
     .filter((name) => name.endsWith('.sql'))
     .map((name) => readFileSync(join(migrations, name), 'utf8'))
     .join('\n')
+    // закомментированная строка — не код: без этого заведение ролей можно было бы
+    // отключить, оставив проверку зелёной
+    .replace(/--[^\n]*/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
 
   for (const role of ['anon', 'authenticated', 'service_role']) {
     expect(text).toMatch(new RegExp(`create role ${role}\\b`, 'i'))
