@@ -7,8 +7,8 @@ supabase/config.toml
 supabase/migrations/
 supabase/seed.sql
 __tests__/db/
-lib/db.ts
 package.json
+CLAUDE.md
 .github/workflows/ci.yml
 README.md
 ```
