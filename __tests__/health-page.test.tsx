@@ -1,6 +1,3 @@
-import { mkdtempSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -8,13 +5,24 @@ import HealthPage from '@/app/health/page'
 
 const HOST_SHA = '0123456789abcdef0123456789abcdef01234567'
 
+/**
+ * Путь к хранилищу git, которого не существует. Git, которому его указали,
+ * ничего не найдёт и откажется отвечать — так изображается «git недоступен»,
+ * не трогая ни рабочий каталог процесса, ни файловую систему.
+ */
+const NO_GIT_HERE = '/nordic-pet-такого-хранилища-git-нет'
+
 const originalSha = process.env.VERCEL_GIT_COMMIT_SHA
-const originalCwd = process.cwd()
+const originalGitDir = process.env.GIT_DIR
 
 afterEach(() => {
-  process.chdir(originalCwd)
-  if (originalSha === undefined) delete process.env.VERCEL_GIT_COMMIT_SHA
-  else process.env.VERCEL_GIT_COMMIT_SHA = originalSha
+  for (const [name, value] of [
+    ['VERCEL_GIT_COMMIT_SHA', originalSha],
+    ['GIT_DIR', originalGitDir],
+  ] as const) {
+    if (value === undefined) delete process.env[name]
+    else process.env[name] = value
+  }
 })
 
 describe('страница /health', () => {
@@ -26,7 +34,7 @@ describe('страница /health', () => {
 
   it('печатает «неизвестно», когда номер коммита взять неоткуда', () => {
     delete process.env.VERCEL_GIT_COMMIT_SHA
-    process.chdir(mkdtempSync(join(tmpdir(), 'nordic-pet-no-git-')))
+    process.env.GIT_DIR = NO_GIT_HERE
 
     expect(renderToStaticMarkup(<HealthPage />)).toContain('неизвестно')
   })
