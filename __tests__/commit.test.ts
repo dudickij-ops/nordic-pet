@@ -37,7 +37,7 @@ describe('resolveCommit', () => {
   it('без переменной хоста и без доступного git отвечает «неизвестно»', () => {
     delete process.env.VERCEL_GIT_COMMIT_SHA
 
-    expect(resolveCommit(gitUnavailable)).toBe('НЕВЕРНОЕ ОЖИДАНИЕ')
+    expect(resolveCommit(gitUnavailable)).toBe('неизвестно')
   })
 
   it('пустую переменную хоста ответом не считает: без git отвечает «неизвестно»', () => {
