@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process'
+
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { assertProjectDatabase, projectDatabaseUrl } from '@/lib/db-url'
@@ -98,5 +100,25 @@ describe('адрес, которым пользуется проект', () => {
   it('отказывается, когда в окружении подставлена чужая база', () => {
     process.env.DATABASE_URL = 'postgresql://postgres@127.0.0.1:5432/hospital'
     expect(() => projectDatabaseUrl()).toThrow(/hospital/)
+  })
+})
+
+describe('команда пересоздания базы', () => {
+  /**
+   * Утверждения выше проверяют саму защиту. Это — что разрушающая команда через неё ходит:
+   * без такой проверки защиту можно вынуть из скрипта, и все прочие останутся зелёными.
+   *
+   * Адрес нарочно указывает на порт, где никто не слушает, и на несуществующее имя базы:
+   * если защиту вынут, команда упрётся в отсутствующий сервер, а не снесёт чью-то работу.
+   * Отличаем одно от другого по тексту отказа.
+   */
+  it('отказывается работать с чужим адресом, а не выполняет его', () => {
+    const run = spawnSync('node', ['scripts/db-reset.ts'], {
+      env: { ...process.env, DATABASE_URL: 'postgresql://postgres@127.0.0.1:1/чужая_база' },
+      encoding: 'utf8',
+    })
+
+    expect(run.status).toBe(1)
+    expect(`${run.stderr}${run.stdout}`).toMatch(/пересоздание базы отменено/)
   })
 })
