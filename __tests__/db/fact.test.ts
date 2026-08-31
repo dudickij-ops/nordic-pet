@@ -120,6 +120,8 @@ test('факта без сырой строки не бывает: цепочк�
 // Число без валюты — не деньги. Проверяется у каждой таблицы фактов, где деньги есть.
 describe.each([
   { table: 'orders', columns: '(row_no, gross, currency)', values: '(501, 10.00, null)' },
+  // ограничение покрывает обе денежные колонки заказа, а не только выручку
+  { table: 'orders', columns: '(row_no, discount, currency)', values: '(501, 1.00, null)' },
   { table: 'refunds', columns: '(row_no, amount, currency)', values: '(501, 10.00, null)' },
   { table: 'costs', columns: '(row_no, cost, currency)', values: '(501, 4.00, null)' },
   { table: 'fees', columns: '(row_no, fixed, currency)', values: '(501, 0.25, null)' },

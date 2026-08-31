@@ -80,12 +80,20 @@ test('обе выгрузки meta на месте: различаются им�
     { file_name: 'meta_2026-03.csv', n: 2 },
   ])
 
-  const difference = await rows(
-    `select date, campaign, spend_usd, row_no from raw.ads where file_name = 'meta_2026-03.csv'
-     except
-     select date, campaign, spend_usd, row_no from raw.ads where file_name = 'meta_2026-03 (1).csv'`,
-  )
-  expect(difference).toEqual([])
+  // Сверка с ожидаемым содержимым, а не одной выгрузки с другой: обе положены одним
+  // вызовом, и сравнение их между собой прошло бы и при общем искажении.
+  const expected = [
+    { row_no: 1, date: '2026-03-01', campaign: 'spring', spend_usd: '12.40' },
+    { row_no: 2, date: '2026-03-02', campaign: 'spring', spend_usd: '9.80' },
+  ]
+  for (const file of ['meta_2026-03.csv', 'meta_2026-03 (1).csv']) {
+    const stored = await rows(
+      `select row_no, date, campaign, spend_usd from raw.ads
+        where file_name = $1 order by row_no`,
+      [file],
+    )
+    expect(stored).toEqual(expected)
+  }
 })
 
 test('посев пишет сырьё функциями записи снимка, а не своими вставками', () => {

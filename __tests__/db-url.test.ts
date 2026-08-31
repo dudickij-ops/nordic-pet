@@ -41,6 +41,21 @@ describe('адрес базы проекта', () => {
     expect(() => assertProjectDatabase('не адрес')).toThrow()
   })
 
+  // Проверять хост и путь мало: по правилам libpq параметры строки запроса перекрывают
+  // и то, и другое. Адрес ниже с виду указывает на nordic_pet, а соединяется с hospital.
+  it.each([
+    ['dbname', 'postgresql://postgres@127.0.0.1:5432/nordic_pet?dbname=hospital'],
+    ['host', 'postgresql://postgres@127.0.0.1:5432/nordic_pet?host=192.0.2.1'],
+    ['port', 'postgresql://postgres@127.0.0.1:5432/nordic_pet?port=5999'],
+    ['service', 'postgresql://postgres@127.0.0.1:5432/nordic_pet?service=прод'],
+  ])('отвергает подмену через параметр %s', (_name, url) => {
+    expect(() => assertProjectDatabase(url)).toThrow(/запрещён параметр/)
+  })
+
+  it('пропускает sslmode — он ничего не перекрывает', () => {
+    expect(() => assertProjectDatabase(LOCAL)).not.toThrow()
+  })
+
   it('называет в ошибке ту базу, которую отверг', () => {
     expect(() => assertProjectDatabase('postgresql://postgres@127.0.0.1:5432/hospital')).toThrow(
       /hospital/,

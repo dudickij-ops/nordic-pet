@@ -68,20 +68,20 @@ test('оба файла meta доезжают целиком, ни одна ст
   await inRollback(async (client) => {
     await client.query('select raw.replace_entire_ads_folder($1::jsonb)', [snapshot(wholeFolder)])
 
-    const { rows: difference } = await client.query(
-      `select date, campaign, spend_usd, row_no from raw.ads where file_name = $1
-       except
-       select date, campaign, spend_usd, row_no from raw.ads where file_name = $2`,
-      ['meta_2026-03.csv', DUPLICATE_FILE],
-    )
-    // содержимое обеих выгрузок совпадает построчно — различаются только имена файлов
-    expect(difference).toEqual([])
-
-    const { rows: counts } = await client.query(
-      `select count(*)::int as n from raw.ads where file_name in ($1, $2)`,
-      ['meta_2026-03.csv', DUPLICATE_FILE],
-    )
-    expect(counts[0].n).toBe(4)
+    // Сверяем с тем, что подавали на вход, а не одну половину базы с другой: обе выгрузки
+    // положены одним вызовом, и сравнение их между собой прошло бы и при общем искажении.
+    for (const file of ['meta_2026-03.csv', DUPLICATE_FILE]) {
+      const { rows } = await client.query(
+        `select row_no, date, campaign, spend_usd from raw.ads
+          where file_name = $1 order by row_no`,
+        [file],
+      )
+      expect(rows).toEqual(
+        wholeFolder
+          .filter((r) => r.file_name === file)
+          .map(({ row_no, date, campaign, spend_usd }) => ({ row_no, date, campaign, spend_usd })),
+      )
+    }
   })
 })
 
@@ -93,9 +93,8 @@ test('имя файла с пробелом и скобками доезжает
       DUPLICATE_FILE,
     ])
     expect(rows).toHaveLength(2)
-    expect(rows[0].file_name).toBe(DUPLICATE_FILE)
     // ни обрезки, ни схлопывания пробела, ни потери скобок
-    expect(rows[0].file_name).toHaveLength(DUPLICATE_FILE.length)
+    expect(rows[0].file_name).toBe('meta_2026-03 (1).csv')
   })
 })
 

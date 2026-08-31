@@ -18,7 +18,10 @@ jobs:
       postgres:
         image: postgres:15.18
         env:
-          POSTGRES_PASSWORD: postgres
+          # Пароля нет вовсе, и его нечего класть в git: служба живёт полторы минуты
+          # внутри раннера и наружу не смотрит. Заодно адрес базы в проверке становится
+          # тем же самым, что и на машине разработчика, — без пароля.
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         options: >-
@@ -32,7 +35,7 @@ jobs:
       # и пересоздание базы отказываются работать с любым другим адресом, чтобы
       # опечатка не снесла чужую базу. Служба Postgres проброшена на 127.0.0.1
       # именно поэтому — обращение к ней по имени службы защита отвергнет.
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/nordic_pet?sslmode=disable
+      DATABASE_URL: postgresql://postgres@127.0.0.1:5432/nordic_pet?sslmode=disable
 
     steps:
       - uses: actions/checkout@v5
@@ -50,7 +53,7 @@ jobs:
 
       - name: версия базы — ровно 15
         run: |
-          version=$(psql "postgresql://postgres:postgres@127.0.0.1:5432/postgres" -tAc "show server_version")
+          version=$(psql "postgresql://postgres@127.0.0.1:5432/postgres" -tAc "show server_version")
           echo "служба отвечает версией $version"
           case "$version" in
             15.*) ;;
@@ -58,7 +61,7 @@ jobs:
           esac
 
       - name: завести базу проекта
-        run: psql "postgresql://postgres:postgres@127.0.0.1:5432/postgres" -c "create database nordic_pet"
+        run: psql "postgresql://postgres@127.0.0.1:5432/postgres" -c "create database nordic_pet"
 
       - uses: supabase/setup-cli@v1
         with:
