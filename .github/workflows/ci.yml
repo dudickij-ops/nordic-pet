@@ -6,8 +6,37 @@ on:
     branches: [main]
 
 jobs:
+  # Имя работы менять нельзя: защита ветки main ждёт проверку с контекстом ровно `ci`.
+  # Работа, переименованная или разделённая надвое, снимет гарантию молча.
   ci:
     runs-on: ubuntu-latest
+
+    services:
+      # Ровно та же версия, что у разработчика локально. Не «15», а 15.18:
+      # база в проверке и база на машине должны быть одной и той же, иначе
+      # расхождение найдётся не здесь, а на боевых числах.
+      postgres:
+        image: postgres:15.18
+        env:
+          # Пароля нет вовсе, и его нечего класть в git: служба живёт полторы минуты
+          # внутри раннера и наружу не смотрит. Заодно адрес базы в проверке становится
+          # тем же самым, что и на машине разработчика, — без пароля.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Адрес обязан быть на localhost и указывать на базу nordic_pet: и проверки,
+      # и пересоздание базы отказываются работать с любым другим адресом, чтобы
+      # опечатка не снесла чужую базу. Служба Postgres проброшена на 127.0.0.1
+      # именно поэтому — обращение к ней по имени службы защита отвергнет.
+      DATABASE_URL: postgresql://postgres@127.0.0.1:5432/nordic_pet?sslmode=disable
+
     steps:
       - uses: actions/checkout@v5
 
@@ -21,6 +50,25 @@ jobs:
 
       - name: lint
         run: npm run lint
+
+      - name: версия базы — ровно 15
+        run: |
+          version=$(psql "postgresql://postgres@127.0.0.1:5432/postgres" -tAc "show server_version")
+          echo "служба отвечает версией $version"
+          case "$version" in
+            15.*) ;;
+            *) echo "::error::ожидалась PostgreSQL 15, а служба отвечает $version"; exit 1 ;;
+          esac
+
+      - name: завести базу проекта
+        run: psql "postgresql://postgres@127.0.0.1:5432/postgres" -c "create database nordic_pet"
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: пересоздать базу той же командой, что и разработчик
+        run: npm run db:reset
 
       - name: test
         run: npm test
