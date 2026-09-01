@@ -197,7 +197,7 @@ describe('чего боевой адрес не может', () => {
   // назвать причину, а не от службы имён, которая просто не найдёт такого хоста.
   it('не может указывать на локальный хост в перекодированной записи', () => {
     const url = `postgresql://ingester:${PASSWORD}@%31%32%37.0.0.1:6543/postgres`
-    expect(refusal(() => productionConnection(url, {}))).toMatch(/локальн|имя в сети/i)
+    expect(refusal(() => productionConnection(url, {}))).toMatch(/локальн/i)
   })
 
   /**
@@ -224,13 +224,18 @@ describe('чего боевой адрес не может', () => {
     ['адрес вместо имени', '203.0.113.7'],
   ])('не принимает хост «%s»: это не имя в сети', (_name, host) => {
     const url = `postgresql://ingester:${PASSWORD}@${host}:6543/postgres`
-    expect(() => productionConnection(url, {})).toThrow()
+    // Сверяется текст, а не голое «упало»: голое «упало» зеленело бы и от постороннего
+    // отказа — скажем, от неназванного порта, — и проверка перестала бы стеречь своё.
+    expect(refusal(() => productionConnection(url, {}))).toMatch(/локальн|именем в сети/i)
   })
 
   it.each([
     'db.example.supabase.co',
     'aws-0-eu-central-1.pooler.supabase.com',
     'db-1.example.com',
+    // Полное имя с точкой на конце: служба имён и драйвер такое принимают, и человек,
+    // скопировавший имя из настроек службы имён, напишет именно так.
+    'db.example.supabase.co.',
   ])('принимает боевое имя %s', (host) => {
     const url = `postgresql://ingester:${PASSWORD}@${host}:6543/postgres`
     expect(productionConnection(url, {}).host).toBe(host)
