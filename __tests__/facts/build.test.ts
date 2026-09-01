@@ -83,8 +83,12 @@ async function onCraftedRaw(
 }
 
 /** Снимок листа целиком: сборка читает то, что положила функция снимка S1. */
-const snapshot = (table: string, rows: unknown[]) =>
-  [`select raw.replace_${table}($1::jsonb)`, [JSON.stringify(rows)]] as const
+function put(client: PoolClient, table: string, rows: unknown[]) {
+  return client.query(`select raw.replace_${table}($1::jsonb)`, [JSON.stringify(rows)])
+}
+
+/** Чем можно заменить кусок наименьшего сырья в отдельной проверке. */
+type Craft = { [table: string]: unknown[] | undefined }
 
 const ORDER = {
   row_no: 1, date: '2026-03-01', order_id: 'NP1001', sku: 'NP-001', units: '1',
@@ -95,20 +99,20 @@ const RATE = { row_no: 1, date: '2026-03-01', usd_per_eur: '1.05' }
 const AD = { file_name: 'meta_2026-03.csv', row_no: 2, date: '2026-03-01', campaign: 'Broad EU', spend_usd: '12.40' }
 
 /** Наименьшее непротиворечивое сырьё: заказ, ставка, курс, одна строка рекламы. */
-async function minimalRaw(client: PoolClient, over: Record<string, unknown[]> = {}) {
-  await client.query(...snapshot('orders', over.orders ?? [ORDER]))
-  await client.query(...snapshot('refunds', over.refunds ?? [
+async function minimalRaw(client: PoolClient, over: Craft = {}) {
+  await put(client, 'orders', over.orders ?? [ORDER])
+  await put(client, 'refunds', over.refunds ?? [
     { row_no: 1, refund_date: '2026-03-05', order_id: 'NP1001', sku: 'NP-001', units: '1', amount_eur: '10.00' },
-  ]))
-  await client.query(...snapshot('costs', over.costs ?? [
+  ])
+  await put(client, 'costs', over.costs ?? [
     { row_no: 1, sku: 'NP-001', cost_eur: '5.10', valid_from: '2026-01-01' },
-  ]))
-  await client.query(...snapshot('fees', over.fees ?? [FEE]))
-  await client.query(...snapshot('opex', over.opex ?? [
+  ])
+  await put(client, 'fees', over.fees ?? [FEE])
+  await put(client, 'opex', over.opex ?? [
     { row_no: 1, month: '2026-03', category: 'rent', amount_eur: '950,00' },
-  ]))
-  await client.query(...snapshot('fx', over.fx ?? [RATE]))
-  await client.query(...snapshot('entire_ads_folder', over.ads ?? [AD]))
+  ])
+  await put(client, 'fx', over.fx ?? [RATE])
+  await put(client, 'entire_ads_folder', over.ads ?? [AD])
 }
 
 async function refusalOf(run: () => Promise<unknown>): Promise<string> {
@@ -247,10 +251,10 @@ describe('повторный прогон и пересчёт изменивше
           'select row_no, gross, ctid::text as version from fact.orders order by row_no',
         )
 
-        await raw.query(...snapshot('orders', [
+        await put(raw, 'orders', [
           { ...ORDER, gross_eur: '99.90' },
           { ...ORDER, row_no: 2, order_id: 'NP1002', gross_eur: '20.00' },
-        ]))
+        ])
         await buildFacts({ connect: async () => client, announce: () => {} })
 
         const { rows: after } = await raw.query(
@@ -273,7 +277,7 @@ describe('повторный прогон и пересчёт изменивше
       },
       async ({ client, raw }) => {
         await buildFacts({ connect: async () => client, announce: () => {} })
-        await raw.query(...snapshot('orders', [ORDER]))
+        await put(raw, 'orders', [ORDER])
         await buildFacts({ connect: async () => client, announce: () => {} })
 
         const { rows } = await raw.query('select row_no from fact.orders order by row_no')
@@ -361,7 +365,7 @@ describe('противоречия на деловой ключ', () => {
   test.each(cases)('$name — отказ, называющий ключ', async ({ craft, expect: pattern }) => {
     await onCraftedRaw(
       async (client) => {
-        await minimalRaw(client, craft as Record<string, unknown[]>)
+        await minimalRaw(client, craft)
       },
       async ({ client, raw }) => {
         const message = await refusalOf(() =>
