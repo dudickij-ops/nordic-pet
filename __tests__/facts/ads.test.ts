@@ -155,6 +155,16 @@ describe('свёртка копий выгрузки', () => {
     expect(kept[0].fileName).toBe('meta_aa.csv')
   })
 
+  test('сравнение не языковое: порядок не зависит от настроек машины', () => {
+    // Имена подобраны так, что два порядка расходятся: по кодовым знакам «B» (66) идёт
+    // раньше «a» (97), а по языковым правилам — наоборот. Языковое сравнение зависит от
+    // настроек машины, и на другой машине адреса строк фактов оказались бы другими.
+    expect('meta_B.csv'.localeCompare('meta_a.csv')).toBeGreaterThan(0)
+
+    const { kept } = foldCopies([file('meta_a.csv', META_ROWS), file('meta_B.csv', META_ROWS)])
+    expect(kept[0].fileName).toBe('meta_B.csv')
+  })
+
   test('единственный файл не сворачивается и остаётся как есть', () => {
     const { kept, folded } = foldCopies([file('meta_2026-03.csv', META_ROWS)])
     expect(kept).toHaveLength(1)

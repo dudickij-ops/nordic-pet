@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { afterAll, expect, test } from 'vitest'
 
-import { pool, rows } from './support'
+import { inRollback, pool, rows } from './support'
 
 afterAll(() => pool.end())
 
@@ -39,19 +39,38 @@ test('посев положил в сырой слой ровно столько
 
 // Разбора в S1 нет, значит выводить факты некому. Вписанные руками факты были бы неотличимы
 // от настоящих, а цепочка «источник → сырьё → факты» перепрыгнула бы шаг.
-test('слой фактов после посева пуст — цепочка не перепрыгивается', async () => {
-  const counts = await rows<{ name: string; n: number }>(
-    `select 'orders' as name, count(*)::int as n from fact.orders
-     union all select 'refunds', count(*)::int from fact.refunds
-     union all select 'costs',   count(*)::int from fact.costs
-     union all select 'fees',    count(*)::int from fact.fees
-     union all select 'opex',    count(*)::int from fact.opex
-     union all select 'fx',      count(*)::int from fact.fx
-     union all select 'ads',     count(*)::int from fact.ads
-     order by 1`,
-  )
-  expect(counts.filter((r) => r.n !== 0)).toEqual([])
+//
+// ПРАВЛЕНО В S4, И ВОТ ПОЧЕМУ. Проверка читала состояние общей базы: «после посева слой
+// фактов пуст». Пока факты не умел заполнять никто, это было одно и то же с утверждением
+// про посев. С появлением разбора — перестало: проверка разбора пишет факты по-настоящему
+// и прибирает за собой, и «пусто» стало зависеть от того, в каком порядке vitest взял файлы.
+// Порядок он берёт из кэша длительностей в node_modules; на чистой машине — то есть в `ci`
+// после `npm ci` — кэша нет, порядок другой, и проверка молчала.
+//
+// Теперь она применяет посев сама, внутри откатываемой транзакции, и смотрит там же.
+// Утверждение то же самое и не ослаблено: посев не наполняет слой фактов. Но оно больше
+// не зависит ни от порядка файлов, ни от того, прибрался ли кто-то до неё.
+test('посев не наполняет слой фактов — цепочка не перепрыгивается', async () => {
+  await inRollback(async (client) => {
+    for (const table of ['orders', 'refunds', 'costs', 'fees', 'opex', 'fx', 'ads']) {
+      await client.query(`delete from fact.${table}`)
+    }
+    await client.query(readFileSync(join(process.cwd(), 'supabase', 'seed.sql'), 'utf8'))
+
+    const { rows: counts } = await client.query(
+      `select 'orders' as name, count(*)::int as n from fact.orders
+       union all select 'refunds', count(*)::int from fact.refunds
+       union all select 'costs',   count(*)::int from fact.costs
+       union all select 'fees',    count(*)::int from fact.fees
+       union all select 'opex',    count(*)::int from fact.opex
+       union all select 'fx',      count(*)::int from fact.fx
+       union all select 'ads',     count(*)::int from fact.ads
+       order by 1`,
+    )
+    expect(counts.filter((row) => row.n !== 0)).toEqual([])
+  })
 })
+
 
 test('кривизна источника доехала до сырого слоя нетронутой', async () => {
   const skus = await rows<{ sku: string }>('select sku from raw.orders order by row_no')

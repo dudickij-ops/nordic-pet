@@ -38,7 +38,7 @@ function savepointClient(client: PoolClient, log?: string[]): FactsClient {
     async query(sql: string, params?: unknown[]) {
       const command = sql.trim().toLowerCase()
       log?.push(sql.trim())
-      if (command === 'begin') {
+      if (command.startsWith('begin')) {
         depth += 1
         return client.query(`savepoint сборка_${depth}`)
       }
@@ -222,14 +222,28 @@ describe('разбор посева целиком', () => {
 })
 
 describe('повторный прогон и пересчёт изменившегося', () => {
-  test('второй прогон подряд не меняет ни одной строки фактов', async () => {
+  test('второй прогон подряд не меняет ни одной строки в семи таблицах фактов', async () => {
+    // Сравниваются все семь, а не одна: прежде сравнивались только заказы, и подмена
+    // содержимого в остальных шести прошла бы незамеченной.
+    const FACT_TABLES = ['orders', 'refunds', 'costs', 'fees', 'opex', 'fx', 'ads']
     await onCraftedRaw(
       async () => {},
       async ({ client, raw }) => {
+        const contentOf = async () => {
+          const all: Record<string, unknown[]> = {}
+          for (const table of FACT_TABLES) {
+            const { rows } = await raw.query(`select * from fact.${table} order by 1, 2`)
+            all[table] = rows
+          }
+          return all
+        }
+
         await buildFacts({ connect: async () => client, announce: () => {} })
-        const { rows: first } = await raw.query('select * from fact.orders order by row_no')
+        const first = await contentOf()
         await buildFacts({ connect: async () => client, announce: () => {} })
-        const { rows: second } = await raw.query('select * from fact.orders order by row_no')
+        const second = await contentOf()
+
+        expect(Object.keys(first)).toHaveLength(7)
         expect(second).toEqual(first)
       },
     )
@@ -304,6 +318,41 @@ describe('отказы разбора', () => {
         expect(message).toContain('1 марта')
         expect(message).toContain('март')
         expect(message).toContain('полтора')
+      },
+    )
+  })
+
+  test('отказ на четвёртой из семи записей не оставляет первых трёх', async () => {
+    // Прежняя проверка атомарности пользовалась отказом разбора, а он случается ДО первой
+    // записи — покраснеть она не могла в принципе. Здесь работа обрывается посередине
+    // записи: если бы сборка закрепляла каждую таблицу отдельно, первые три остались бы.
+    await onCraftedRaw(
+      async (client) => {
+        await minimalRaw(client)
+      },
+      async ({ client, raw }) => {
+        let writes = 0
+        const failing: FactsClient = {
+          async query(sql: string, params?: unknown[]) {
+            if (/select fact\.replace_/.test(sql)) {
+              writes += 1
+              if (writes === 4) throw new Error('обрыв посередине записи')
+            }
+            return client.query(sql, params)
+          },
+          async release() {},
+        }
+
+        await expect(
+          buildFacts({ connect: async () => failing, announce: () => {} }),
+        ).rejects.toThrow(/обрыв посередине записи/)
+
+        const { rows } = await raw.query(
+          `select coalesce(sum(n), 0)::int as total from (
+             select count(*) as n from fact.orders union all select count(*) from fact.refunds
+             union all select count(*) from fact.costs) as первые_три`,
+        )
+        expect(rows[0].total).toBe(0)
       },
     )
   })
@@ -589,14 +638,16 @@ describe('как сборка обращается с базой', () => {
     )
   })
 
-  test('сырьё читается внутри той же транзакции, в которой пишутся факты', async () => {
-    // Иначе между чтением сырья и записью фактов успела бы пройти загрузка, и факты
-    // описали бы сырьё, которого уже нет.
+  test('сырьё читается после открытия транзакции, а не до него', async () => {
+    // Проверка читает журнал запросов и потому доказывает только порядок: чтение идёт
+    // после открытия транзакции. Того, что все семь чтений видят один и тот же снимок,
+    // она не доказывает — это свойство уровня изоляции, и оно проверяется отдельно,
+    // вопросом к самой базе («сборка работает на уровне повторяемого чтения»).
     await onCraftedRaw(
       async () => {},
       async ({ client, log }) => {
         await buildFacts({ connect: async () => client, announce: () => {} })
-        const begin = log.findIndex((sql) => sql.toLowerCase() === 'begin')
+        const begin = log.findIndex((sql) => sql.toLowerCase().startsWith('begin'))
         const firstRead = log.findIndex((sql) => /from raw\./i.test(sql))
         expect(begin).toBeGreaterThanOrEqual(0)
         expect(firstRead).toBeGreaterThan(begin)
@@ -624,6 +675,41 @@ describe('как сборка обращается с базой', () => {
         expect(log).not.toHaveLength(0)
       },
     )
+  })
+})
+
+describe('снимок сырья', () => {
+  test('сборка работает на уровне повторяемого чтения, а не на умолчании', async () => {
+    // Проверяется состояние сеанса, а не текст запроса: `show transaction_isolation`
+    // спрашивают у самой базы сразу после того, как сборка открыла транзакцию.
+    //
+    // Зачем это нужно. На уровне по умолчанию каждый оператор видит своё состояние базы,
+    // и семь чтений сырья дали бы семь снимков. Загрузка, зафиксированная между первым и
+    // седьмым, попала бы в часть таблиц и не попала в остальные — слой фактов собрался бы
+    // из двух состояний источника, и по фактам этого не увидеть.
+    const client = await pool.connect()
+    let level = ''
+    try {
+      const watching: FactsClient = {
+        async query(sql: string, params?: unknown[]) {
+          const result = await client.query(sql, params)
+          if (sql.trim().toLowerCase().startsWith('begin')) {
+            const { rows } = await client.query('show transaction_isolation')
+            level = rows[0].transaction_isolation as string
+          }
+          return result
+        },
+        async release() {},
+      }
+
+      await buildFacts({ connect: async () => watching, announce: () => {} })
+      expect(level).toBe('repeatable read')
+    } finally {
+      for (const table of ['orders', 'refunds', 'costs', 'fees', 'opex', 'fx', 'ads']) {
+        await client.query(`delete from fact.${table}`)
+      }
+      client.release()
+    }
   })
 })
 

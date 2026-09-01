@@ -69,7 +69,10 @@ describe('команда разбора', () => {
   })
 
   it('печатает ноль близнецов числом, а не пустым местом', () => {
+    // Утверждение точное. Прежний образец совпадал со строкой «близнецов: orders — 7,
+    // refunds — 40»: он доказывал наличие слова и какой-то цифры, а не ноль.
     const run = runCommand({ NORDIC_PET_DB_TARGET: 'local' })
-    expect(run.stdout).toMatch(/близнецов[^\n]*orders[^\n]*0|orders[^\n]*близнецов[^\n]*0|близнецов: 0/)
+    const line = run.stdout.split('\n').find((one) => one.startsWith('близнецов:'))
+    expect(line).toBe('близнецов: orders — 0, refunds — 0')
   })
 })

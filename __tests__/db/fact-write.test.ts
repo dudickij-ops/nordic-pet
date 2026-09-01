@@ -203,7 +203,7 @@ describe('деловые ключи', () => {
         ]),
       ])
 
-      await expect(client.query('set constraints all immediate')).rejects.toThrow(/fx_/)
+      await expect(client.query('set constraints all immediate')).rejects.toThrow(/fx_one_rate_per_day/)
     })
   })
 
@@ -219,7 +219,7 @@ describe('деловые ключи', () => {
         ]),
       ])
 
-      await expect(client.query('set constraints all immediate')).rejects.toThrow(/fx_/)
+      await expect(client.query('set constraints all immediate')).rejects.toThrow(/fx_one_rate_per_day/)
     })
   })
 
@@ -233,7 +233,7 @@ describe('деловые ключи', () => {
         ]),
       ])
 
-      await expect(client.query('set constraints all immediate')).rejects.toThrow(/costs_/)
+      await expect(client.query('set constraints all immediate')).rejects.toThrow(/costs_one_price_per_sku_and_start/)
     })
   })
 
@@ -263,7 +263,7 @@ describe('деловые ключи', () => {
         ]),
       ])
 
-      await expect(client.query('set constraints all immediate')).rejects.toThrow(/fees_/)
+      await expect(client.query('set constraints all immediate')).rejects.toThrow(/fees_one_rate_per_gateway/)
     })
   })
 
@@ -285,7 +285,7 @@ describe('деловые ключи', () => {
         ]),
       ])
 
-      await expect(client.query('set constraints all immediate')).rejects.toThrow(/ads_/)
+      await expect(client.query('set constraints all immediate')).rejects.toThrow(/ads_one_row_per_platform_day_campaign/)
     })
   })
 
@@ -392,5 +392,100 @@ describe('все семь таблиц пишутся своей функцие�
       'replace_orders',
       'replace_refunds',
     ])
+  })
+})
+
+/**
+ * Три защиты, которые есть у каждой из семи функций записи. Прежде они проверялись у одной
+ * таблицы, а у остальных шести держались на том, что функции написаны по образцу: снять
+ * защиту у `refunds` или `costs` можно было, не покраснев. Теперь каждая проверяется у всех.
+ */
+const TABLES: Array<{ table: string; rawColumns: string; rawValues: string; row: Record<string, unknown> }> = [
+  {
+    table: 'orders',
+    rawColumns: '(row_no)',
+    rawValues: '(501)',
+    row: { row_no: 501, date: '2026-03-01', order_id: 'NP1001', sku: 'NP-001', units: 1,
+           gross: '10.00', discount: '0.00', currency: 'EUR', gateway: 'card' },
+  },
+  {
+    table: 'refunds',
+    rawColumns: '(row_no)',
+    rawValues: '(501)',
+    row: { row_no: 501, refund_date: '2026-03-05', order_id: 'NP1001', sku: 'NP-001',
+           units: 1, amount: '10.00', currency: 'EUR' },
+  },
+  {
+    table: 'costs',
+    rawColumns: '(row_no)',
+    rawValues: '(501)',
+    row: { row_no: 501, sku: 'NP-501', cost: '5.10', currency: 'EUR', valid_from: '2026-01-01' },
+  },
+  {
+    table: 'fees',
+    rawColumns: '(row_no)',
+    rawValues: '(501)',
+    row: { row_no: 501, gateway: 'шлюз-501', percent: '1.9', fixed: '0.25', currency: 'EUR' },
+  },
+  {
+    table: 'opex',
+    rawColumns: '(row_no)',
+    rawValues: '(501)',
+    row: { row_no: 501, month: '2026-03-01', category: 'rent', amount: '950.00', currency: 'EUR' },
+  },
+  {
+    table: 'fx',
+    rawColumns: '(row_no)',
+    rawValues: '(501)',
+    row: { row_no: 501, date: '2026-03-09', usd_per_eur: '1.05' },
+  },
+  {
+    table: 'ads',
+    rawColumns: '(file_name, row_no)',
+    rawValues: "('meta_501.csv', 501)",
+    row: { file_name: 'meta_501.csv', row_no: 501, date: '2026-03-09', campaign: 'кампания-501',
+           platform: 'meta', spend: '12.40', currency: 'USD' },
+  },
+]
+
+describe.each(TABLES)('fact.$table: защиты есть у каждой функции записи', ({ table, rawColumns, rawValues, row }) => {
+  const fn = `fact.replace_${table}`
+
+  test('снимок не массив — отказ', async () => {
+    await inRollback(async (client) => {
+      await expect(client.query(`select ${fn}($1::jsonb)`, ['"не массив"'])).rejects.toThrow(
+        /не массив/,
+      )
+    })
+  })
+
+  test('нулевой снимок при непустом сырье — отказ, называющий таблицу', async () => {
+    await inRollback(async (client) => {
+      const { rows: raw } = await client.query(`select count(*)::int as n from raw.${table}`)
+      expect(raw[0].n).toBeGreaterThan(0)
+
+      await expect(client.query(`select ${fn}($1::jsonb)`, [json([])])).rejects.toThrow(
+        new RegExp(`ничего не разобра`),
+      )
+    })
+  })
+
+  test('неизменившаяся строка не переписывается: адрес версии не сдвинулся', async () => {
+    await inRollback(async (client) => {
+      await client.query(`insert into raw.${table} ${rawColumns} values ${rawValues}`)
+      const snapshot = json([row])
+
+      await client.query(`select ${fn}($1::jsonb)`, [snapshot])
+      const { rows: before } = await client.query(
+        `select ctid::text as version from fact.${table} where row_no = 501`,
+      )
+      await client.query(`select ${fn}($1::jsonb)`, [snapshot])
+      const { rows: after } = await client.query(
+        `select ctid::text as version from fact.${table} where row_no = 501`,
+      )
+
+      expect(before).toHaveLength(1)
+      expect(after).toEqual(before)
+    })
   })
 })

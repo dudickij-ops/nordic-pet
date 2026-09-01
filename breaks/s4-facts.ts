@@ -264,7 +264,7 @@ export const BREAKS: Break[] = [
   {
     id: 'survivor-locale',
     claim: 'сравнивать имена с учётом языка среды',
-    mustRedden: 'при равной длине имён переживает первое по порядку кодовых знаков',
+    mustRedden: 'сравнение не языковое',
     file: ADS,
     find: '  return [...names].sort((a, b) => (a.length !== b.length ? a.length - b.length : a < b ? -1 : 1))[0]',
     replace: '  return [...names].sort((a, b) => (a.length !== b.length ? a.length - b.length : a.localeCompare(b)))[0]',
@@ -320,7 +320,7 @@ export const BREAKS: Break[] = [
   {
     id: 'write-not-an-array',
     claim: 'убрать отказ «снимок не массив»',
-    mustRedden: 'снимок не массив',
+    mustRedden: 'снимок не массив — отказ',
     file: MIGRATION,
     find: `  if p_rows is null or jsonb_typeof(p_rows) <> 'array' then
     raise exception 'снимок для fact.fx не массив: разбор позвал запись неправильно';
@@ -608,9 +608,9 @@ export const BREAKS: Break[] = [
   {
     id: 'raw-read-outside-transaction',
     claim: 'читать сырьё вне транзакции записи',
-    mustRedden: 'сырьё читается внутри той же транзакции',
+    mustRedden: 'сырьё читается после открытия транзакции',
     file: BUILD,
-    find: `    await client.query('begin')
+    find: `    await client.query('begin isolation level repeatable read')
 
     const raw = {`,
     replace: '    const raw = {',
@@ -638,7 +638,7 @@ export const BREAKS: Break[] = [
   {
     id: 'facts-in-parts',
     claim: 'писать факты частями, не одной транзакцией',
-    mustRedden: 'при отказе в слое фактов не появилось ни одной строки',
+    mustRedden: 'отказ на четвёртой из семи записей не оставляет первых трёх',
     file: BUILD,
     find: '      await client.query(`select fact.${fn}($1::jsonb)`, [JSON.stringify(rows)])',
     replace: `      await client.query('commit')
@@ -679,6 +679,33 @@ export const BREAKS: Break[] = [
 import { clearPostgresEnvironment } from '../db-url.ts'
 void googleAuth`,
     tests: 'все',
+  },
+
+  {
+    id: 'default-isolation-level',
+    claim: 'открывать транзакцию сборки на уровне по умолчанию',
+    mustRedden: 'сборка работает на уровне повторяемого чтения',
+    file: 'lib/facts/build.ts',
+    find: "    await client.query('begin isolation level repeatable read')",
+    replace: "    await client.query('begin')",
+    tests: '__tests__/facts/build.test.ts',
+  },
+
+  // --- изоляция проверок ---------------------------------------------------------------
+  {
+    id: 'seed-fills-facts',
+    claim: 'посев наполняет слой фактов',
+    mustRedden: 'посев не наполняет слой фактов',
+    file: 'supabase/seed.sql',
+    find: "select raw.replace_entire_ads_folder($json$[",
+    replace: `insert into fact.fx (row_no, date, usd_per_eur) values (1, date '2026-03-01', 1.05);
+
+select raw.replace_entire_ads_folder($json$[`,
+    tests: 'все',
+    // Кэш длительностей сносится нарочно: прежняя форма этой проверки зависела от порядка
+    // файлов прогона, а на чистой машине порядок другой — и она молчала. Новая обязана
+    // краснеть при любом порядке, и показывается это на том порядке, который бывает в `ci`.
+    clearCache: true,
   },
 
   // --- общий набор обязательств -------------------------------------------------------
