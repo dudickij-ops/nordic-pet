@@ -384,9 +384,12 @@ describe('окружение перед соединением', () => {
         ssl: { rejectUnauthorized: true },
       })
     } finally {
-      process.env.NORDIC_PET_DB_TARGET = saved.NORDIC_PET_DB_TARGET as string
-      if (saved.SUPABASE_DB_URL === undefined) delete process.env.SUPABASE_DB_URL
-      else process.env.SUPABASE_DB_URL = saved.SUPABASE_DB_URL
+      // Возврат одинаковый для обеих переменных: приведение положило бы в незаданную
+      // переменную строку «undefined», и следующая проверка поехала бы на ней.
+      for (const name of ['NORDIC_PET_DB_TARGET', 'SUPABASE_DB_URL']) {
+        if (saved[name] === undefined) delete process.env[name]
+        else process.env[name] = saved[name]
+      }
     }
   })
 

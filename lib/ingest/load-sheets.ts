@@ -58,7 +58,10 @@ export type IngestDeps = {
 
 /** Клиент базы в том малом, что от него нужно загрузчику. */
 type DatabaseClient = {
-  connect: () => Promise<void>
+  // Открытие соединения у драйвера отдаёт клиента, а не пустоту. Здесь оно объявлено
+  // так, чтобы настоящий клиент подходил без приведения: приведение сняло бы проверку
+  // типов с единственного боевого пути, и переименование в драйвере прошло бы молча.
+  connect: () => Promise<unknown>
   query: (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>
   end: () => Promise<void>
 }
@@ -76,8 +79,7 @@ type DatabaseClient = {
  */
 export async function connectToDatabase(
   connection: string | ProductionConnection,
-  makeClient: (config: ClientConfig) => DatabaseClient = (config) =>
-    new Client(config) as unknown as DatabaseClient,
+  makeClient: (config: ClientConfig) => DatabaseClient = (config) => new Client(config),
 ): Promise<IngestClient> {
   const client = makeClient(
     typeof connection === 'string' ? { connectionString: connection } : connection,
