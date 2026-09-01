@@ -218,6 +218,29 @@ describe('снимок применяется целиком или никак',
     })
   })
 
+  it('отказ при закрытии соединения не подменяет настоящую причину', async () => {
+    await inRollback(async (client) => {
+      const failing: IngestClient = {
+        query: async (sql) => {
+          if (sql.trim().toLowerCase().startsWith('select raw.replace_')) {
+            throw new Error('настоящая причина')
+          }
+          return client.query(sql.trim().toLowerCase() === 'begin' ? 'savepoint sp_close' : 'rollback to savepoint sp_close')
+        },
+        release: async () => {
+          throw new Error('и закрыться не смог')
+        },
+      }
+      await expect(
+        ingestSheets({
+          readSpreadsheet: async () => spreadsheet(),
+          connect: async () => failing,
+          announce: () => {},
+        }),
+      ).rejects.toThrow('настоящая причина')
+    })
+  })
+
   it('ошибка разбора случается до базы: соединение не открывается', async () => {
     const broken = spreadsheet({
       costs: [['sku', 'valid_from'], ['NP-001', '01.01.2026']],

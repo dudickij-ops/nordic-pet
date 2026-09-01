@@ -214,3 +214,18 @@ describe('состав листов повторяет контракт S1', () 
     expect(snapshot.rows[0]).toEqual({ row_no: 2, date: '01.03.2026', usd_per_eur: '1,0850' })
   })
 })
+
+describe('лист, который длиннее предела числа доводов', () => {
+  // Ширина листа считалась раскрытием массива во все строки. Свыше примерно
+  // шестидесяти тысяч строк это отказ движка, а не данных: молча и не там, где ищут.
+  it('лист в двести тысяч строк разбирается, а не роняет движок', () => {
+    const values: string[][] = [HEADER]
+    for (let i = 0; i < 200_000; i += 1) values.push([])
+    values.push(row('A-последний'))
+
+    const snapshot = snapshotFromValues(orders(), values)
+    expect(snapshot.rows).toHaveLength(1)
+    expect(snapshot.rows[0].row_no).toBe(200_002)
+    expect(snapshot.rowsSkipped).toBe(200_000)
+  })
+})

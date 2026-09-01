@@ -135,10 +135,24 @@ describe('проверка боевого адреса', () => {
     )
   })
 
-  it('пропускает прочие значения sslmode', () => {
-    expect(assertProductionDatabase(broken('sslmode', 'require'))).toContain('sslmode=require')
-    expect(assertProductionDatabase(broken('sslmode', 'verify-full'))).toContain('verify-full')
+  it.each(['require', 'verify-ca', 'verify-full'])('пропускает sslmode=%s', (mode) => {
+    expect(assertProductionDatabase(broken('sslmode', mode))).toContain(`sslmode=${mode}`)
   })
+
+  /**
+   * Значение sslmode тоже закрыто перечнем разрешённого, а не запрещённого.
+   *
+   * `Disable` с заглавной и любая опечатка сегодня дают шифрование, но это случайность
+   * разбора, а не правило: библиотека сама предупреждает, что в следующей большой версии
+   * `prefer` перейдёт на семантику libpq, где он молча падает в открытый текст. Сторож
+   * по включённости шифрования этого не заметит — объект настроек останется объектом.
+   */
+  it.each(['Disable', 'DISABLE', 'prefer', 'allow', 'чепуха', ''])(
+    'отвергает sslmode=«%s»',
+    (mode) => {
+      expect(refusal(() => assertProductionDatabase(broken('sslmode', mode)))).toContain('sslmode')
+    },
+  )
 
   // Адрес без sslmode драйвер соединяет без шифрования вовсе — проверено запуском:
   // parse(адрес без sslmode) даёт ssl undefined. Молчание здесь означает открытый текст.
@@ -165,7 +179,11 @@ describe('проверка боевого адреса', () => {
     ['имя базы по-другому', 'dbname=hospital'],
     ['файл службы', 'service=чужая'],
   ])('отвергает адрес с хвостом, задающим %s', (_name, tail) => {
-    expect(() => assertProductionDatabase(`${PRODUCTION}&${tail}`)).toThrow()
+    // Утверждается текст отказа, а не голое «упало»: голое «упало» осталось бы зелёным
+    // и тогда, когда адрес отвергнут совсем по другой причине.
+    const text = refusal(() => assertProductionDatabase(`${PRODUCTION}&${tail}`))
+    expect(text).toContain('лишний параметр')
+    expect(text).toContain(tail.split('=')[0])
   })
 
   // Часть этих хвостов драйвер сегодня не читает — проверено запуском, `dbname` и
@@ -199,9 +217,23 @@ describe('проверка боевого адреса', () => {
 
   // Текст после решётки наш разборщик отрезает, а драйвер читает — проверено запуском:
   // спрятанный там sslmode=disable даёт соединение без шифрования.
-  it('отвергает отключение шифрования, спрятанное после решётки', () => {
+  /**
+   * Текст после решётки наш разборщик отрезает. Драйвер его тоже не читает — проверено
+   * запуском: хост, база и пользователь у него те же, а шифрования нет ровно потому, что
+   * sslmode в адресе не назван. Поэтому такой адрес и отвергается — за неназванный
+   * sslmode, а не за решётку; проверка утверждает именно это.
+   */
+  it('отвергает адрес, где sslmode спрятан после решётки', () => {
     const hidden = `postgresql://ingester:${PASSWORD}@db.example.supabase.co:6543/postgres#?sslmode=disable`
-    expect(() => assertProductionDatabase(hidden)).toThrow()
+    expect(refusal(() => assertProductionDatabase(hidden))).toContain('не назван sslmode')
+  })
+
+  // Драйвер с битой перекодировкой справляется — берёт имя буквально, проверено запуском.
+  // Наш разбор не имеет права падать там, где драйвер работает.
+  it('пользователь с одиночным процентом не роняет проверку', () => {
+    const url = `postgresql://100%:${PASSWORD}@db.example.supabase.co:6543/postgres?sslmode=require`
+    expect(() => assertProductionDatabase(url)).not.toThrow()
+    expect(new Client({ connectionString: url }).user).toBe('100%')
   })
 
   it('пароль со знаками, требующими перекодировки, доезжает до драйвера целым', () => {
