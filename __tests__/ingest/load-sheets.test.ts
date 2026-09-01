@@ -20,7 +20,7 @@ afterAll(() => {
 })
 
 /** Значения шести листов, как их отдал бы Google: заголовок и строки данных. */
-function spreadsheet(patch: Partial<Record<string, string[][]>> = {}): SheetValues {
+function spreadsheet(patch: SheetValues = {}): SheetValues {
   const base: SheetValues = {
     orders: [
       ['date', 'order_id', 'sku', 'units', 'gross_eur', 'discount_eur', 'gateway'],
