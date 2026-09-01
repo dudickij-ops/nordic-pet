@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { afterAll, expect, test } from 'vitest'
 
 import { ingestSheets } from '@/lib/ingest/load-sheets'
@@ -5,7 +8,21 @@ import { SHEETS } from '@/lib/ingest/sheet-rows'
 
 import { pool, rows } from '../db/support'
 
-afterAll(() => pool.end())
+/**
+ * Живая проверка возвращает базу такой, какой её нашла.
+ *
+ * Она пишет в локальную базу по-настоящему, а обычный набор проверок опирается на
+ * демонстрационные строки посева: без возврата `npm test` после неё краснел бы десятком
+ * проверок, не имеющих к изменению никакого отношения. Возврат идёт тем же файлом посева,
+ * которым пересоздаётся база, и теми же функциями записи снимка — своих вставок здесь нет.
+ *
+ * Команда `npm run ingest:sheets` ничего не возвращает: оставить в базе настоящие данные —
+ * её работа, а не побочное действие.
+ */
+afterAll(async () => {
+  await pool.query(readFileSync(join(process.cwd(), 'supabase', 'seed.sql'), 'utf8'))
+  await pool.end()
+})
 
 /** Содержимое таблицы целиком, включая updated_at, — сравнимой строкой. */
 async function contents(table: string): Promise<string> {
