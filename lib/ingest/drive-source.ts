@@ -6,6 +6,7 @@ import {
   googleGetBytes,
   type GoogleAnswer,
   type GoogleBytesAnswer,
+  type GoogleTransport,
 } from './google-access.ts'
 
 /**
@@ -37,7 +38,8 @@ const GOOGLE_DOCUMENT = 'application/vnd.google-apps.'
 
 /** Поля списка, без которых снимок не проверить. Без явного перечня Диск отдаёт лишь часть. */
 const FIELDS =
-  'nextPageToken,incompleteSearch,files(id,name,mimeType,size,md5Checksum,sha256Checksum)'
+  'nextPageToken,incompleteSearch,' +
+  'files(id,name,mimeType,size,md5Checksum,sha256Checksum,trashed,capabilities/canDownload)'
 
 /** Файл папки, как его описывает Диск. */
 export type DriveFile = {
@@ -47,6 +49,8 @@ export type DriveFile = {
   size?: string
   md5Checksum?: string
   sha256Checksum?: string
+  trashed?: boolean
+  capabilities?: { canDownload?: boolean }
 }
 
 /** Выгрузка, прочитанная целиком: имя из папки и байты как есть. */
@@ -70,8 +74,20 @@ export type DriveAccess = {
 
 type Environment = Record<string, string | undefined>
 
-/** Адрес списка файлов папки. */
+/**
+ * Адрес списка файлов папки.
+ *
+ * Идентификатор папки попадает в запрос между одинарных кавычек, поэтому его вид
+ * проверяется: кавычка или косая черта в переменной окружения превратили бы запрос
+ * в другой запрос. Идентификаторы Диска состоят из букв, цифр, дефиса и подчёркивания.
+ */
 export function adsFolderUrl(folderId: string, pageToken?: string): string {
+  if (!/^[A-Za-z0-9_-]+$/.test(folderId)) {
+    throw new Error(
+      `${FOLDER_ID} не похожа на идентификатор папки Диска: в ней есть знаки, которых там ` +
+        'быть не может. Идентификатор берут из адреса папки в браузере, после /folders/',
+    )
+  }
   const url = new URL('https://www.googleapis.com/drive/v3/files')
   url.searchParams.set('q', `'${folderId}' in parents and trashed = false`)
   url.searchParams.set('fields', FIELDS)
@@ -90,9 +106,18 @@ export function fileMediaUrl(fileId: string): string {
   return url.toString()
 }
 
-/** Настоящий доступ к Диску. */
-export function driveAccess(): DriveAccess {
-  const auth = googleAuth(DRIVE_READONLY_SCOPE)
+/**
+ * Настоящий доступ к Диску.
+ *
+ * Способ создать авторизацию подставляется, чтобы проверить можно было **запрошенную**
+ * область, а не постоянную рядом с ней. Проверка постоянной осталась бы зелёной, если бы
+ * сюда подставили другую область, — а это ровно та ошибка, от которой область и защищает.
+ * Значение по умолчанию настоящее: вызов без аргументов идёт настоящим путём.
+ */
+export function driveAccess(
+  makeAuth: (scope: string) => GoogleTransport = googleAuth,
+): DriveAccess {
+  const auth = makeAuth(DRIVE_READONLY_SCOPE)
   return { get: googleGet(auth), getBytes: googleGetBytes(auth) }
 }
 
@@ -125,6 +150,22 @@ export function chooseExportFiles(files: readonly DriveFile[]): {
         `файл ${file.name} на Диске не файл, а документ Google (${file.mimeType}): ` +
           'скачать его содержимое нельзя. Положите выгрузку на Диск файлом, без ' +
           'преобразования в Таблицу',
+      )
+    }
+    // Запрос просит нетронутые корзиной файлы. Если такой всё же приехал, это не наша
+    // ошибка и не повод грузить: снимок должен совпадать с тем, что человек видит в папке.
+    if (file.trashed === true) {
+      throw new Error(
+        `файл ${file.name} лежит в корзине, хотя запрошены только живые файлы. Верните его ` +
+          'из корзины или удалите насовсем — снимок папки обязан совпадать с тем, что видно',
+      )
+    }
+    // Право на скачивание Диск называет сам, и справочник советует смотреть на него до
+    // попытки скачать. Пропустить такой файл нельзя: подчистка идёт по всей папке.
+    if (file.capabilities?.canDownload === false) {
+      throw new Error(
+        `файл ${file.name} служебному аккаунту скачивать нельзя: Диск говорит, что права на ` +
+          'это нет. Откройте служебному аккаунту доступ «Просмотр» на папку целиком',
       )
     }
     exports.push(file)
@@ -208,6 +249,7 @@ export async function readAdsFolder(
 
   const drive = access ?? driveAccess()
   const found: DriveFile[] = []
+  const seenTokens = new Set<string>()
   let pageToken: string | undefined
 
   do {
@@ -232,6 +274,16 @@ export async function readAdsFolder(
     }
 
     found.push(...(page.files ?? []))
+
+    // Служба, вернувшая ту же метку страницы, увела бы нас в вечный круг — загрузка
+    // висела бы молча, а это хуже отказа.
+    if (page.nextPageToken !== undefined && seenTokens.has(page.nextPageToken)) {
+      throw new Error(
+        'Диск отдаёт одну и ту же метку страницы списка по кругу: список папки не ' +
+          'дочитывается. Запустите загрузку заново',
+      )
+    }
+    if (page.nextPageToken !== undefined) seenTokens.add(page.nextPageToken)
     pageToken = page.nextPageToken
   } while (pageToken !== undefined)
 

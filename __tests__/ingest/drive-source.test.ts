@@ -18,7 +18,8 @@ import {
  *
  * Подставка изображает ровно ту форму, которую отдал настоящий Диск на разведке
  * 1 сентября 2026 года: список с полями `id`, `name`, `mimeType`, `size`, `md5Checksum`,
- * `sha256Checksum` и содержимое файла байтами при коде 200.
+ * `sha256Checksum`, `trashed` и `capabilities/canDownload` — все они там наблюдались, —
+ * и содержимое файла байтами при коде 200.
  *
  * Чего разведка не видела — превращённого в Таблицу файла, неполного списка, двух
  * одноимённых файлов, — то проверяется на **нашей** стороне: на списке, который мы сами
@@ -93,13 +94,31 @@ describe('адреса запросов', () => {
     expect(url.searchParams.get('q')).toBe(`'${FOLDER}' in parents and trashed = false`)
   })
 
-  it('просит именно те поля, без которых снимок не проверить', () => {
+  /**
+   * Перечень взят из контракта, а не переписан с кода: проверка, написанная по коду,
+   * молчит ровно тогда, когда код разошёлся с требованием.
+   */
+  it('просит все поля, названные контрактом', () => {
     const fields = new URL(adsFolderUrl(FOLDER)).searchParams.get('fields') ?? ''
-    for (const field of ['name', 'mimeType', 'size', 'md5Checksum', 'sha256Checksum']) {
+    for (const field of [
+      'id',
+      'name',
+      'mimeType',
+      'size',
+      'md5Checksum',
+      'sha256Checksum',
+      'trashed',
+      'capabilities/canDownload',
+      'nextPageToken',
+      'incompleteSearch',
+    ]) {
       expect(fields, `поле ${field} не запрошено`).toContain(field)
     }
-    expect(fields).toContain('nextPageToken')
-    expect(fields).toContain('incompleteSearch')
+  })
+
+  // Идентификатор попадает в запрос между кавычек: кавычка в нём — другой запрос.
+  it('идентификатор папки со знаками, которых там быть не может, — отказ', () => {
+    expect(() => adsFolderUrl("' or name contains '")).toThrow(/GOOGLE_DRIVE_ADS_FOLDER_ID/)
   })
 
   // Снимок папки не должен зависеть от того, в каком порядке служба решила отдать файлы.
@@ -117,8 +136,21 @@ describe('адреса запросов', () => {
     expect(url.searchParams.get('alt')).toBe('media')
   })
 
-  it('область доступа — только чтение Диска', () => {
+  /**
+   * Проверяется область, которую доступ **просит**, а не постоянная рядом с ним.
+   * Проверка постоянной осталась бы зелёной, если бы в доступ подставили другую область.
+   */
+  it('доступ к Диску просит область только на чтение Диска', () => {
+    const asked: string[] = []
+    driveAccess((scope) => {
+      asked.push(scope)
+      return { fetch: (async () => ({ status: 200, data: {} })) as never }
+    })
+    expect(asked).toEqual(['https://www.googleapis.com/auth/drive.readonly'])
     expect(DRIVE_READONLY_SCOPE).toBe('https://www.googleapis.com/auth/drive.readonly')
+  })
+
+  it('доступ к Диску умеет только читать: телом и байтами', () => {
     expect(Object.keys(driveAccess()).sort()).toEqual(['get', 'getBytes'])
   })
 })
@@ -163,7 +195,7 @@ describe('отбор файлов папки', () => {
     expect(text).toMatch(/файлом|без преобразования/i)
   })
 
-  it('два файла с одинаковым именем — отказ: адрес строки стал бы двусмысленным', () => {
+  it('два файла с одинаковым именем — отказ, и в нём сказано, что делать', () => {
     const twice = [driveFile('meta_2026-03.csv', META), driveFile('meta_2026-03.csv', PINTEREST)]
     let text = ''
     try {
@@ -172,10 +204,46 @@ describe('отбор файлов папки', () => {
       text = String(error)
     }
     expect(text).toContain('meta_2026-03.csv')
+    expect(text).toMatch(/переимену|убер/i)
   })
 
-  it('ноль выгрузок в папке — отказ', () => {
-    expect(() => chooseExportFiles([driveFile('заметки.txt', 'x')])).toThrow()
+  // Отказ узнаётся по своему признаку, а не по тому, что вызов вообще упал: голое
+  // «упало» зеленеет на любой чужой ошибке, случившейся в том же месте.
+  it('ноль выгрузок в папке — отказ, и он называет пропущенное', () => {
+    let text = ''
+    try {
+      chooseExportFiles([driveFile('заметки.txt', 'x', { mimeType: 'text/plain' })])
+    } catch (error) {
+      text = String(error)
+    }
+    expect(text).toMatch(/ни одного файла \.csv/i)
+    expect(text).toContain('заметки.txt')
+  })
+
+  it('файл из корзины в снимок не попадает молча', () => {
+    const files = [driveFile('meta_2026-03.csv', META, { trashed: true })]
+    let text = ''
+    try {
+      chooseExportFiles(files)
+    } catch (error) {
+      text = String(error)
+    }
+    expect(text).toContain('meta_2026-03.csv')
+    expect(text).toMatch(/корзин/i)
+  })
+
+  it('файл, который служебному аккаунту скачивать нельзя, — отказ с указанием', () => {
+    const files = [
+      driveFile('meta_2026-03.csv', META, { capabilities: { canDownload: false } }),
+    ]
+    let text = ''
+    try {
+      chooseExportFiles(files)
+    } catch (error) {
+      text = String(error)
+    }
+    expect(text).toContain('meta_2026-03.csv')
+    expect(text).toMatch(/доступ|просмотр/i)
   })
 })
 
@@ -244,6 +312,12 @@ describe('чтение папки целиком', () => {
 
     expect(text).toMatch(/неполный список/i)
     expect(drive.calls.some((call) => call.includes('alt=media'))).toBe(false)
+  })
+
+  it('одна и та же метка страницы по кругу — отказ, а не вечное ожидание', async () => {
+    const page = { files: [driveFile('meta_2026-03.csv', META)], nextPageToken: 'та же' }
+    const drive = access([page, page, page], { 'id-meta_2026-03.csv': META })
+    expect(await refusal(() => readAdsFolder(drive, ENV))).toMatch(/по кругу/i)
   })
 
   it('не двухсотый код при скачивании — отказ с именем файла', async () => {

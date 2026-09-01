@@ -79,7 +79,13 @@ async function run(
   }
 
   const report = await ingestAdsFolder({
-    readFolder: async () => snapshot,
+    readFolder: async () => {
+      // В журнал попадает и чтение папки: иначе утверждение «цель названа до всякой
+      // работы» смотрело бы только на запросы к базе и не заметило бы, что объявление
+      // переехало за чтение источника.
+      journal.push('папка прочитана')
+      return snapshot
+    },
     connect: async () => {
       connected += 1
       journal.push(`соединение №${connected}`)
@@ -93,7 +99,10 @@ async function run(
     report,
     journal,
     statements: journal.filter(
-      (line) => !line.startsWith('цель:') && !line.startsWith('соединение'),
+      (line) =>
+        !line.startsWith('цель:') &&
+        !line.startsWith('соединение') &&
+        line !== 'папка прочитана',
     ),
   }
 }
@@ -151,11 +160,21 @@ describe('загрузка папки', () => {
     })
   })
 
-  it('не трогает сырые таблицы Таблицы', async () => {
+  it('не трогает ни одну из шести сырых таблиц Таблицы', async () => {
+    const NEIGHBOURS = ['orders', 'refunds', 'costs', 'fees', 'opex', 'fx'] as const
     await inRollback(async (client) => {
-      const before = await contents(client, 'raw.orders')
+      const before = new Map<string, string>()
+      for (const table of NEIGHBOURS) {
+        before.set(table, await contents(client, `raw.${table}`))
+      }
+
       await run(client, folder())
-      expect(await contents(client, 'raw.orders')).toBe(before)
+
+      for (const table of NEIGHBOURS) {
+        expect(await contents(client, `raw.${table}`), `raw.${table} тронута`).toBe(
+          before.get(table),
+        )
+      }
     })
   })
 
@@ -255,6 +274,36 @@ describe('отказы случаются до базы', () => {
   })
 })
 
+describe('окружение перед соединением', () => {
+  /**
+   * Драйвер читает те же переменные PG*, что и libpq, и любая из них уводит соединение
+   * туда, куда никто не проверял. Смотреть надо в тот миг, когда соединение открывается:
+   * снятие, переставленное на потом, оставило бы проверку зелёной.
+   */
+  it('переменные PG* сняты до того, как открыто соединение', async () => {
+    const savedHost = process.env.PGHOST
+    const savedDatabase = process.env.PGDATABASE
+    try {
+      process.env.PGHOST = 'чужой-хост'
+      process.env.PGDATABASE = 'чужая-база'
+
+      let atConnect: Array<string | undefined> = ['ещё не смотрели']
+      await inRollback(async (client) => {
+        await run(client, folder(), () => {
+          atConnect = [process.env.PGHOST, process.env.PGDATABASE]
+        })
+      })
+
+      expect(atConnect).toEqual([undefined, undefined])
+    } finally {
+      if (savedHost === undefined) delete process.env.PGHOST
+      else process.env.PGHOST = savedHost
+      if (savedDatabase === undefined) delete process.env.PGDATABASE
+      else process.env.PGDATABASE = savedDatabase
+    }
+  })
+})
+
 describe('отчёт', () => {
   it('называет по файлу байты, прочитанное и записанное', async () => {
     await inRollback(async (client) => {
@@ -277,10 +326,13 @@ describe('отчёт', () => {
     })
   })
 
-  it('называет цель до всякой работы, первой строкой', async () => {
+  it('называет цель до всякой работы: до чтения папки и до соединения', async () => {
     await inRollback(async (client) => {
       const { journal } = await run(client, folder())
       expect(journal[0]).toMatch(/^цель: local, база nordic_pet/)
+      // Не «первой среди запросов к базе», а именно раньше чтения источника: неверная
+      // цель обязана быть видна, даже если чтение папки потом зависнет.
+      expect(journal.indexOf('папка прочитана')).toBe(1)
     })
   })
 
