@@ -107,6 +107,15 @@ async function run(
   }
 }
 
+/**
+ * Что загрузчику позволено посылать в базу: границы транзакции, запись снимка и счётчики.
+ * Образец закрыт с обоих концов — иначе к разрешённому началу дописывается что угодно.
+ */
+const ALLOWED =
+  /^(begin|commit|rollback|select raw\.replace_[a-z_]+\(\$1::jsonb\)|select count\(\*\)::int as rows, max\(updated_at\)::text as last_change from raw\.[a-z_]+)$/i
+
+const isAllowed = (sql: string) => ALLOWED.test(sql.trim())
+
 /** Содержимое таблицы целиком, включая updated_at, — сравнимой строкой. */
 async function contents(client: PoolClient, table: string): Promise<string> {
   const { rows } = await client.query(
@@ -232,9 +241,22 @@ describe('загрузчик посылает только то, что долж
   it('ни одного оператора, кроме записи снимка, счётчиков и границ транзакции', async () => {
     await inRollback(async (client) => {
       const { statements } = await run(client, spreadsheet())
-      const allowed = /^(begin|commit|select raw\.replace_[a-z]+\(\$1::jsonb\)|select count\()/i
-      expect(statements.filter((sql) => !allowed.test(sql.trim()))).toEqual([])
+      expect(statements.filter((sql) => !isAllowed(sql))).toEqual([])
     })
+  })
+
+  /**
+   * Сам образец тоже проверяется, и вот почему. Сначала он был закрыт только с начала
+   * строки — и дописанный через точку с запятой второй оператор проходил насквозь.
+   * Проверено запуском: один вызов query исполняет оба оператора, если параметров нет.
+   */
+  it.each([
+    ['дописанный через точку с запятой', 'select count(*) from raw.orders; drop table raw.orders'],
+    ['дописанный к записи снимка', 'select raw.replace_orders($1::jsonb); delete from raw.fx'],
+    ['спрятанный за переносом строки', 'begin;\ndrop schema raw cascade'],
+    ['посторонний', 'delete from raw.orders'],
+  ])('образец не пропускает оператор, %s', (_name, sql) => {
+    expect(isAllowed(sql)).toBe(false)
   })
 
   it('в базу уходит шесть вызовов записи снимка — по одному на лист', async () => {

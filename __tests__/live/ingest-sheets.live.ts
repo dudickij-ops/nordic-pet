@@ -5,6 +5,7 @@ import { afterAll, expect, test } from 'vitest'
 
 import { ingestSheets } from '@/lib/ingest/load-sheets'
 import { SHEETS } from '@/lib/ingest/sheet-rows'
+import { resolveIngestTarget } from '@/lib/ingest/target'
 
 import { pool, rows } from '../db/support'
 
@@ -40,6 +41,17 @@ async function contents(table: string): Promise<string> {
  * проверено ничего.
  */
 test('загрузка настоящей Таблицы в настоящую базу, дважды подряд', async () => {
+  /**
+   * Живая проверка пишет по-настоящему, а сравнивает и возвращает посев через пул,
+   * привязанный к локальной базе. При боевой цели она записала бы настоящие данные в бой,
+   * сравнила бы при этом нетронутую локальную базу и отчиталась зелёным — то есть соврала бы
+   * дважды. Поэтому цель проверяется первым действием, до всякой работы.
+   */
+  expect(
+    resolveIngestTarget().where,
+    'живая проверка идёт только на локальной базе: NORDIC_PET_DB_TARGET=local',
+  ).toBe('local')
+
   const first = await ingestSheets()
 
   expect(first.sheets.map((s) => s.sheet)).toEqual(SHEETS.map((s) => s.sheet))

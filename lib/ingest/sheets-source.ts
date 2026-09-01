@@ -108,8 +108,17 @@ export function valuesFromBatchGet(body: unknown, sheets: readonly string[]): Sh
  * по переменной `GOOGLE_APPLICATION_CREDENTIALS`. Наш код ключ не открывает, не разбирает
  * и никуда не печатает.
  */
+/**
+ * Настоящий доступ к Google — отдельно от способа сходить, чтобы область доступа можно
+ * было проверить на том самом объекте, которым ходят, а не на постоянной рядом с ним.
+ * Постоянную никто не обязан использовать, и подмена области оставила бы проверки зелёными.
+ */
+export function sheetsAuth(): GoogleAuth {
+  return new GoogleAuth({ scopes: [SHEETS_READONLY_SCOPE] })
+}
+
 export function sheetsAccess(): SheetsAccess {
-  const auth = new GoogleAuth({ scopes: [SHEETS_READONLY_SCOPE] })
+  const auth = sheetsAuth()
   return {
     get: async (url) => {
       // Клиент Google отдаёт не веб-ответ, а свой объект: тело уже прочитано и разобрано,

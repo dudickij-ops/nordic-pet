@@ -89,7 +89,9 @@ export function snapshotFromValues(sheet: SheetSpec, values: string[][]): SheetS
   }
 
   const data = values.slice(1)
-  const width = Math.max(names.length, ...data.map((row) => row.length), 0)
+  // Свёрткой, а не раскрытием массива: раскрытие во все строки листа упирается в предел
+  // числа доводов и падает отказом движка, а не данных, — молча и не там, где будут искать.
+  const width = data.reduce((widest, row) => Math.max(widest, row.length), names.length)
 
   // Лишний столбец — не повод останавливать дашборд: человек мог дописать колонку с
   // заметками. Но и молчать нельзя: однажды это окажется столбец, который был нужен.

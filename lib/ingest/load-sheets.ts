@@ -124,7 +124,9 @@ export async function ingestSheets(deps: Partial<IngestDeps> = {}): Promise<Inge
     await client.query('rollback').catch(() => {})
     throw error
   } finally {
-    await client.release()
+    // Отказ при закрытии соединения не должен подменять собой настоящую причину:
+    // наверх обязана уйти та ошибка, из-за которой всё остановилось.
+    await client.release().catch(() => {})
   }
 
   return { target: target.label, sheets, counts }

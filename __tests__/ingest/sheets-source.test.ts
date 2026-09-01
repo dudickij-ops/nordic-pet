@@ -4,6 +4,7 @@ import {
   operationsUrl,
   readOperationsSpreadsheet,
   sheetsAccess,
+  sheetsAuth,
   SHEETS_READONLY_SCOPE,
   valuesFromBatchGet,
   type SheetsAccess,
@@ -99,7 +100,19 @@ describe('запрос на чтение шести листов', () => {
     expect(url.pathname).toBe('/v4/spreadsheets/a%2Fb%3Fc%3Dd/values:batchGet')
   })
 
-  it('область доступа — только чтение', () => {
+  /**
+   * Проверяется тот самый объект, которым ходят в Google, а не постоянная рядом с ним:
+   * постоянную никто не обязан использовать, и подмена области в объекте оставила бы
+   * проверку постоянной зелёной.
+   *
+   * Поле области в типах библиотеки закрыто, поэтому читается через приведение — это
+   * названо вслух и осознанно. Если библиотека однажды переименует поле, проверка
+   * покраснеет и потребует посмотреть, а не позеленеет молча.
+   */
+  it('область доступа у настоящего клиента — только чтение', () => {
+    const asked = (sheetsAuth() as unknown as { scopes?: string | string[] }).scopes
+    expect(asked, 'библиотека больше не хранит область в поле scopes').toBeDefined()
+    expect([asked].flat()).toEqual(['https://www.googleapis.com/auth/spreadsheets.readonly'])
     expect(SHEETS_READONLY_SCOPE).toBe('https://www.googleapis.com/auth/spreadsheets.readonly')
   })
 })

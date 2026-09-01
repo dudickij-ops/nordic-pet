@@ -1,7 +1,12 @@
+import { Client } from 'pg'
 import { describe, expect, it } from 'vitest'
 
 import { projectDatabaseUrl } from '@/lib/db-url'
-import { assertProductionDatabase, resolveIngestTarget } from '@/lib/ingest/target'
+import {
+  assertDriverReadsTheSameAddress,
+  assertProductionDatabase,
+  resolveIngestTarget,
+} from '@/lib/ingest/target'
 
 /**
  * Пароль в этих проверках — приметная строка, которую легко искать в тексте ошибки.
@@ -130,11 +135,82 @@ describe('проверка боевого адреса', () => {
     )
   })
 
-  it('пропускает прочие значения sslmode и адрес без него', () => {
+  it('пропускает прочие значения sslmode', () => {
     expect(assertProductionDatabase(broken('sslmode', 'require'))).toContain('sslmode=require')
+    expect(assertProductionDatabase(broken('sslmode', 'verify-full'))).toContain('verify-full')
+  })
+
+  // Адрес без sslmode драйвер соединяет без шифрования вовсе — проверено запуском:
+  // parse(адрес без sslmode) даёт ssl undefined. Молчание здесь означает открытый текст.
+  it('отвергает адрес, в котором шифрование не названо вовсе', () => {
     const withoutSslmode = new URL(PRODUCTION)
     withoutSslmode.searchParams.delete('sslmode')
-    expect(assertProductionDatabase(withoutSslmode.toString())).toContain('supabase.co')
+    expect(refusal(() => assertProductionDatabase(withoutSslmode.toString()))).toContain('sslmode')
+  })
+
+  /**
+   * Самое важное здесь. Разбор адреса драйвером и разбор адреса нами — два разных
+   * разборщика, и у драйвера свои правила старшинства: параметры строки запроса он
+   * кладёт ПОВЕРХ разобранного адреса. Проверено запуском на установленном pg:
+   * адрес db.example.supabase.co:6543 с хвостом ?host=127.0.0.1&user=postgres
+   * соединяет с 127.0.0.1 под пользователем postgres.
+   *
+   * Поэтому проверяется не наше представление об адресе, а то, что понял сам драйвер.
+   */
+  it.each([
+    ['хост', 'host=127.0.0.1'],
+    ['порт', 'port=5432'],
+    ['пользователя', 'user=postgres'],
+    ['путь поиска функций', 'options=-c%20search_path%3Dчужая'],
+    ['имя базы по-другому', 'dbname=hospital'],
+    ['файл службы', 'service=чужая'],
+  ])('отвергает адрес с хвостом, задающим %s', (_name, tail) => {
+    expect(() => assertProductionDatabase(`${PRODUCTION}&${tail}`)).toThrow()
+  })
+
+  // Часть этих хвостов драйвер сегодня не читает — проверено запуском, `dbname` и
+  // `service` он игнорирует. Отвергаются они всё равно: правило здесь — список
+  // разрешённого, а не перечень обходов, известных на сегодня.
+  it('отвергает даже безобидный на вид хвост', () => {
+    expect(refusal(() => assertProductionDatabase(`${PRODUCTION}&application_name=я`))).toContain(
+      'application_name',
+    )
+  })
+
+  it('у пропущенного адреса драйвер видит ровно то, что мы проверили', () => {
+    const seen = new Client({ connectionString: assertProductionDatabase(PRODUCTION) })
+    expect(seen.host).toBe('db.example.supabase.co')
+    expect(String(seen.port)).toBe('6543')
+    expect(seen.user).toBe('ingester')
+    expect(seen.database).toBe('postgres')
+    expect(seen.password).toBe(PASSWORD)
+    expect(seen.ssl).toBeTruthy()
+  })
+
+  // Отказ именно за неназванное шифрование, а не за что-нибудь ещё по дороге:
+  // иначе снятие этой проверки осталось бы незамеченным.
+  it('отказ за неназванный sslmode говорит именно об этом', () => {
+    const withoutSslmode = new URL(PRODUCTION)
+    withoutSslmode.searchParams.delete('sslmode')
+    expect(refusal(() => assertProductionDatabase(withoutSslmode.toString()))).toContain(
+      'не назван sslmode',
+    )
+  })
+
+  // Текст после решётки наш разборщик отрезает, а драйвер читает — проверено запуском:
+  // спрятанный там sslmode=disable даёт соединение без шифрования.
+  it('отвергает отключение шифрования, спрятанное после решётки', () => {
+    const hidden = `postgresql://ingester:${PASSWORD}@db.example.supabase.co:6543/postgres#?sslmode=disable`
+    expect(() => assertProductionDatabase(hidden)).toThrow()
+  })
+
+  it('пароль со знаками, требующими перекодировки, доезжает до драйвера целым', () => {
+    const tricky = 'p@ss:word/сложный%20'
+    const url = new URL(PRODUCTION)
+    url.password = encodeURIComponent(tricky)
+    const seen = new Client({ connectionString: assertProductionDatabase(url.toString()) })
+    expect(seen.password).toBe(tricky)
+    expect(seen.host).toBe('db.example.supabase.co')
   })
 
   /**
@@ -166,5 +242,45 @@ describe('проверка боевого адреса', () => {
     ['неразбираемый адрес', () => `постгрес://ingester:${PASSWORD}@хост/база`],
   ])('не показывает пароль, отказывая за %s', (_name, make) => {
     expect(refusal(() => assertProductionDatabase(make()))).not.toContain(PASSWORD)
+  })
+})
+
+/**
+ * Сверка с драйвером проверяется отдельно от всего остального.
+ *
+ * Иначе её нельзя доказать: сегодня каждый известный способ подмены отсекается раньше —
+ * списком разрешённых параметров и требованием назвать sslmode. Эта сверка стоит на
+ * случай способа, которого мы ещё не знаем, и такой способ по определению не изобразить
+ * в проверке. Поэтому проверяется сам механизм сверки, а не путь до него.
+ */
+describe('сверка с тем, что понял драйвер', () => {
+  const ADDRESS = `postgresql://ingester:${PASSWORD}@db.example.supabase.co:6543/postgres?sslmode=require`
+  const CORRECT = {
+    host: 'db.example.supabase.co',
+    port: '6543',
+    database: 'postgres',
+    user: 'ingester',
+  }
+
+  it('молчит, когда оба прочтения сошлись', () => {
+    expect(() => assertDriverReadsTheSameAddress(ADDRESS, CORRECT)).not.toThrow()
+  })
+
+  it.each([
+    ['хост', { host: 'db.other.supabase.co' }],
+    ['порт', { port: '5432' }],
+    ['базу', { database: 'hospital' }],
+    ['пользователя', { user: 'postgres' }],
+  ])('отвергает расхождение в части «%s»', (part, difference) => {
+    const text = refusal(() =>
+      assertDriverReadsTheSameAddress(ADDRESS, { ...CORRECT, ...difference }),
+    )
+    expect(text).toContain(part)
+    expect(text).not.toContain(PASSWORD)
+  })
+
+  it('отвергает адрес, который драйвер понял как соединение без шифрования', () => {
+    const hidden = `postgresql://ingester:${PASSWORD}@db.example.supabase.co:6543/postgres#?sslmode=disable`
+    expect(refusal(() => assertDriverReadsTheSameAddress(hidden, CORRECT))).toContain('шифрован')
   })
 })
