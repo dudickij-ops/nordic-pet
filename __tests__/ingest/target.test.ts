@@ -2,11 +2,7 @@ import { Client } from 'pg'
 import { describe, expect, it } from 'vitest'
 
 import { projectDatabaseUrl } from '@/lib/db-url'
-import {
-  assertDriverReadsTheSameAddress,
-  assertProductionDatabase,
-  resolveIngestTarget,
-} from '@/lib/ingest/target'
+import { productionConnection, resolveIngestTarget } from '@/lib/ingest/target'
 
 /**
  * Пароль в этих проверках — приметная строка, которую легко искать в тексте ошибки.
@@ -15,14 +11,15 @@ import {
  */
 const PASSWORD = 'этого-пароля-в-выводе-быть-не-должно'
 
-/** Годный боевой адрес: назван целиком, шифрование не отключено, хост не локальный. */
-const PRODUCTION = `postgresql://ingester:${PASSWORD}@db.example.supabase.co:6543/postgres?sslmode=require`
+/** Годный боевой адрес: назван целиком, хост не локальный. */
+const PRODUCTION = `postgresql://ingester:${PASSWORD}@db.example.supabase.co:6543/postgres`
+
+const ENV = { NORDIC_PET_DB_TARGET: 'production', SUPABASE_DB_URL: PRODUCTION }
 
 /** Тот же адрес с одной испорченной частью. */
 function broken(part: string, value: string): string {
   const url = new URL(PRODUCTION)
-  if (part === 'sslmode') url.searchParams.set('sslmode', value)
-  else if (part === 'host') url.hostname = value
+  if (part === 'host') url.hostname = value
   else if (part === 'port') url.port = value
   else if (part === 'database') url.pathname = value
   else if (part === 'user') url.username = value
@@ -49,7 +46,6 @@ describe('среда загрузчика называется словом', ()
     expect(text).toContain('production')
   })
 
-  // Молчаливого приведения нет: среда либо названа ровно, либо не названа.
   it.each(['', ' ', 'prod', 'LOCAL', 'Production', 'boy', 'true'])(
     'отказывается понимать значение «%s»',
     (value) => {
@@ -62,8 +58,7 @@ describe('среда загрузчика называется словом', ()
   it('local ведёт в ту же локальную базу, что и проверки', () => {
     const target = resolveIngestTarget({ NORDIC_PET_DB_TARGET: 'local' })
     expect(target.where).toBe('local')
-    expect(target.url).toBe(projectDatabaseUrl())
-    expect(target.url).toContain('nordic_pet')
+    expect(target.connection).toBe(projectDatabaseUrl())
   })
 
   it('local называет себя вслух', () => {
@@ -78,36 +73,25 @@ describe('среда загрузчика называется словом', ()
     )
   })
 
-  it('production с годным адресом отдаёт его как есть', () => {
-    const target = resolveIngestTarget({
-      NORDIC_PET_DB_TARGET: 'production',
-      SUPABASE_DB_URL: PRODUCTION,
-    })
+  it('production отдаёт разобранные поля, а не строку', () => {
+    const target = resolveIngestTarget(ENV)
     expect(target.where).toBe('production')
-    expect(target.url).toBe(PRODUCTION)
+    expect(typeof target.connection).toBe('object')
   })
 
   it('production называет себя вслух хостом и базой, но не паролем', () => {
-    const { label } = resolveIngestTarget({
-      NORDIC_PET_DB_TARGET: 'production',
-      SUPABASE_DB_URL: PRODUCTION,
-    })
+    const { label } = resolveIngestTarget(ENV)
     expect(label).toContain('production')
     expect(label).toContain('db.example.supabase.co')
     expect(label).toContain('postgres')
     expect(label).not.toContain(PASSWORD)
   })
 
-  /**
-   * Настоящий путь: без единого аргумента, на настоящем окружении процесса.
-   * Без этой проверки испытанным оказался бы только путь с подставленным окружением,
-   * а в бою работает именно этот.
-   */
   it('без аргументов читает окружение процесса', () => {
     const saved = process.env.NORDIC_PET_DB_TARGET
     try {
       process.env.NORDIC_PET_DB_TARGET = 'local'
-      expect(resolveIngestTarget().url).toBe(projectDatabaseUrl())
+      expect(resolveIngestTarget().connection).toBe(projectDatabaseUrl())
 
       delete process.env.NORDIC_PET_DB_TARGET
       expect(refusal(() => resolveIngestTarget())).toContain('NORDIC_PET_DB_TARGET')
@@ -118,201 +102,126 @@ describe('среда загрузчика называется словом', ()
   })
 })
 
-describe('проверка боевого адреса', () => {
-  it('пропускает адрес, названный целиком', () => {
-    expect(assertProductionDatabase(PRODUCTION)).toBe(PRODUCTION)
-  })
-
-  // «Бой», указывающий на локальный хост, — это неверно названная среда, а не боевая база.
-  it.each(['127.0.0.1', 'localhost', '[::1]'])('отвергает локальный хост %s', (host) => {
-    expect(refusal(() => assertProductionDatabase(broken('host', host)))).toMatch(/локальн/i)
-  })
-
-  // Адрес идёт по публичной сети: отключённое шифрование — пароль открытым текстом.
-  it('отвергает отключённое шифрование', () => {
-    expect(refusal(() => assertProductionDatabase(broken('sslmode', 'disable')))).toContain(
-      'sslmode',
-    )
-  })
-
-  it.each(['require', 'verify-ca', 'verify-full'])('пропускает sslmode=%s', (mode) => {
-    expect(assertProductionDatabase(broken('sslmode', mode))).toContain(`sslmode=${mode}`)
-  })
-
+describe('боевой адрес разбирается на поля', () => {
   /**
-   * Значение sslmode тоже закрыто перечнем разрешённого, а не запрещённого.
+   * Шесть полей передаются драйверу явно, и каждое проверяется отдельно: тогда потеря
+   * любого из них краснеет своей проверкой, а не тонет в общей.
    *
-   * `Disable` с заглавной и любая опечатка сегодня дают шифрование, но это случайность
-   * разбора, а не правило: библиотека сама предупреждает, что в следующей большой версии
-   * `prefer` перейдёт на семантику libpq, где он молча падает в открытый текст. Сторож
-   * по включённости шифрования этого не заметит — объект настроек останется объектом.
+   * Проверяется не наше представление о полях, а то, что из них собрал сам драйвер.
    */
-  it.each(['Disable', 'DISABLE', 'prefer', 'allow', 'чепуха', ''])(
-    'отвергает sslmode=«%s»',
-    (mode) => {
-      expect(refusal(() => assertProductionDatabase(broken('sslmode', mode)))).toContain('sslmode')
-    },
-  )
+  const built = () => new Client(productionConnection(PRODUCTION, {}))
 
-  // Адрес без sslmode драйвер соединяет без шифрования вовсе — проверено запуском:
-  // parse(адрес без sslmode) даёт ssl undefined. Молчание здесь означает открытый текст.
-  it('отвергает адрес, в котором шифрование не названо вовсе', () => {
-    const withoutSslmode = new URL(PRODUCTION)
-    withoutSslmode.searchParams.delete('sslmode')
-    expect(refusal(() => assertProductionDatabase(withoutSslmode.toString()))).toContain('sslmode')
+  it('хост передан явно', () => {
+    expect(built().host).toBe('db.example.supabase.co')
   })
 
-  /**
-   * Самое важное здесь. Разбор адреса драйвером и разбор адреса нами — два разных
-   * разборщика, и у драйвера свои правила старшинства: параметры строки запроса он
-   * кладёт ПОВЕРХ разобранного адреса. Проверено запуском на установленном pg:
-   * адрес db.example.supabase.co:6543 с хвостом ?host=127.0.0.1&user=postgres
-   * соединяет с 127.0.0.1 под пользователем postgres.
-   *
-   * Поэтому проверяется не наше представление об адресе, а то, что понял сам драйвер.
-   */
-  it.each([
-    ['хост', 'host=127.0.0.1'],
-    ['порт', 'port=5432'],
-    ['пользователя', 'user=postgres'],
-    ['путь поиска функций', 'options=-c%20search_path%3Dчужая'],
-    ['имя базы по-другому', 'dbname=hospital'],
-    ['файл службы', 'service=чужая'],
-  ])('отвергает адрес с хвостом, задающим %s', (_name, tail) => {
-    // Утверждается текст отказа, а не голое «упало»: голое «упало» осталось бы зелёным
-    // и тогда, когда адрес отвергнут совсем по другой причине.
-    const text = refusal(() => assertProductionDatabase(`${PRODUCTION}&${tail}`))
-    expect(text).toContain('лишний параметр')
-    expect(text).toContain(tail.split('=')[0])
+  it('порт передан явно и числом', () => {
+    expect(built().port).toBe(6543)
   })
 
-  // Часть этих хвостов драйвер сегодня не читает — проверено запуском, `dbname` и
-  // `service` он игнорирует. Отвергаются они всё равно: правило здесь — список
-  // разрешённого, а не перечень обходов, известных на сегодня.
-  it('отвергает даже безобидный на вид хвост', () => {
-    expect(refusal(() => assertProductionDatabase(`${PRODUCTION}&application_name=я`))).toContain(
-      'application_name',
-    )
+  it('пользователь передан явно', () => {
+    expect(built().user).toBe('ingester')
   })
 
-  it('у пропущенного адреса драйвер видит ровно то, что мы проверили', () => {
-    const seen = new Client({ connectionString: assertProductionDatabase(PRODUCTION) })
-    expect(seen.host).toBe('db.example.supabase.co')
-    expect(String(seen.port)).toBe('6543')
-    expect(seen.user).toBe('ingester')
-    expect(seen.database).toBe('postgres')
-    expect(seen.password).toBe(PASSWORD)
-    expect(seen.ssl).toBeTruthy()
+  it('пароль передан явно и целым', () => {
+    expect(built().password).toBe(PASSWORD)
   })
 
-  // Отказ именно за неназванное шифрование, а не за что-нибудь ещё по дороге:
-  // иначе снятие этой проверки осталось бы незамеченным.
-  it('отказ за неназванный sslmode говорит именно об этом', () => {
-    const withoutSslmode = new URL(PRODUCTION)
-    withoutSslmode.searchParams.delete('sslmode')
-    expect(refusal(() => assertProductionDatabase(withoutSslmode.toString()))).toContain(
-      'не назван sslmode',
-    )
+  it('база передана явно', () => {
+    expect(built().database).toBe('postgres')
   })
 
-  // Текст после решётки наш разборщик отрезает, а драйвер читает — проверено запуском:
-  // спрятанный там sslmode=disable даёт соединение без шифрования.
-  /**
-   * Текст после решётки наш разборщик отрезает. Драйвер его тоже не читает — проверено
-   * запуском: хост, база и пользователь у него те же, а шифрования нет ровно потому, что
-   * sslmode в адресе не назван. Поэтому такой адрес и отвергается — за неназванный
-   * sslmode, а не за решётку; проверка утверждает именно это.
-   */
-  it('отвергает адрес, где sslmode спрятан после решётки', () => {
-    const hidden = `postgresql://ingester:${PASSWORD}@db.example.supabase.co:6543/postgres#?sslmode=disable`
-    expect(refusal(() => assertProductionDatabase(hidden))).toContain('не назван sslmode')
+  it('шифрование передано явно и с проверкой сертификата', () => {
+    expect(built().ssl).toMatchObject({ rejectUnauthorized: true })
   })
 
-  // Драйвер с битой перекодировкой справляется — берёт имя буквально, проверено запуском.
-  // Наш разбор не имеет права падать там, где драйвер работает.
-  it('пользователь с одиночным процентом не роняет проверку', () => {
-    const url = `postgresql://100%:${PASSWORD}@db.example.supabase.co:6543/postgres?sslmode=require`
-    expect(() => assertProductionDatabase(url)).not.toThrow()
-    expect(new Client({ connectionString: url }).user).toBe('100%')
-  })
-
-  it('пароль со знаками, требующими перекодировки, доезжает до драйвера целым', () => {
-    const tricky = 'p@ss:word/сложный%20'
+  it('пароль со знаками, требующими перекодировки, доезжает целым', () => {
+    const tricky = 'p@ss:word/сложный%20&='
     const url = new URL(PRODUCTION)
     url.password = encodeURIComponent(tricky)
-    const seen = new Client({ connectionString: assertProductionDatabase(url.toString()) })
-    expect(seen.password).toBe(tricky)
-    expect(seen.host).toBe('db.example.supabase.co')
+    expect(new Client(productionConnection(url.toString(), {})).password).toBe(tricky)
   })
 
+  // Драйвер с битой перекодировкой справляется, берёт имя буквально. Наш разбор не имеет
+  // права падать сырым URIError там, где драйвер работает.
+  it('пользователь с одиночным процентом не роняет разбор', () => {
+    const url = `postgresql://100%:${PASSWORD}@db.example.supabase.co:6543/postgres`
+    expect(productionConnection(url, {}).user).toBe('100%')
+  })
+})
+
+describe('строка запроса выбрасывается целиком', () => {
   /**
-   * Каждая часть обязана быть названа в адресе. Драйвер pg дочитывает недостающее из
-   * переменных PG*, как libpq: проверено опытом на живой базе — адрес без имени базы
-   * увёл соединение в базу из PGDATABASE. Проверенным оказался бы один адрес,
-   * а запись ушла бы в другую базу.
+   * Разбор адреса нами и разбор адреса драйвером — два разных разборщика с разными
+   * правилами старшинства: параметры строки запроса драйвер клал ПОВЕРХ разобранного
+   * адреса, и проверенный адрес расходился с адресом соединения. Проверять хвост
+   * перечнем разрешённого — заплата; выбросить его целиком — снятая проблема.
    */
+  it.each([
+    ['подмена хоста', 'host=127.0.0.1'],
+    ['подмена порта', 'port=5432'],
+    ['подмена пользователя', 'user=postgres'],
+    ['подмена пути поиска функций', 'options=-c%20search_path%3Dчужая'],
+    ['отключение шифрования', 'sslmode=disable'],
+    ['файл службы', 'service=чужая'],
+  ])('%s из хвоста не доезжает до драйвера', (_name, tail) => {
+    const client = new Client(productionConnection(`${PRODUCTION}?${tail}`, {}))
+    expect(client.host).toBe('db.example.supabase.co')
+    expect(client.port).toBe(6543)
+    expect(client.user).toBe('ingester')
+    expect(client.database).toBe('postgres')
+    expect(client.ssl).toMatchObject({ rejectUnauthorized: true })
+  })
+
+  it('текст после решётки тоже не доезжает', () => {
+    const client = new Client(productionConnection(`${PRODUCTION}#?sslmode=disable`, {}))
+    expect(client.database).toBe('postgres')
+    expect(client.ssl).toMatchObject({ rejectUnauthorized: true })
+  })
+})
+
+describe('чего боевой адрес не может', () => {
+  it.each(['127.0.0.1', 'localhost', '[::1]'])('не может указывать на локальный хост %s', (host) => {
+    expect(refusal(() => productionConnection(broken('host', host), {}))).toMatch(/локальн/i)
+  })
+
   it.each([
     ['порт', 'port', ''],
     ['имя базы', 'database', '/'],
     ['пользователя', 'user', ''],
     ['пароль', 'password', ''],
-  ])('отвергает адрес, в котором не назван %s', (_name, part, value) => {
-    expect(() => assertProductionDatabase(broken(part, value))).toThrow()
+  ])('не может не называть %s', (_name, part, value) => {
+    expect(() => productionConnection(broken(part, value), {})).toThrow()
   })
 
-  it('отвергает не тот вид адреса', () => {
-    expect(() => assertProductionDatabase('https://db.example.supabase.co/postgres')).toThrow()
-    expect(() => assertProductionDatabase('вообще не адрес')).toThrow()
+  it('не может быть другого вида', () => {
+    expect(() => productionConnection('https://db.example.supabase.co/postgres', {})).toThrow()
+    expect(() => productionConnection('вообще не адрес', {})).toThrow()
   })
 
   it.each([
     ['локальный хост', () => broken('host', '127.0.0.1')],
-    ['отключённое шифрование', () => broken('sslmode', 'disable')],
     ['неназванный порт', () => broken('port', '')],
     ['неназванное имя базы', () => broken('database', '/')],
     ['неназванного пользователя', () => broken('user', '')],
     ['неразбираемый адрес', () => `постгрес://ingester:${PASSWORD}@хост/база`],
   ])('не показывает пароль, отказывая за %s', (_name, make) => {
-    expect(refusal(() => assertProductionDatabase(make()))).not.toContain(PASSWORD)
+    expect(refusal(() => productionConnection(make(), {}))).not.toContain(PASSWORD)
   })
 })
 
-/**
- * Сверка с драйвером проверяется отдельно от всего остального.
- *
- * Иначе её нельзя доказать: сегодня каждый известный способ подмены отсекается раньше —
- * списком разрешённых параметров и требованием назвать sslmode. Эта сверка стоит на
- * случай способа, которого мы ещё не знаем, и такой способ по определению не изобразить
- * в проверке. Поэтому проверяется сам механизм сверки, а не путь до него.
- */
-describe('сверка с тем, что понял драйвер', () => {
-  const ADDRESS = `postgresql://ingester:${PASSWORD}@db.example.supabase.co:6543/postgres?sslmode=require`
-  const CORRECT = {
-    host: 'db.example.supabase.co',
-    port: '6543',
-    database: 'postgres',
-    user: 'ingester',
-  }
-
-  it('молчит, когда оба прочтения сошлись', () => {
-    expect(() => assertDriverReadsTheSameAddress(ADDRESS, CORRECT)).not.toThrow()
+describe('корневой сертификат', () => {
+  /**
+   * Сертификат боевой базы может оказаться подписан своей корневой, а не публично
+   * доверенной. Тогда его подкладывают переменной окружения — без единой строки кода.
+   */
+  it('подложенная корневая уезжает драйверу вместе с проверкой сертификата', () => {
+    const ca = '-----BEGIN CERTIFICATE-----\nвыдуманная\n-----END CERTIFICATE-----'
+    const connection = productionConnection(PRODUCTION, { SUPABASE_DB_CA: ca })
+    expect(connection.ssl).toEqual({ rejectUnauthorized: true, ca })
   })
 
-  it.each([
-    ['хост', { host: 'db.other.supabase.co' }],
-    ['порт', { port: '5432' }],
-    ['базу', { database: 'hospital' }],
-    ['пользователя', { user: 'postgres' }],
-  ])('отвергает расхождение в части «%s»', (part, difference) => {
-    const text = refusal(() =>
-      assertDriverReadsTheSameAddress(ADDRESS, { ...CORRECT, ...difference }),
-    )
-    expect(text).toContain(part)
-    expect(text).not.toContain(PASSWORD)
-  })
-
-  it('отвергает адрес, который драйвер понял как соединение без шифрования', () => {
-    const hidden = `postgresql://ingester:${PASSWORD}@db.example.supabase.co:6543/postgres#?sslmode=disable`
-    expect(refusal(() => assertDriverReadsTheSameAddress(hidden, CORRECT))).toContain('шифрован')
+  it('без переменной проверка сертификата идёт по доверенным корневым системы', () => {
+    expect(productionConnection(PRODUCTION, {}).ssl).toEqual({ rejectUnauthorized: true })
   })
 })

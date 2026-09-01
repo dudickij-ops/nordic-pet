@@ -310,6 +310,29 @@ describe('загрузчик посылает только то, что долж
   })
 })
 
+describe('окружение перед соединением', () => {
+  /**
+   * Драйвер читает те же переменные PG*, что и libpq, и любая из них уводит соединение
+   * туда, куда никто не проверял. Поля соединения названы все до одного, но окружение —
+   * вторая сторона той же двери, и её тоже закрывают.
+   */
+  it('переменные PG* сняты до того, как открыто соединение', async () => {
+    const saved = process.env.PGHOST
+    try {
+      process.env.PGHOST = 'чужой-хост'
+      process.env.PGDATABASE = 'чужая-база'
+      await inRollback(async (client) => {
+        await run(client, spreadsheet())
+      })
+      expect(process.env.PGHOST).toBeUndefined()
+      expect(process.env.PGDATABASE).toBeUndefined()
+    } finally {
+      if (saved === undefined) delete process.env.PGHOST
+      else process.env.PGHOST = saved
+    }
+  })
+})
+
 describe('отчёт загрузчика', () => {
   it('первой строкой называет, куда пишет, — до соединения с базой', async () => {
     await inRollback(async (client) => {

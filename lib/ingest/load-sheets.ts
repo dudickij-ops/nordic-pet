@@ -1,6 +1,7 @@
 import { Client } from 'pg'
 
-import { resolveIngestTarget } from './target.ts'
+import { clearPostgresEnvironment } from '../db-url.ts'
+import { resolveIngestTarget, type ProductionConnection } from './target.ts'
 import { SHEETS, snapshotFromValues } from './sheet-rows.ts'
 import { readOperationsSpreadsheet, type SheetValues } from './sheets-source.ts'
 
@@ -50,14 +51,22 @@ export type IngestReport = {
 
 export type IngestDeps = {
   readSpreadsheet: () => Promise<SheetValues>
-  connect: (url: string) => Promise<IngestClient>
+  connect: (connection: string | ProductionConnection) => Promise<IngestClient>
   /** Куда пишем — говорится до всякой работы, а не после. */
   announce: (line: string) => void
 }
 
-/** Настоящее соединение: обычный клиент `pg` по проверенному адресу. */
-async function connectToDatabase(url: string): Promise<IngestClient> {
-  const client = new Client({ connectionString: url })
+/**
+ * Настоящее соединение.
+ *
+ * Боевые части приезжают сюда полями и уходят драйверу поимённо: строки, которую он мог бы
+ * перечитать по своим правилам, не существует. Локальный адрес остаётся строкой — она уже
+ * пересобрана запертой проверкой S1 из пяти проверенных частей.
+ */
+async function connectToDatabase(connection: string | ProductionConnection): Promise<IngestClient> {
+  const client = new Client(
+    typeof connection === 'string' ? { connectionString: connection } : connection,
+  )
   await client.connect()
   return {
     query: (sql, params) => client.query(sql, params),
@@ -83,7 +92,12 @@ export async function ingestSheets(deps: Partial<IngestDeps> = {}): Promise<Inge
     snapshot: snapshotFromValues(sheet, values[sheet.sheet] ?? []),
   }))
 
-  const client = await connect(target.url)
+  // Незаполненных мест не должно остаться ни в полях соединения, ни в окружении:
+  // драйвер читает те же переменные PG*, что и libpq, и любая из них — тот же чужой
+  // адрес, только с другой стороны. Так же поступает и команда пересоздания базы.
+  clearPostgresEnvironment()
+
+  const client = await connect(target.connection)
   const sheets: SheetReport[] = []
   const counts: TableCount[] = []
 
