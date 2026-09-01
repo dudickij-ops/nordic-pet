@@ -2,6 +2,7 @@ import { Pool, type PoolClient } from 'pg'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 
 import { projectDatabaseUrl } from '@/lib/db-url'
+import { blockNetwork } from '../commands/network'
 import { buildFacts, type FactsClient } from '@/lib/facts/build'
 
 /**
@@ -379,7 +380,7 @@ describe('противоречия на деловой ключ', () => {
       expect: /2026-03-01/,
     },
     {
-      name: 'две цены на артикул и дату начала',
+      name: 'две цены на артикул и дату',
       craft: {
         costs: [
           { row_no: 1, sku: 'NP-001', cost_eur: '5.10', valid_from: '2026-01-01' },
@@ -394,7 +395,7 @@ describe('противоречия на деловой ключ', () => {
       expect: /card/,
     },
     {
-      name: 'разные способы оплаты в строках одного заказа',
+      name: 'разные способы оплаты в заказе',
       craft: {
         orders: [ORDER, { ...ORDER, row_no: 2, sku: 'NP-002', gateway: 'paypal' }],
         fees: [FEE, { row_no: 2, gateway: 'paypal', percent: '3.4', fixed_eur: '0.35' }],
@@ -402,7 +403,7 @@ describe('противоречия на деловой ключ', () => {
       expect: /NP1001/,
     },
     {
-      name: 'разные даты в строках одного заказа',
+      name: 'разные даты в заказе',
       craft: {
         orders: [ORDER, { ...ORDER, row_no: 2, sku: 'NP-002', date: '2026-03-02' }],
         fx: [RATE, { row_no: 2, date: '2026-03-02', usd_per_eur: '1.06' }],
@@ -713,7 +714,56 @@ describe('снимок сырья', () => {
   })
 })
 
+describe('отказы базы, которые человек может исправить', () => {
+  test.each([
+    { code: '40001', беда: /источник менялся во время сборки/, что: /повторите разбор/ },
+    { code: '40P01', беда: /встали в замок/, что: /повторите разбор/ },
+  ])('отказ базы $code переведён на человеческий язык', async ({ code, беда, что }) => {
+    // Повторяемое чтение не ставит соперников в очередь: столкнувшись с загрузкой, сборка
+    // рвётся ошибкой сериализации. Текст базы человеку не говорит ни что случилось, ни
+    // что делать, а контракт этого требует.
+    await onCraftedRaw(
+      async () => {},
+      async ({ client }) => {
+        const conflicting: FactsClient = {
+          async query(sql: string, params?: unknown[]) {
+            if (/select fact\.replace_/.test(sql)) {
+              throw Object.assign(new Error('could not serialize access'), { code })
+            }
+            return client.query(sql, params)
+          },
+          async release() {},
+        }
+
+        const message = await refusalOf(() =>
+          buildFacts({ connect: async () => conflicting, announce: () => {} }),
+        )
+        expect(message).toMatch(беда)
+        expect(message).toMatch(что)
+        expect(message).not.toMatch(/could not serialize/)
+      },
+    )
+  })
+})
+
 describe('боевой путь', () => {
+  test('за настоящий прогон сборка не стучится наружу ни разу', async () => {
+    // Наблюдение на боевом прогоне: выход наружу перекрыт весь, кроме местной базы.
+    // Разбор списка импортов этого не доказывал — реэкспорт, динамический импорт и голый
+    // `fetch` он не видел.
+    const blocked = blockNetwork({ allowLocalDatabase: true })
+    try {
+      blocked.proveTrapWorks()
+      await buildFacts()
+      expect(blocked.knocks).toEqual([])
+    } finally {
+      blocked.restore()
+      for (const table of ['orders', 'refunds', 'costs', 'fees', 'opex', 'fx', 'ads']) {
+        await pool.query(`delete from fact.${table}`)
+      }
+    }
+  })
+
   test('buildFacts() без единого довода работает на настоящей местной базе', async () => {
     // Шов подставляемого соединения нужен проверкам. Если бы его не звали и без доводов,
     // проверялся бы шов, а не то, чем пользуется команда и кнопка на S5.

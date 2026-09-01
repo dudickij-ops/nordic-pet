@@ -42,7 +42,7 @@ export const BREAKS: Break[] = [
   {
     id: 'date-third-form',
     claim: 'принять третью форму даты',
-    mustRedden: 'третья форма даты не угадывается',
+    mustRedden: 'третья форма даты не угадывается: 1 марта',
     file: PARSE,
     find: `  const iso = ISO_DATE.exec(value)
   const euro = EURO_DATE.exec(value)
@@ -194,7 +194,7 @@ export const BREAKS: Break[] = [
   {
     id: 'platform-refusal',
     claim: 'не отказывать на имени файла без площадки',
-    mustRedden: 'имя, из которого площадку не вывести, — отказ',
+    mustRedden: 'имя, из которого площадку не вывести, — отказ: report.csv',
     file: ADS,
     find: `  if (platform === '') {
     throw new Error(
@@ -275,7 +275,7 @@ export const BREAKS: Break[] = [
   {
     id: 'write-is-distinct-from',
     claim: 'убрать условие `is distinct from` в записи',
-    mustRedden: 'неизменившаяся строка не переписывается',
+    mustRedden: 'неизменившаяся строка не переписывается, а не просто',
     file: MIGRATION,
     find: `       where (t.date, t.usd_per_eur)
           is distinct from (excluded.date, excluded.usd_per_eur);`,
@@ -320,7 +320,7 @@ export const BREAKS: Break[] = [
   {
     id: 'write-not-an-array',
     claim: 'убрать отказ «снимок не массив»',
-    mustRedden: 'снимок не массив — отказ',
+    mustRedden: "fact.'fx': защиты есть у каждой функции записи снимок не массив — отказ",
     file: MIGRATION,
     find: `  if p_rows is null or jsonb_typeof(p_rows) <> 'array' then
     raise exception 'снимок для fact.fx не массив: разбор позвал запись неправильно';
@@ -420,12 +420,96 @@ export const BREAKS: Break[] = [
   {
     id: 'percent-range',
     claim: 'снять ограничение диапазона процента',
-    mustRedden: 'нулевая и отрицательная ставка — наш отказ',
+    mustRedden: 'нулевая и отрицательная ставка — наш отказ: 0',
     file: MIGRATION,
     find: '  check (percent is null or percent > 0);',
     replace: '  check (true);',
     tests: WRITE_TESTS,
     resetDb: true,
+  },
+
+  {
+    id: 'write-guard-orders',
+    claim: 'снять отказ «нулевой снимок» у заказов',
+    mustRedden: "fact.'orders': защиты есть у каждой функции записи нулевой снимок",
+    file: MIGRATION,
+    find: '  if jsonb_array_length(p_rows) = 0 and exists (select 1 from raw.orders) then',
+    replace: '  if false then',
+    tests: WRITE_TESTS,
+    resetDb: true,
+  },
+  {
+    id: 'write-guard-refunds-array',
+    claim: 'снять отказ «снимок не массив» у возвратов',
+    mustRedden: "fact.'refunds': защиты есть у каждой функции записи снимок не массив",
+    file: MIGRATION,
+    find: `  if p_rows is null or jsonb_typeof(p_rows) <> 'array' then
+    raise exception 'снимок для fact.refunds не массив: разбор позвал запись неправильно';
+  end if;`,
+    replace: '',
+    tests: WRITE_TESTS,
+    resetDb: true,
+  },
+  {
+    id: 'write-guard-costs-distinct',
+    claim: 'убрать условие «содержимое стало другим» у цен поставщика',
+    mustRedden: "fact.'costs': защиты есть у каждой функции записи неизменившаяся строка",
+    file: MIGRATION,
+    find: `       where (t.sku, t.cost, t.currency, t.valid_from)
+          is distinct from
+             (excluded.sku, excluded.cost, excluded.currency, excluded.valid_from);`,
+    replace: ';',
+    tests: WRITE_TESTS,
+    resetDb: true,
+  },
+  {
+    id: 'empty-month-own-refusal',
+    claim: 'убрать свой отказ на пустом месяце',
+    mustRedden: 'пустой месяц — свой отказ',
+    file: PARSE,
+    find: `  if (value === '') {
+    throw new CellError(at, 'месяц не заполнен. Впишите его в формате 2026-03 или 03.2026')
+  }`,
+    replace: '',
+    tests: PARSE_TESTS,
+  },
+  {
+    id: 'empty-units-own-refusal',
+    claim: 'убрать свой отказ на пустом количестве',
+    mustRedden: 'пустое количество — свой отказ',
+    file: PARSE,
+    find: `  if (value === '') {
+    throw new CellError(at, 'количество не заполнено. Впишите целое число штук')
+  }`,
+    replace: '',
+    tests: PARSE_TESTS,
+  },
+  {
+    id: 'ambiguous-separators-own-refusal',
+    claim: 'убрать свой отказ на неоднозначной расстановке разделителей',
+    mustRedden: 'неоднозначная расстановка двух разделителей — свой отказ',
+    file: PARSE,
+    find: `    if (countOf(value, decimal) !== 1) {
+      throw new CellError(
+        at,
+        \`«\${raw}» — разделители расставлены так, что число не читается однозначно. \` +
+          'Напишите его с одним разделителем: 1234.56',
+      )
+    }`,
+    replace: '',
+    tests: PARSE_TESTS,
+  },
+  {
+    id: 'opex-collision-is-refusal',
+    claim: 'считать две строки расходов на месяц и категорию противоречием',
+    mustRedden: 'две строки расходов на месяц и категорию противоречием не считаются',
+    file: BUILD,
+    find: '    const ratedGateways = new Set(fees.map((row) => String(row.gateway)))',
+    replace: `    for (const [key] of collisionsOf(opex, (row) => \`\${row.month}|\${row.category}\`)) {
+      contradictions.add(\`две строки расходов на \${key}\`)
+    }
+    const ratedGateways = new Set(fees.map((row) => String(row.gateway)))`,
+    tests: BUILD_TESTS,
   },
 
   // --- сборка -------------------------------------------------------------------------
@@ -509,7 +593,7 @@ export const BREAKS: Break[] = [
   {
     id: 'order-gateway-split',
     claim: 'пропустить разные способы оплаты в одном заказе',
-    mustRedden: 'разные способы оплаты в строках одног',
+    mustRedden: 'разные способы оплаты в заказе',
     file: BUILD,
     find: '      if (gateways.size > 1) {',
     replace: '      if (false) {',
@@ -518,7 +602,7 @@ export const BREAKS: Break[] = [
   {
     id: 'order-date-split',
     claim: 'пропустить разные даты в одном заказе',
-    mustRedden: 'разные даты в строках одного заказа',
+    mustRedden: 'разные даты в заказе',
     file: BUILD,
     find: '      if (dates.size > 1) {',
     replace: '      if (false) {',
@@ -649,7 +733,7 @@ export const BREAKS: Break[] = [
   {
     id: 'pg-env-not-cleared',
     claim: 'убрать снятие переменных `PG*`',
-    mustRedden: 'переменные PG* сняты до соединения',
+    mustRedden: "обязательства команды 'facts' переменные PG* сняты до соединения",
     file: BUILD,
     find: '  clearPostgresEnvironment()',
     replace: '  // clearPostgresEnvironment()',
@@ -658,7 +742,7 @@ export const BREAKS: Break[] = [
   {
     id: 'announce-after-work',
     claim: 'называть цель после записи',
-    mustRedden: 'цель названа до первой работы',
+    mustRedden: "обязательства команды 'facts' цель названа до первой работы",
     file: BUILD,
     find: `  const target = resolveIngestTarget()
   announce(target.label)`,
@@ -672,7 +756,7 @@ export const BREAKS: Break[] = [
   {
     id: 'network-in-build',
     claim: 'позвать сеть',
-    mustRedden: 'не ходит наружу никуда, кроме объявленного',
+    mustRedden: "обязательства команды 'facts' не ходит наружу никуда, кроме объявленного",
     file: BUILD,
     find: "import { clearPostgresEnvironment } from '../db-url.ts'",
     replace: `import { googleAuth } from '../ingest/google-access.ts'
@@ -708,6 +792,52 @@ select raw.replace_entire_ads_folder($json$[`,
     clearCache: true,
   },
 
+  {
+    id: 'serialization-error-raw',
+    claim: 'отдавать отказ базы по конфликту как есть',
+    mustRedden: "отказ базы '40001' переведён на человеческий язык",
+    file: 'lib/facts/build.ts',
+    find: '    throw humanReadable(error)',
+    replace: '    throw error',
+    tests: '__tests__/facts/build.test.ts',
+  },
+  {
+    id: 'network-on-real-run',
+    claim: 'сходить в сеть на боевом прогоне сборки',
+    mustRedden: 'за настоящий прогон сборка не стучится наружу ни разу',
+    file: 'lib/facts/build.ts',
+    find: '  const target = resolveIngestTarget()',
+    replace: `  void (async () => {
+    try {
+      await fetch('http://наружу.invalid/')
+    } catch {
+      // стук уже записан
+    }
+  })()
+  const target = resolveIngestTarget()`,
+    tests: '__tests__/facts/build.test.ts',
+  },
+  {
+    id: 'obligations-not-counted',
+    claim: 'снять обязательство из общего набора',
+    mustRedden: 'обязательств ровно пять, и они те самые',
+    file: '__tests__/commands/obligations.test.ts',
+    find: `  {
+    name: 'переменные PG* сняты до соединения',`,
+    replace: `  {
+    name: 'переменные PG* сняты до соединения — снято сломом',`,
+    tests: '__tests__/commands/obligations.test.ts',
+  },
+  {
+    id: 'registry-lock-shallow',
+    claim: 'искать сценарии только на верхнем уровне и только `.ts`',
+    mustRedden: 'ни одна команда package.json не заводит сценарий в обход списка',
+    file: '__tests__/commands/obligations.test.ts',
+    find: '      if (!known.has(entry)) hidden.push(`${name} → ${entry}`)',
+    replace: '      void entry',
+    tests: '__tests__/commands/obligations.test.ts',
+  },
+
   // --- общий набор обязательств -------------------------------------------------------
   {
     id: 'registry-missing-command',
@@ -727,7 +857,7 @@ select raw.replace_entire_ads_folder($json$[`,
   {
     id: 'registry-overdeclared-world',
     claim: 'объявить команде внешний мир, до которого она не ходит',
-    mustRedden: 'не ходит наружу никуда, кроме объявленного',
+    mustRedden: "обязательства команды 'facts' не ходит наружу никуда, кроме объявленного",
     file: 'lib/commands.ts',
     find: `    refusal: 'разбор отменён',
     outsideWorld: [],`,
@@ -749,7 +879,7 @@ select raw.replace_entire_ads_folder($json$[`,
   {
     id: 'command-no-target-refusal',
     claim: 'убрать отказ на неназванной среде',
-    mustRedden: 'неназванная среда — отказ до всякой работы',
+    mustRedden: "обязательства команды 'facts' неназванная среда — отказ до всякой работы",
     file: BUILD,
     find: '  const target = resolveIngestTarget()',
     replace:
@@ -797,7 +927,7 @@ select raw.replace_entire_ads_folder($json$[`,
   {
     id: 'command-alias-import',
     claim: 'написать команду через сокращение `@/`',
-    mustRedden: 'запускается простым node',
+    mustRedden: 'команда разбора запускается простым node',
     file: COMMAND,
     find: "import { buildFacts } from '../lib/facts/build.ts'",
     replace: "import { buildFacts } from '@/lib/facts/build.ts'",

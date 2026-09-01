@@ -11,14 +11,23 @@ import type { Break, BreakResult, BreakVerdict } from '../breaks/types.ts'
  * Ломаем механизм — смотрим, покраснела ли **его собственная** проверка — возвращаем файл.
  * Таблица отчёта печатается отсюда: её не набирают руками, и разойтись с прогоном ей негде.
  *
- * Четыре исхода, и три из них — находки:
+ * Пять исходов, и четыре из них — находки:
  *   своё          — покраснела названная проверка. Механизм проверен;
  *   чужое         — красное есть, но названная проверка молчит: сторожит не она,
  *                   а случайная ошибка по дороге. Убери отказ аккуратнее — и зазеленеет;
  *   зелено        — не покраснело ничего. Механизм держится на честном слове;
- *   не применился — образец не найден или найден дважды: слом стоит не в том месте.
+ *   не применился — образец не найден или найден дважды: слом стоит не в том месте;
+ *   ожидание двусмысленно — имя, которое слом обещает покраснить, подходит не к одной
+ *                   проверке набора, а к нескольким. Тогда красное у соседки засчиталось
+ *                   бы вместо красного у своей: слом одной таблицы «доказывался» бы
+ *                   проверкой другой. Найдено рецензентом; своими руками не находилось.
  *
- * Файлы возвращаются на место всегда, в том числе при падении и при прерывании.
+ * ЧТО БУДЕТ, ЕСЛИ ПРОГОН УБИТЬ. В рабочем дереве останется сломанный файл, а в базе —
+ * снятое ограничение. Чинится это двумя командами: `git checkout .` и `npm run db:reset`.
+ * Обработчиков сигналов здесь нет нарочно: весь прогон синхронен, обработчик всё равно не
+ * успел бы сработать, а своим существованием он отменил бы штатное завершение по Ctrl-C —
+ * то есть сделал бы хуже. Поэтому прогон **требует чистого дерева на входе**: тогда
+ * `git checkout .` заведомо не снесёт ничью работу.
  */
 
 const list = process.argv[2]
@@ -53,21 +62,35 @@ function restoreAll(): void {
   for (const [file, text] of originals) writeFileSync(file, text)
 }
 
-// Возврат файлов не должен зависеть от того, дошло ли выполнение до конца: прерывание
-// с оставленным сломанным файлом — это испорченное дерево и потерянный вечер.
-for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(signal, () => {
-    restoreAll()
-    process.exit(130)
-  })
+/**
+ * Прогон правит файлы в рабочем дереве. Если дерево грязное, убитый прогон не отличить
+ * от чужой незакоммиченной работы, и `git checkout .` снесёт её вместе со сломом.
+ */
+function requireCleanTree(): void {
+  const status = spawnSync('git', ['status', '--porcelain'], { encoding: 'utf8' })
+  if (status.status !== 0) {
+    console.error('не удалось спросить git о состоянии дерева')
+    process.exit(1)
+  }
+  if (status.stdout.trim() !== '') {
+    console.error(
+      'рабочее дерево грязное, а прогон правит файлы. Закоммитьте или уберите изменения:\n' +
+        status.stdout,
+    )
+    process.exit(1)
+  }
 }
-process.on('uncaughtException', (error) => {
-  restoreAll()
-  throw error
-})
 
 function resetDatabase(): void {
-  spawnSync('npm', ['run', 'db:reset'], { encoding: 'utf8' })
+  // Код возврата смотрится: пересоздание базы, отработавшее неудачно, оставило бы прогон
+  // на непонятно какой базе, и все дальнейшие вердикты были бы о чём угодно.
+  const reset = spawnSync('npm', ['run', 'db:reset'], { encoding: 'utf8' })
+  if (reset.status !== 0) {
+    restoreAll()
+    console.error(`пересоздание базы вернуло ${reset.status ?? 'ничего'}. Прогон остановлен`)
+    console.error(reset.stderr ?? '')
+    process.exit(1)
+  }
 }
 
 function clearDurationCache(): void {
@@ -78,8 +101,8 @@ function clearDurationCache(): void {
   rmSync('node_modules/.vitest', { recursive: true, force: true })
 }
 
-/** Гоняет проверки и отдаёт код возврата и имена покрасневших проверок. */
-function runTests(tests: string): { exitCode: number; failed: string[] } {
+/** Гоняет проверки и отдаёт код возврата, имена покрасневших и имена всех проверок. */
+function runTests(tests: string): { exitCode: number; failed: string[]; all: string[] } {
   const args =
     tests === 'все'
       ? ['vitest', 'run', '--reporter=json', '--outputFile', reportFile]
@@ -88,21 +111,20 @@ function runTests(tests: string): { exitCode: number; failed: string[] } {
   const run = spawnSync('npx', args, { encoding: 'utf8' })
 
   let failed: string[] = []
+  let all: string[] = []
   try {
     const report = JSON.parse(readFileSync(reportFile, 'utf8')) as {
       testResults?: Array<{ assertionResults?: Array<{ status: string; fullName: string }> }>
     }
-    failed = (report.testResults ?? []).flatMap((file) =>
-      (file.assertionResults ?? [])
-        .filter((one) => one.status === 'failed')
-        .map((one) => one.fullName.trim()),
-    )
+    const results = (report.testResults ?? []).flatMap((file) => file.assertionResults ?? [])
+    all = results.map((one) => one.fullName.trim())
+    failed = results.filter((one) => one.status === 'failed').map((one) => one.fullName.trim())
   } catch {
     // Отчёта нет — набор не запустился вовсе. Код возврата об этом скажет.
   }
   rmSync(reportFile, { force: true })
 
-  return { exitCode: run.status ?? 1, failed }
+  return { exitCode: run.status ?? 1, failed, all }
 }
 
 function applyBreak(one: Break): BreakVerdict | null {
@@ -123,11 +145,16 @@ function applyBreak(one: Break): BreakVerdict | null {
 
 const results: BreakResult[] = []
 
+requireCleanTree()
+
+let catalogue: string[] = []
+
 try {
   // Исходное состояние обязано быть зелёным: иначе красное на сломе ничего не значит.
   console.error('проверяю исходное состояние…')
   resetDatabase()
   const before = runTests('все')
+  catalogue = before.all
   if (before.exitCode !== 0) {
     restoreAll()
     console.error(`до сломов набор уже красный (код ${before.exitCode}). Прогон отменён:`)
@@ -137,6 +164,21 @@ try {
 
   for (const one of chosen) {
     console.error(`слом: ${one.claim}`)
+
+    // Имя, которое слом обещает покраснить, обязано подходить ровно к одной проверке
+    // набора. Иначе красное у соседки засчиталось бы вместо красного у своей — так слом
+    // защиты у одной таблицы «доказывался» бы проверкой другой.
+    const matching = catalogue.filter((name) => name.includes(one.mustRedden))
+    if (matching.length !== 1) {
+      results.push({
+        Break: one,
+        verdict: 'ожидание двусмысленно',
+        exitCode: -1,
+        reddened: matching,
+      })
+      continue
+    }
+
     const failure = applyBreak(one)
     if (failure !== null) {
       results.push({ Break: one, verdict: failure, exitCode: -1, reddened: [] })
@@ -168,6 +210,7 @@ const mark: Record<BreakVerdict, string> = {
   'зелено': '**зелено**',
   'не применился': '**слом не применился**',
   'двусмысленный': '**образец найден дважды**',
+  'ожидание двусмысленно': '**ожидание подходит не к одной проверке**',
 }
 
 console.log(`# Прогон сломов: ${list}\n`)
@@ -189,6 +232,9 @@ if (bad.length > 0) {
     console.log(`  обязана была покраснеть: «${result.Break.mustRedden}»`)
     if (result.verdict === 'чужое') {
       console.log(`  вместо неё покраснели: ${result.reddened.slice(0, 3).join('; ')}`)
+    }
+    if (result.verdict === 'ожидание двусмысленно') {
+      console.log(`  подходит к ${result.reddened.length} проверкам: ${result.reddened.slice(0, 3).join('; ')}`)
     }
     console.log()
   }

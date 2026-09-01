@@ -206,6 +206,32 @@ function collisionsOf<T>(rows: T[], keyOf: (row: T) => string): Map<string, T[]>
   return new Map([...byKey].filter(([, group]) => group.length > 1))
 }
 
+/**
+ * Переводит отказы базы, которые человек может исправить сам, на человеческий язык.
+ *
+ * Повторяемое чтение не ставит соперников в очередь: если во время сборки источник
+ * изменился, база рвёт транзакцию ошибкой сериализации. Это правильнее тихой порчи, но её
+ * текст — «could not serialize access due to concurrent update» — не говорит человеку ни
+ * что случилось, ни что делать. Контракт требует, чтобы всякий исправимый отказ называл
+ * беду и следующее действие.
+ */
+function humanReadable(error: unknown): unknown {
+  const code = (error as { code?: string } | null)?.code
+  if (code === '40001') {
+    return new Error(
+      'источник менялся во время сборки: загрузка успела записать сырьё, пока разбор его ' +
+        'читал. Ничего не записано — повторите разбор',
+    )
+  }
+  if (code === '40P01') {
+    return new Error(
+      'разбор и загрузка встали в замок друг против друга, и база разорвала один из них. ' +
+        'Ничего не записано — повторите разбор, когда загрузка закончится',
+    )
+  }
+  return error
+}
+
 export async function buildFacts(deps: Partial<FactsDeps> = {}): Promise<FactsReport> {
   const connect = deps.connect ?? connectToDatabase
   const announce = deps.announce ?? (() => {})
@@ -540,7 +566,7 @@ export async function buildFacts(deps: Partial<FactsDeps> = {}): Promise<FactsRe
     }
   } catch (error) {
     await client.query('rollback').catch(() => {})
-    throw error
+    throw humanReadable(error)
   } finally {
     // Отказ при закрытии соединения не должен подменять собой настоящую причину.
     await client.release().catch(() => {})
