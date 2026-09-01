@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   operationsUrl,
   readOperationsSpreadsheet,
+  sheetsAccess,
   SHEETS_READONLY_SCOPE,
   valuesFromBatchGet,
   type SheetsAccess,
@@ -24,17 +25,20 @@ function batchGet(sections: Array<{ sheet: string; values?: string[][] }>) {
   }
 }
 
-/** Подставленный доступ: записывает запрос и отдаёт заготовленный ответ. */
-function access(body: unknown, status = 200): SheetsAccess & { calls: Array<[string, unknown]> } {
-  const calls: Array<[string, unknown]> = []
+/**
+ * Подставленный доступ: записывает адрес и отдаёт заготовленный ответ.
+ *
+ * Отдаёт он то же, что и настоящий клиент Google, — код и уже разобранное тело.
+ * Прежняя подстановка отдавала веб-ответ, которого настоящий клиент не отдаёт никогда,
+ * и проверки зеленели на пути, которого в бою не существует.
+ */
+function access(body: unknown, status = 200): SheetsAccess & { calls: string[] } {
+  const calls: string[] = []
   return {
     calls,
-    fetch: async (url, init) => {
-      calls.push([url, init])
-      return new Response(JSON.stringify(body), {
-        status,
-        headers: { 'content-type': 'application/json' },
-      })
+    get: async (url) => {
+      calls.push(url)
+      return { status, body }
     },
   }
 }
@@ -154,17 +158,14 @@ describe('чтение Таблицы', () => {
   it('ходит по собранному адресу и отдаёт разобранные значения', async () => {
     const google = access(batchGet(NAMES.map((sheet) => ({ sheet, values: [[sheet]] }))))
     const values = await readOperationsSpreadsheet(google, env)
-    expect(google.calls).toHaveLength(1)
-    expect(google.calls[0][0]).toBe(operationsUrl(ID, NAMES))
+    expect(google.calls).toEqual([operationsUrl(ID, NAMES)])
     expect(values.fx).toEqual([['fx']])
   })
 
-  // Дашборд только читает. Ни одного запроса, меняющего Таблицу, быть не может.
-  it('запрос читающий: никакого способа записи не заказано', async () => {
-    const google = access(batchGet(NAMES.map((sheet) => ({ sheet, values: [[sheet]] }))))
-    await readOperationsSpreadsheet(google, env)
-    const init = google.calls[0][1] as { method?: string } | undefined
-    expect(init?.method ?? 'GET').toBe('GET')
+  // Дашборд только читает. Запись невозможна не по договорённости, а по устройству:
+  // настоящий доступ умеет ровно одно — прочитать по адресу.
+  it('настоящий доступ умеет только читать', () => {
+    expect(Object.keys(sheetsAccess())).toEqual(['get'])
   })
 
   it('без переменной с Таблицей отказывается и не ходит в сеть', async () => {
@@ -174,10 +175,11 @@ describe('чтение Таблицы', () => {
     expect(google.calls).toHaveLength(0)
   })
 
-  it('Google ответил отказом — отказ виден, а не пустой снимок', async () => {
+  // Настоящий клиент до этой ветки не доходит: на не-двухсотый ответ он поднимает
+  // ошибку сам, и она идёт наверх как есть — проверено опытом на живой Таблице.
+  // Это второй замок, на случай другого клиента.
+  it('ответ не двухсотый — отказ, а не пустой снимок', async () => {
     const google = access({ error: { message: 'Requested entity was not found.' } }, 404)
-    const text = await asyncRefusal(() => readOperationsSpreadsheet(google, env))
-    expect(text).toContain('404')
-    expect(text).toContain('not found')
+    expect(await asyncRefusal(() => readOperationsSpreadsheet(google, env))).toContain('404')
   })
 })

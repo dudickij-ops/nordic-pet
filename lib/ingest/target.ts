@@ -1,4 +1,4 @@
-import { projectDatabaseUrl } from '@/lib/db-url'
+import { projectDatabaseUrl } from '../db-url.ts'
 
 /**
  * Куда загрузчик пишет прямо сейчас. Среда называется словом и только словом:

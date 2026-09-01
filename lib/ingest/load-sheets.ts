@@ -1,8 +1,8 @@
 import { Client } from 'pg'
 
-import { resolveIngestTarget } from '@/lib/ingest/target'
-import { SHEETS, snapshotFromValues } from '@/lib/ingest/sheet-rows'
-import { readOperationsSpreadsheet, type SheetValues } from '@/lib/ingest/sheets-source'
+import { resolveIngestTarget } from './target.ts'
+import { SHEETS, snapshotFromValues } from './sheet-rows.ts'
+import { readOperationsSpreadsheet, type SheetValues } from './sheets-source.ts'
 
 /**
  * Загрузка Google Таблицы в сырой слой.

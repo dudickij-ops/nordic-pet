@@ -1,6 +1,6 @@
 import { GoogleAuth } from 'google-auth-library'
 
-import { SHEETS } from '@/lib/ingest/sheet-rows'
+import { SHEETS } from './sheet-rows.ts'
 
 /**
  * Чтение Таблицы «Nordic Pet — operations».
@@ -13,9 +13,20 @@ import { SHEETS } from '@/lib/ingest/sheet-rows'
 /** Значения листа, как их отдал Google: только строки, ряд за рядом. */
 export type SheetValues = Record<string, string[][]>
 
-/** Способ сходить в Google. Настоящий подписывает запрос ключом служебного аккаунта. */
+/** Ответ Google: код и уже разобранное тело. */
+export type SheetsAnswer = {
+  status: number
+  body: unknown
+}
+
+/**
+ * Способ сходить в Google. Настоящий подписывает запрос ключом служебного аккаунта.
+ *
+ * Здесь только чтение по адресу — ни способа задать метод, ни способа передать тело.
+ * Запрос, меняющий Таблицу, этим договором просто не выражается.
+ */
 export type SheetsAccess = {
-  fetch: (url: string, init?: RequestInit) => Promise<Response>
+  get: (url: string) => Promise<SheetsAnswer>
 }
 
 /**
@@ -99,7 +110,17 @@ export function valuesFromBatchGet(body: unknown, sheets: readonly string[]): Sh
  */
 export function sheetsAccess(): SheetsAccess {
   const auth = new GoogleAuth({ scopes: [SHEETS_READONLY_SCOPE] })
-  return { fetch: (url, init) => auth.fetch(url, init) as Promise<Response> }
+  return {
+    get: async (url) => {
+      // Клиент Google отдаёт не веб-ответ, а свой объект: тело уже прочитано и разобрано,
+      // и лежит в поле data. Проверено опытом на живой Таблице — `response.json()` на нём
+      // падает с «body used already». На любой не-двухсотый ответ он поднимает ошибку сам,
+      // с кодом и текстом от службы, и эта ошибка идёт наверх как есть: отказ обязан быть
+      // виден отказом, а не пустым снимком.
+      const response = await auth.fetch(url)
+      return { status: response.status, body: (response as { data?: unknown }).data }
+    },
+  }
 }
 
 /** Читает шесть листов Таблицы. Без аргументов идёт настоящим путём. */
@@ -117,14 +138,14 @@ export async function readOperationsSpreadsheet(
 
   const sheets = SHEETS.map((sheet) => sheet.sheet)
   const url = operationsUrl(spreadsheetId, sheets)
-  const response = await (access ?? sheetsAccess()).fetch(url)
+  const answer = await (access ?? sheetsAccess()).get(url)
 
-  if (!response.ok) {
-    // Отказ Google обязан быть виден. Пустой снимок вместо него был бы хуже:
-    // функции записи вычистили бы таблицы дочиста.
-    const text = await response.text().catch(() => '')
-    throw new Error(`Google отказал при чтении Таблицы: ${response.status}. ${text}`.trim())
+  if (answer.status !== 200) {
+    // Настоящий клиент до сюда с отказом не доходит — он поднимает ошибку сам. Это
+    // второй замок, на случай другого клиента: пустой снимок хуже громкого отказа,
+    // потому что функции записи вычистили бы таблицы дочиста.
+    throw new Error(`Google ответил кодом ${answer.status}: снимок Таблицы не получен`)
   }
 
-  return valuesFromBatchGet(await response.json(), sheets)
+  return valuesFromBatchGet(answer.body, sheets)
 }
