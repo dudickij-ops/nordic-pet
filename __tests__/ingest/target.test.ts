@@ -171,6 +171,14 @@ describe('строка запроса выбрасывается целиком'
     expect(client.user).toBe('ingester')
     expect(client.database).toBe('postgres')
     expect(client.ssl).toMatchObject({ rejectUnauthorized: true })
+    // Отдельно: путь поиска функций. Именно он решает, какая функция отзовётся на
+    // raw.replace_orders, и смотреть на него надо прямо, а не через прочие поля.
+    // Поле настроек в типах драйвера не объявлено, поэтому читается приведением —
+    // названо вслух; при переименовании проверка покраснеет, а не позеленеет молча.
+    const settings = (client as unknown as { connectionParameters?: { options?: string } })
+      .connectionParameters
+    expect(settings, 'драйвер больше не хранит настройки в connectionParameters').toBeDefined()
+    expect(settings?.options).toBeUndefined()
   })
 
   it('текст после решётки тоже не доезжает', () => {
@@ -183,6 +191,13 @@ describe('строка запроса выбрасывается целиком'
 describe('чего боевой адрес не может', () => {
   it.each(['127.0.0.1', 'localhost', '[::1]'])('не может указывать на локальный хост %s', (host) => {
     expect(refusal(() => productionConnection(broken('host', host), {}))).toMatch(/локальн/i)
+  })
+
+  // Перекодированная запись того же локального адреса. Отказ обязан прийти от нас и
+  // назвать причину, а не от службы имён, которая просто не найдёт такого хоста.
+  it('не может указывать на локальный хост в перекодированной записи', () => {
+    const url = `postgresql://ingester:${PASSWORD}@%31%32%37.0.0.1:6543/postgres`
+    expect(refusal(() => productionConnection(url, {}))).toMatch(/локальн/i)
   })
 
   it.each([

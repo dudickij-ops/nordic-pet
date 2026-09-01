@@ -1,4 +1,4 @@
-import { Client } from 'pg'
+import { Client, type ClientConfig } from 'pg'
 
 import { clearPostgresEnvironment } from '../db-url.ts'
 import { resolveIngestTarget, type ProductionConnection } from './target.ts'
@@ -56,15 +56,30 @@ export type IngestDeps = {
   announce: (line: string) => void
 }
 
+/** Клиент базы в том малом, что от него нужно загрузчику. */
+type DatabaseClient = {
+  connect: () => Promise<void>
+  query: (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>
+  end: () => Promise<void>
+}
+
 /**
  * Настоящее соединение.
  *
  * Боевые части приезжают сюда полями и уходят драйверу поимённо: строки, которую он мог бы
  * перечитать по своим правилам, не существует. Локальный адрес остаётся строкой — она уже
  * пересобрана запертой проверкой S1 из пяти проверенных частей.
+ *
+ * Способ создать клиента подставляем — иначе проверить, что именно уходит драйверу, можно
+ * было бы только живым соединением с боевой базой, которого в этом куске нет. Возврат к
+ * передаче строкой обязан краснеть здесь, а не на бою.
  */
-async function connectToDatabase(connection: string | ProductionConnection): Promise<IngestClient> {
-  const client = new Client(
+export async function connectToDatabase(
+  connection: string | ProductionConnection,
+  makeClient: (config: ClientConfig) => DatabaseClient = (config) =>
+    new Client(config) as unknown as DatabaseClient,
+): Promise<IngestClient> {
+  const client = makeClient(
     typeof connection === 'string' ? { connectionString: connection } : connection,
   )
   await client.connect()

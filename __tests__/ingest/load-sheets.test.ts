@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { SHEETS } from '@/lib/ingest/sheet-rows'
 import type { SheetValues } from '@/lib/ingest/sheets-source'
-import { ingestSheets, type IngestClient } from '@/lib/ingest/load-sheets'
+import { connectToDatabase, ingestSheets, type IngestClient } from '@/lib/ingest/load-sheets'
 
 import { inRollback, pool } from '../db/support'
 
@@ -65,10 +65,21 @@ type Run = {
  * В журнал при этом записывается то, что загрузчик **попросил**, а не то, во что мы это
  * перевели, — иначе наблюдение за операторами смотрело бы на себя.
  */
+async function runWith(
+  client: PoolClient,
+  values: SheetValues,
+  onConnect?: () => void,
+  seeConnection?: (connection: unknown) => void,
+) {
+  return run(client, values, {}, onConnect, seeConnection)
+}
+
 async function run(
   client: PoolClient,
   values: SheetValues,
   options: { failOnCall?: number } = {},
+  onConnect?: () => void,
+  seeConnection?: (connection: unknown) => void,
 ): Promise<Run & { report: Awaited<ReturnType<typeof ingestSheets>> }> {
   const journal: string[] = []
   let replaceCalls = 0
@@ -92,9 +103,11 @@ async function run(
 
   const report = await ingestSheets({
     readSpreadsheet: async () => values,
-    connect: async () => {
+    connect: async (connection) => {
       connected += 1
       journal.push(`соединение №${connected}`)
+      onConnect?.()
+      seeConnection?.(connection)
       return ingestClient
     },
     announce: (line) => journal.push(line),
@@ -321,15 +334,71 @@ describe('окружение перед соединением', () => {
     try {
       process.env.PGHOST = 'чужой-хост'
       process.env.PGDATABASE = 'чужая-база'
+
+      // Смотреть надо в тот миг, когда соединение открывается, а не после прогона:
+      // снятие переменных, переставленное на потом, оставило бы проверку зелёной.
+      let atConnect: Array<string | undefined> = ['ещё не смотрели']
       await inRollback(async (client) => {
-        await run(client, spreadsheet())
+        await runWith(client, spreadsheet(), () => {
+          atConnect = [process.env.PGHOST, process.env.PGDATABASE]
+        })
       })
-      expect(process.env.PGHOST).toBeUndefined()
-      expect(process.env.PGDATABASE).toBeUndefined()
+      expect(atConnect).toEqual([undefined, undefined])
     } finally {
       if (saved === undefined) delete process.env.PGHOST
       else process.env.PGHOST = saved
     }
+  })
+
+  /**
+   * Боевые части уходят драйверу полями, а не строкой, — в этом и был смысл перестройки.
+   * Без этой проверки возврат к строке остался бы зелёным и вскрылся бы только на бою.
+   */
+  it('боевая цель отдаёт драйверу поля, а не строку', async () => {
+    const saved = { ...process.env }
+    try {
+      process.env.NORDIC_PET_DB_TARGET = 'production'
+      process.env.SUPABASE_DB_URL = 'postgresql://ingester:пароль@db.example.supabase.co:6543/postgres'
+
+      let handed: unknown = null
+      await ingestSheets({
+        readSpreadsheet: async () => spreadsheet(),
+        connect: async (connection) => {
+          handed = connection
+          return {
+            query: async () => ({ rows: [{ rows: 0, last_change: null }] }),
+            release: async () => {},
+          }
+        },
+        announce: () => {},
+      })
+
+      expect(typeof handed).toBe('object')
+      expect(handed).not.toHaveProperty('connectionString')
+      expect(handed).toMatchObject({
+        host: 'db.example.supabase.co',
+        port: 6543,
+        user: 'ingester',
+        password: 'пароль',
+        database: 'postgres',
+        ssl: { rejectUnauthorized: true },
+      })
+    } finally {
+      process.env.NORDIC_PET_DB_TARGET = saved.NORDIC_PET_DB_TARGET as string
+      if (saved.SUPABASE_DB_URL === undefined) delete process.env.SUPABASE_DB_URL
+      else process.env.SUPABASE_DB_URL = saved.SUPABASE_DB_URL
+    }
+  })
+
+  it('локальная цель отдаёт драйверу прежний проверенный адрес строкой', async () => {
+    await inRollback(async (client) => {
+      let handed: unknown = null
+      await runWith(client, spreadsheet(), undefined, (connection) => {
+        handed = connection
+      })
+      expect(typeof handed).toBe('string')
+      expect(handed).toContain('nordic_pet')
+    })
   })
 })
 
@@ -380,6 +449,59 @@ describe('отчёт загрузчика', () => {
       expect(orders?.rows).toBe(2)
       expect(orders?.lastChange).toBeTruthy()
       expect(report.counts.map((c) => c.table)).toEqual(SHEETS.map((s) => s.table))
+    })
+  })
+})
+
+describe('что уходит драйверу базы', () => {
+  /**
+   * Смысл перестройки: боевые части уходят драйверу полями, а не строкой, — строку он
+   * перечитывает по своим правилам, и параметры хвоста кладёт поверх разобранного адреса.
+   * Возврат к строке обязан краснеть здесь, а не на первом боевом соединении.
+   */
+  const fake = () => {
+    const seen: unknown[] = []
+    const makeClient = (config: unknown) => {
+      seen.push(config)
+      return {
+        connect: async () => {},
+        query: async () => ({ rows: [] }),
+        end: async () => {},
+      }
+    }
+    return { seen, makeClient }
+  }
+
+  it('боевые части уходят полями, а не строкой', async () => {
+    const { seen, makeClient } = fake()
+    await connectToDatabase(
+      {
+        host: 'db.example.supabase.co',
+        port: 6543,
+        user: 'ingester',
+        password: 'пароль',
+        database: 'postgres',
+        ssl: { rejectUnauthorized: true },
+      },
+      makeClient,
+    )
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).not.toHaveProperty('connectionString')
+    expect(seen[0]).toMatchObject({
+      host: 'db.example.supabase.co',
+      port: 6543,
+      user: 'ingester',
+      password: 'пароль',
+      database: 'postgres',
+      ssl: { rejectUnauthorized: true },
+    })
+  })
+
+  it('локальный адрес уходит строкой — он уже пересобран запертой проверкой S1', async () => {
+    const { seen, makeClient } = fake()
+    await connectToDatabase('postgresql://postgres@127.0.0.1:5432/nordic_pet?sslmode=disable', makeClient)
+    expect(seen[0]).toEqual({
+      connectionString: 'postgresql://postgres@127.0.0.1:5432/nordic_pet?sslmode=disable',
     })
   })
 })

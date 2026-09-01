@@ -97,7 +97,10 @@ export function productionConnection(url: string, env: Environment): ProductionC
     )
   }
 
-  const host = parsed.hostname
+  // Хост раскодируется перед сверкой со списком локальных: `%31%32%37.0.0.1` — это
+  // тот же `127.0.0.1`, только записанный иначе. Без раскодировки отказ пришёл бы не
+  // от нас, а от службы имён, и назвал бы не ту причину.
+  const host = decoded(parsed.hostname)
   if (host === '') {
     throw new Error(`в ${PRODUCTION_URL} не назван хост`)
   }
