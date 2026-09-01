@@ -733,7 +733,7 @@ export const BREAKS: Break[] = [
   {
     id: 'pg-env-not-cleared',
     claim: 'убрать снятие переменных `PG*`',
-    mustRedden: "обязательства команды 'facts' переменные PG* сняты до соединения",
+    mustRedden: "обязательства команды 'facts' 'переменные PG* сняты до соединения'",
     file: BUILD,
     find: '  clearPostgresEnvironment()',
     replace: '  // clearPostgresEnvironment()',
@@ -742,7 +742,7 @@ export const BREAKS: Break[] = [
   {
     id: 'announce-after-work',
     claim: 'называть цель после записи',
-    mustRedden: "обязательства команды 'facts' цель названа до первой работы",
+    mustRedden: "обязательства команды 'facts' 'цель названа до первой работы'",
     file: BUILD,
     find: `  const target = resolveIngestTarget()
   announce(target.label)`,
@@ -756,7 +756,7 @@ export const BREAKS: Break[] = [
   {
     id: 'network-in-build',
     claim: 'позвать сеть',
-    mustRedden: "обязательства команды 'facts' не ходит наружу никуда, кроме объявленного",
+    mustRedden: "обязательства команды 'facts' 'за работу не стучится наружу ни разу'",
     file: BUILD,
     find: "import { clearPostgresEnvironment } from '../db-url.ts'",
     replace: `import { googleAuth } from '../ingest/google-access.ts'
@@ -829,12 +829,12 @@ select raw.replace_entire_ads_folder($json$[`,
     tests: '__tests__/commands/obligations.test.ts',
   },
   {
-    id: 'registry-lock-shallow',
-    claim: 'искать сценарии только на верхнем уровне и только `.ts`',
+    id: 'registry-lock-bypass',
+    claim: 'завести команду в базу в обход списка',
     mustRedden: 'ни одна команда package.json не заводит сценарий в обход списка',
-    file: '__tests__/commands/obligations.test.ts',
-    find: '      if (!known.has(entry)) hidden.push(`${name} → ${entry}`)',
-    replace: '      void entry',
+    file: 'package.json',
+    find: '    "breaks": "node scripts/run-breaks.ts"',
+    replace: '    "breaks": "node scripts/run-breaks.ts",\n    "ingest:secret": "node tools/ingest-secret.ts"',
     tests: '__tests__/commands/obligations.test.ts',
   },
 
@@ -857,7 +857,7 @@ select raw.replace_entire_ads_folder($json$[`,
   {
     id: 'registry-overdeclared-world',
     claim: 'объявить команде внешний мир, до которого она не ходит',
-    mustRedden: "обязательства команды 'facts' не ходит наружу никуда, кроме объявленного",
+    mustRedden: "обязательства команды 'facts' 'за работу не стучится наружу ни разу'",
     file: 'lib/commands.ts',
     find: `    refusal: 'разбор отменён',
     outsideWorld: [],`,
@@ -879,7 +879,7 @@ select raw.replace_entire_ads_folder($json$[`,
   {
     id: 'command-no-target-refusal',
     claim: 'убрать отказ на неназванной среде',
-    mustRedden: "обязательства команды 'facts' неназванная среда — отказ до всякой работы",
+    mustRedden: "обязательства команды 'facts' 'неназванная среда — отказ'",
     file: BUILD,
     find: '  const target = resolveIngestTarget()',
     replace:
@@ -927,7 +927,7 @@ select raw.replace_entire_ads_folder($json$[`,
   {
     id: 'command-alias-import',
     claim: 'написать команду через сокращение `@/`',
-    mustRedden: 'команда разбора запускается простым node',
+    mustRedden: "обязательства команды 'facts' 'запускается простым node'",
     file: COMMAND,
     find: "import { buildFacts } from '../lib/facts/build.ts'",
     replace: "import { buildFacts } from '@/lib/facts/build.ts'",
