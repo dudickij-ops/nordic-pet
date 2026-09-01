@@ -658,7 +658,7 @@ export const BREAKS: Break[] = [
   {
     id: 'announce-after-work',
     claim: 'называть цель после записи',
-    mustRedden: 'цель называется первой строкой, до всякой работы',
+    mustRedden: 'цель названа до первой работы',
     file: BUILD,
     find: `  const target = resolveIngestTarget()
   announce(target.label)`,
@@ -672,7 +672,7 @@ export const BREAKS: Break[] = [
   {
     id: 'network-in-build',
     claim: 'позвать сеть',
-    mustRedden: 'сборка не ходит наружу',
+    mustRedden: 'не ходит наружу никуда, кроме объявленного',
     file: BUILD,
     find: "import { clearPostgresEnvironment } from '../db-url.ts'",
     replace: `import { googleAuth } from '../ingest/google-access.ts'
@@ -681,16 +681,53 @@ void googleAuth`,
     tests: 'все',
   },
 
+  // --- общий набор обязательств -------------------------------------------------------
+  {
+    id: 'registry-missing-command',
+    claim: 'не записать команду в список ходящих в базу',
+    mustRedden: 'каждый сценарий либо команда, либо назван не командой',
+    file: 'lib/commands.ts',
+    find: `  {
+    name: 'facts',
+    script: 'scripts/build-facts.ts',
+    refusal: 'разбор отменён',
+    outsideWorld: [],
+    run: (probes) => buildFacts({ announce: probes.announce, connect: probes.connect }),
+  },`,
+    replace: '',
+    tests: '__tests__/commands/obligations.test.ts',
+  },
+  {
+    id: 'registry-overdeclared-world',
+    claim: 'объявить команде внешний мир, до которого она не ходит',
+    mustRedden: 'не ходит наружу никуда, кроме объявленного',
+    file: 'lib/commands.ts',
+    find: `    refusal: 'разбор отменён',
+    outsideWorld: [],`,
+    replace: `    refusal: 'разбор отменён',
+    outsideWorld: ['google'],`,
+    tests: '__tests__/commands/obligations.test.ts',
+  },
+  {
+    id: 'registry-no-reason',
+    claim: 'записать сценарий не командой без причины',
+    mustRedden: 'у каждого исключения названа причина',
+    file: 'lib/commands.ts',
+    find: "  'scripts/run-breaks.ts': 'инструмент разработчика: правит файлы в рабочем дереве',",
+    replace: "  'scripts/run-breaks.ts': 'потом',",
+    tests: '__tests__/commands/obligations.test.ts',
+  },
+
   // --- команда ------------------------------------------------------------------------
   {
     id: 'command-no-target-refusal',
     claim: 'убрать отказ на неназванной среде',
-    mustRedden: 'не ходит в базу, пока среда не названа',
+    mustRedden: 'неназванная среда — отказ до всякой работы',
     file: BUILD,
     find: '  const target = resolveIngestTarget()',
     replace:
       "  const target = resolveIngestTarget({ ...process.env, NORDIC_PET_DB_TARGET: process.env.NORDIC_PET_DB_TARGET === undefined || process.env.NORDIC_PET_DB_TARGET === '' ? 'local' : process.env.NORDIC_PET_DB_TARGET })",
-    tests: COMMAND_TESTS,
+    tests: 'все',
   },
   {
     id: 'command-twins-only-when-found',
