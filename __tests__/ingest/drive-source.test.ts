@@ -43,6 +43,11 @@ function driveFile(name: string, content: string, over: Partial<DriveFile> = {})
     size: String(bytes.length),
     md5Checksum: md5(bytes),
     sha256Checksum: sha256(bytes),
+    // Эти два поля настоящий Диск отдаёт по каждому файлу папки — проверено разведкой.
+    // Без них счастливый путь проходился бы мимо них, и подставка обещала бы больше,
+    // чем делает.
+    trashed: false,
+    capabilities: { canDownload: true },
     ...over,
   }
 }
@@ -263,6 +268,18 @@ describe('чтение папки целиком', () => {
     ])
     expect(new TextDecoder().decode(read.files[0].bytes)).toBe(META)
     expect(drive.calls[0]).toBe(adsFolderUrl(FOLDER))
+  })
+
+  // Отказ на негодном идентификаторе обязан случаться там же, где отказ на пустой
+  // переменной, — до единого обращения к Google. Текст сообщения этого не показывает,
+  // а наблюдение за походами показывает.
+  it('негодный идентификатор папки отвергается до единого обращения к Google', async () => {
+    const drive = access([{ files: [] }])
+    const text = await refusal(() =>
+      readAdsFolder(drive, { GOOGLE_DRIVE_ADS_FOLDER_ID: "' or name contains '" }),
+    )
+    expect(text).toContain('GOOGLE_DRIVE_ADS_FOLDER_ID')
+    expect(drive.calls).toHaveLength(0)
   })
 
   it('без переменной с папкой отказывается и в сеть не ходит', async () => {
