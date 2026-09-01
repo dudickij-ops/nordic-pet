@@ -758,11 +758,16 @@ export const BREAKS: Break[] = [
     claim: 'позвать сеть',
     mustRedden: "обязательства команды 'facts' 'за работу не стучится наружу ни разу'",
     file: BUILD,
-    find: "import { clearPostgresEnvironment } from '../db-url.ts'",
-    replace: `import { googleAuth } from '../ingest/google-access.ts'
-import { clearPostgresEnvironment } from '../db-url.ts'
-void googleAuth`,
-    tests: 'все',
+    find: '  const target = resolveIngestTarget()',
+    replace: `  void (async () => {
+    try {
+      await fetch('http://наружу.invalid/')
+    } catch {
+      // стук уже записан ловушкой
+    }
+  })()
+  const target = resolveIngestTarget()`,
+    tests: '__tests__/commands/obligations.test.ts',
   },
 
   {
@@ -927,7 +932,7 @@ select raw.replace_entire_ads_folder($json$[`,
   {
     id: 'command-alias-import',
     claim: 'написать команду через сокращение `@/`',
-    mustRedden: "обязательства команды 'facts' 'запускается простым node'",
+    mustRedden: 'команда разбора запускается простым node',
     file: COMMAND,
     find: "import { buildFacts } from '../lib/facts/build.ts'",
     replace: "import { buildFacts } from '@/lib/facts/build.ts'",

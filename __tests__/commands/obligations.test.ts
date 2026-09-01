@@ -164,6 +164,14 @@ const OBLIGATIONS: Obligation[] = [
 
           expect(blocked.knocks, `команда ${command.name} стучалась наружу`).toEqual([])
           expect(probe.timeline.some((event) => event.startsWith('соединение'))).toBe(true)
+
+          // Объявление обязано быть точным в обе стороны. Мир, объявленный «на всякий
+          // случай», через год окажется единственным следом того, куда команда ходит,
+          // и соврёт. Проверяется по тому, за каким миром команда вправду сходила.
+          const visited = probe.timeline
+            .filter((event) => event.startsWith('внешний мир: '))
+            .map((event) => event.replace('внешний мир: ', ''))
+          expect([...new Set(visited)].sort()).toEqual([...command.outsideWorld].sort())
         } finally {
           blocked.restore()
         }
