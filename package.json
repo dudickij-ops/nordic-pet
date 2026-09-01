@@ -11,6 +11,7 @@
     "test": "vitest run",
     "db:reset": "node scripts/db-reset.ts",
     "ingest:sheets": "node --env-file-if-exists=.env.local scripts/ingest-sheets.ts",
+    "ingest:ads": "node --env-file-if-exists=.env.local scripts/ingest-ads.ts",
     "test:live": "node --env-file-if-exists=.env.local node_modules/vitest/vitest.mjs run --config vitest.live.config.ts"
   },
   "dependencies": {
