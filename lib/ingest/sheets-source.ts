@@ -1,5 +1,6 @@
 import { GoogleAuth } from 'google-auth-library'
 
+import { googleAuth, googleGet, type GoogleAnswer } from './google-access.ts'
 import { SHEETS } from './sheet-rows.ts'
 
 /**
@@ -14,10 +15,7 @@ import { SHEETS } from './sheet-rows.ts'
 export type SheetValues = Record<string, string[][]>
 
 /** Ответ Google: код и уже разобранное тело. */
-export type SheetsAnswer = {
-  status: number
-  body: unknown
-}
+export type SheetsAnswer = GoogleAnswer
 
 /**
  * Способ сходить в Google. Настоящий подписывает запрос ключом служебного аккаунта.
@@ -104,32 +102,29 @@ export function valuesFromBatchGet(body: unknown, sheets: readonly string[]): Sh
 }
 
 /**
- * Настоящий способ сходить в Google: ключ служебного аккаунта библиотека читает сама
- * по переменной `GOOGLE_APPLICATION_CREDENTIALS`. Наш код ключ не открывает, не разбирает
- * и никуда не печатает.
- */
-/**
  * Настоящий доступ к Google — отдельно от способа сходить, чтобы область доступа можно
  * было проверить на том самом объекте, которым ходят, а не на постоянной рядом с ним.
  * Постоянную никто не обязан использовать, и подмена области оставила бы проверки зелёными.
+ *
+ * Сама авторизация живёт в общей обвязке: она одна на оба загрузчика, а область у каждого
+ * своя. Загрузчик Таблицы читать Диск не должен, и права на это не получает.
  */
 export function sheetsAuth(): GoogleAuth {
-  return new GoogleAuth({ scopes: [SHEETS_READONLY_SCOPE] })
+  return googleAuth(SHEETS_READONLY_SCOPE)
 }
 
+/**
+ * Доступ к Таблице умеет ровно одно — прочитать по адресу разобранное тело. Способности
+ * качать байты у него нет: она нужна файлам с Диска, а здесь была бы лишним правом.
+ *
+ * Клиент Google отдаёт не веб-ответ, а свой объект: тело уже прочитано и разобрано, и
+ * лежит в поле data. Проверено опытом на живой Таблице — `response.json()` на нём падает
+ * с «body used already». На любой не-двухсотый ответ он поднимает ошибку сам, с кодом и
+ * текстом от службы, и эта ошибка идёт наверх как есть: отказ обязан быть виден отказом,
+ * а не пустым снимком.
+ */
 export function sheetsAccess(): SheetsAccess {
-  const auth = sheetsAuth()
-  return {
-    get: async (url) => {
-      // Клиент Google отдаёт не веб-ответ, а свой объект: тело уже прочитано и разобрано,
-      // и лежит в поле data. Проверено опытом на живой Таблице — `response.json()` на нём
-      // падает с «body used already». На любой не-двухсотый ответ он поднимает ошибку сам,
-      // с кодом и текстом от службы, и эта ошибка идёт наверх как есть: отказ обязан быть
-      // виден отказом, а не пустым снимком.
-      const response = await auth.fetch(url)
-      return { status: response.status, body: (response as { data?: unknown }).data }
-    },
-  }
+  return { get: googleGet(sheetsAuth()) }
 }
 
 /** Читает шесть листов Таблицы. Без аргументов идёт настоящим путём. */
