@@ -54,6 +54,15 @@ export type DatabaseCommand = {
   outsideWorld: string[]
   /** Позвать работу команды с зацепками вместо базы и внешнего мира. */
   run: (probes: Probes) => Promise<unknown>
+  /**
+   * Боевой вызов работы команды — тот же, что зовёт её сценарий.
+   *
+   * Заведён ради кнопки «Обновить данные». Кнопка — не сценарий, и записью списка стать не
+   * может: принятая проверка S4 требует у каждой записи строки в package.json. Но она и не
+   * новая дверь в базу — она зовёт те же три работы. Поле `real` даёт ей звать их через
+   * список, а не мимо него.
+   */
+  real: () => Promise<unknown>
 }
 
 /** Заголовок и одна строка данных — ровно столько, чтобы разбор дошёл до соединения. */
@@ -82,7 +91,15 @@ const ADS_FIXTURE = {
   skipped: [],
 }
 
-export const DATABASE_COMMANDS: DatabaseCommand[] = [
+/**
+ * Пробные записи команд — обязательства и подставки, ровно как их проверяет S4.
+ *
+ * Без поля `real`, и нарочно: объекты здесь остаются тем же самым текстом, что и
+ * до задачи 8, чтобы прибор сломов `breaks/s4-facts.ts` — принятый инструмент
+ * прошлого куска — продолжал находить их своими сломами по буквальному тексту, не
+ * зная, что кнопка «Обновить данные» вообще существует.
+ */
+const COMMAND_FIXTURES: Omit<DatabaseCommand, 'real'>[] = [
   {
     name: 'ingest:sheets',
     script: 'scripts/ingest-sheets.ts',
@@ -115,6 +132,21 @@ export const DATABASE_COMMANDS: DatabaseCommand[] = [
     run: (probes) => buildFacts({ announce: probes.announce, connect: probes.connect }),
   },
 ]
+
+/**
+ * Боевой вызов каждой команды по имени — тот же самый, что делает её сценарий в
+ * `scripts/*.ts`: печать строк в консоль и ничего больше.
+ */
+const REAL_CALLS: Record<string, () => Promise<unknown>> = {
+  'ingest:sheets': () => ingestSheets({ announce: (line) => console.log(line) }),
+  'ingest:ads': () => ingestAdsFolder({ announce: (line) => console.log(line) }),
+  facts: () => buildFacts({ announce: (line) => console.log(line) }),
+}
+
+export const DATABASE_COMMANDS: DatabaseCommand[] = COMMAND_FIXTURES.map((command) => ({
+  ...command,
+  real: REAL_CALLS[command.name],
+}))
 
 /**
  * Сценарии, которые командами дашборда не являются, и почему.
