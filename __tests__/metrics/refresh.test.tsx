@@ -1,13 +1,15 @@
 import { generateKeyPairSync } from 'node:crypto'
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
+import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
 import { DATABASE_COMMANDS } from '@/lib/commands'
 import { refreshEverything } from '@/lib/metrics/refresh'
 import { refreshAction } from '@/app/refresh-action'
+import { RefreshView } from '@/app/refresh-panel'
 import { blockNetwork } from '../commands/network'
 
 /**
@@ -144,8 +146,9 @@ test('серверное действие кнопки за работу сту�
     // нет» не доказало бы ничего. Значения — не настоящие: до Google дело не доходит.
     const savedId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID
     const savedCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS
+    const fakeKeyPath = fakeServiceAccountKeyPath()
     process.env.GOOGLE_SHEETS_SPREADSHEET_ID = 'проверка-не-настоящая-таблица'
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = fakeServiceAccountKeyPath()
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = fakeKeyPath
 
     try {
       const сеть = blockNetwork({ allowLocalDatabase: true })
@@ -169,6 +172,8 @@ test('серверное действие кнопки за работу сту�
       else process.env.GOOGLE_SHEETS_SPREADSHEET_ID = savedId
       if (savedCredentials === undefined) delete process.env.GOOGLE_APPLICATION_CREDENTIALS
       else process.env.GOOGLE_APPLICATION_CREDENTIALS = savedCredentials
+      // Поддельный ключ жил только ради этой проверки — временный каталог за собой убираем.
+      rmSync(dirname(fakeKeyPath), { recursive: true, force: true })
     }
   })
 })
@@ -180,4 +185,50 @@ test('шаги кнопки не объявляют себе внешних ми
       .flatMap((команда) => команда.outsideWorld),
   )
   expect([...миры]).toEqual(['google'])
+})
+
+/**
+ * Проверки круга правок 1: пометка устаревания — половина требования контракта, которую
+ * первая редакция не сторожила ничем. `RefreshView` — чистый компонент без единого хука,
+ * поэтому его можно отрисовать статической разметкой без клиентского окружения.
+ */
+
+test('при удаче вид не помечен устаревшим и отказа не печатает', () => {
+  const html = renderToStaticMarkup(
+    <RefreshView outcome={{ ok: true }} pending={false}>
+      <p>ЧИСЛА</p>
+    </RefreshView>,
+  )
+  expect(html).toContain('ЧИСЛА')
+  expect(html).toContain('data-stale="false"')
+  expect(html).not.toContain('устарел')
+})
+
+test('отказ без щели: текст есть, вид чисел прежний', () => {
+  const html = renderToStaticMarkup(
+    <RefreshView
+      outcome={{ ok: false, step: 'Таблица', text: 'ключ не подошёл', stale: false }}
+      pending={false}
+    >
+      <p>ЧИСЛА</p>
+    </RefreshView>,
+  )
+  expect(html).toContain('Таблица')
+  expect(html).toContain('ключ не подошёл')
+  expect(html).toContain('data-stale="false"')
+})
+
+test('отказ со щелью: и текст, и изменённый вид чисел', () => {
+  const html = renderToStaticMarkup(
+    <RefreshView
+      outcome={{ ok: false, step: 'разбор', text: 'источники перечитаны, разбор отказал', stale: true }}
+      pending={false}
+    >
+      <p>ЧИСЛА</p>
+    </RefreshView>,
+  )
+  expect(html).toContain('разбор')
+  expect(html).toContain('data-stale="true"')
+  expect(html).toContain('устарел') // пометка видна без чтения текста отказа
+  expect(html).toContain('ЧИСЛА') // числа не пропадают, а меняют вид
 })
