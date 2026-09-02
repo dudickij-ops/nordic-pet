@@ -204,7 +204,7 @@ export const BREAKS: Break[] = [
   {
     id: "no-price-by-sku",
     claim: "считать строки продаж без цены по артикулам, а не по строкам",
-    mustRedden: "счётчик «строки продаж без цены поставщика» срабатывает и называет адрес",
+    mustRedden: "счётчик строк без цены поставщика считает строки, а не разные артикулы",
     file: "lib/metrics/sql.ts",
     find: "(select count(*) from counted where price is null)::int,",
     replace: "(select count(distinct sku) from counted where price is null)::int,",
@@ -213,7 +213,7 @@ export const BREAKS: Break[] = [
   {
     id: "cogs-line-round",
     claim: "округлить себестоимость строки на промежутке",
-    mustRedden: "запасные проценты от некруглой выручки не теряют копеек",
+    mustRedden: "три строки по 0,40 × 1,11 = 0,444 каждая: сумма остатков округляется один раз",
     file: "lib/metrics/sql.ts",
     find: "else 0.40 * (c.gross - c.discount - c.refund_amount)",
     replace: "else round(0.40 * (c.gross - c.discount - c.refund_amount), 2)",
@@ -524,7 +524,7 @@ export const BREAKS: Break[] = [
   {
     id: "honest-zero-net",
     claim: "считать долю при нулевой чистой выручке",
-    mustRedden: "при нулевой чистой выручке маржа — нет данных, а не ноль",
+    mustRedden: "нулевая чистая выручка от реальных строк не роняет отчёт ошибкой деления",
     file: "lib/metrics/sql.ts",
     find: "round(coalesce(net_real, 0) / nullif(net, 0) * 100, 1)::text            as honest_pct",
     replace: "round(coalesce(net_real, 0) / net * 100, 1)::text            as honest_pct",
@@ -533,7 +533,7 @@ export const BREAKS: Break[] = [
   {
     id: "margin-zero-net",
     claim: "считать маржу при нулевой чистой выручке",
-    mustRedden: "при нулевой чистой выручке маржа — нет данных, а не ноль",
+    mustRedden: "нулевая чистая выручка от реальных строк не роняет отчёт ошибкой деления",
     file: "lib/metrics/sql.ts",
     find: "             / nullif(net, 0) * 100, 1)::text                                  as margin_pct,",
     replace: "             / net * 100, 1)::text                                  as margin_pct,",
@@ -560,7 +560,7 @@ export const BREAKS: Break[] = [
   {
     id: "intermediate-round",
     claim: "округлить промежуточные величины",
-    mustRedden: "запасные проценты от некруглой выручки не теряют копеек",
+    mustRedden: "три строки по 0,40 × 1,11 = 0,444 каждая: сумма остатков округляется один раз",
     file: "lib/metrics/sql.ts",
     find: "then greatest(c.units - c.refund_units, 0) * c.price\n              else 0.40 * (c.gross - c.discount - c.refund_amount)",
     replace: "then round(greatest(c.units - c.refund_units, 0) * c.price, 2)\n              else round(0.40 * (c.gross - c.discount - c.refund_amount), 2)",
@@ -569,7 +569,7 @@ export const BREAKS: Break[] = [
   {
     id: "ads-round-per-line",
     claim: "округлить рекламу построчно",
-    mustRedden: "реклама переводится делением на курс своего дня",
+    mustRedden: "реклама трёх дней с одинаковым неровным курсом не теряет копейку на сумме",
     file: "lib/metrics/sql.ts",
     find: "select coalesce(sum(a.spend / nullif(f.usd_per_eur, 0)), 0) as total",
     replace: "select coalesce(sum(round(a.spend / nullif(f.usd_per_eur, 0), 2)), 0) as total",
@@ -731,15 +731,6 @@ export const BREAKS: Break[] = [
     tests: "__tests__/metrics/refresh.test.tsx",
   },
   {
-    id: "refresh-not-idempotent",
-    claim: "менять что-нибудь на повторном нажатии кнопки",
-    mustRedden: "второй прогон обновления дал тот же отчёт целиком",
-    file: "lib/metrics/refresh.ts",
-    find: "export async function refreshEverything(deps: Partial<RefreshDeps> = {}): Promise<RefreshOutcome> {",
-    replace: "let вызовов = 0\nexport async function refreshEverything(deps: Partial<RefreshDeps> = {}): Promise<RefreshOutcome> {\n  вызовов += 1",
-    tests: "__tests__/live/refresh.live.ts",
-  },
-  {
     id: "button-bypasses-list",
     claim: "дать кнопке собственный путь к загрузке мимо списка команд",
     mustRedden: "кнопка зовёт только работы из списка команд, и все три",
@@ -780,15 +771,6 @@ export const BREAKS: Break[] = [
     find: "    name: 'facts',\n    script: 'scripts/build-facts.ts',\n    refusal: 'разбор отменён',\n    outsideWorld: [],",
     replace: "    name: 'facts',\n    script: 'scripts/build-facts.ts',\n    refusal: 'разбор отменён',\n    outsideWorld: ['не-google'],",
     tests: "все",
-  },
-  {
-    id: "trap-self-check-skipped",
-    claim: "убрать самопроверку ловушки перед наблюдением",
-    mustRedden: "ловушка доказывает себя до того, как «стуков нет» что-то значит",
-    file: "app/refresh-action.ts",
-    find: "export async function refreshAction(): Promise<RefreshOutcome> {\n  return refreshEverything()\n}",
-    replace: "export async function refreshAction(): Promise<RefreshOutcome> {\n  return await refreshEverything()\n}",
-    tests: "__tests__/metrics/refresh.test.tsx",
   },
   {
     id: "sheets-extra-world",
