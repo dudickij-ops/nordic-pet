@@ -151,6 +151,9 @@ export const BREAKS: Break[] = [
     id: "blind-no-price-counter",
     claim: "ослепить любой счётчик неполноты в постоянный ноль",
     mustRedden: "счётчик «строки продаж без цены поставщика» срабатывает и называет адрес",
+    alsoRedden: [
+      { name: "счётчик строк без цены поставщика считает строки, а не разные артикулы", why: "тот же счётчик, ослепленный в ноль, используется и в этой проверке" },
+    ],
     file: "lib/metrics/sql.ts",
     find: "    select 6, 'строки продаж без цены поставщика',\n           (select count(*) from counted where price is null)::int,\n           array(select distinct sku from counted where price is null order by sku)",
     replace: "    select 6, 'строки продаж без цены поставщика',\n           0::int,\n           array(select distinct sku from counted where price is null order by sku)",
@@ -316,6 +319,7 @@ export const BREAKS: Break[] = [
     mustRedden: "запасной процент берётся от строки, а не от чистой выручки всего месяца",
     alsoRedden: [
       { name: "товары отсортированы по чистой выручке убыванием, штуки — за вычетом возвращённых", why: "тот же оконный расчёт по всему месяцу вместо строки виден и в таблице товаров" },
+      { name: "три строки по 0,40 × 1,11 = 0,444 каждая: сумма остатков округляется один раз", why: "три строки без цены в одном месяце — ровно тот случай, где оконная сумма подменяет строку" },
     ],
     file: "lib/metrics/sql.ts",
     find: "else 0.40 * (c.gross - c.discount - c.refund_amount)",
@@ -395,6 +399,9 @@ export const BREAKS: Break[] = [
     id: "honest-from-gross",
     claim: "считать долю честности от оборота",
     mustRedden: "доля честности считается от чистой выручки, а не от оборота",
+    alsoRedden: [
+      { name: "нулевая чистая выручка от реальных строк не роняет отчёт ошибкой деления", why: "та же подмена знаменателя оборотом видна и здесь: делитель больше не ноль" },
+    ],
     file: "lib/metrics/sql.ts",
     find: "round(coalesce(net_real, 0) / nullif(net, 0) * 100, 1)::text            as honest_pct",
     replace: "round(coalesce(net_real, 0) / nullif(gross, 0) * 100, 1)::text            as honest_pct",
@@ -488,6 +495,7 @@ export const BREAKS: Break[] = [
     mustRedden: "счётчик «строки продаж без цены поставщика» срабатывает и называет адрес",
     alsoRedden: [
       { name: "доля честности считается от чистой выручки, а не от оборота", why: "тот же список артикулов без цены используется и в проверке доли честности" },
+      { name: "счётчик строк без цены поставщика считает строки, а не разные артикулы", why: "тот же ослепленный счётчик используется и в этой проверке" },
     ],
     file: "lib/metrics/sql.ts",
     find: "    select 6, 'строки продаж без цены поставщика',\n           (select count(*) from counted where price is null)::int,\n           array(select distinct sku from counted where price is null order by sku)",
