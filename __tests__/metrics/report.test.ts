@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 
 import { projectDatabaseUrl } from '@/lib/db-url'
 import { buildFacts } from '@/lib/facts/build'
-import { monthlyReport, type MetricsClient, type MonthReport } from '@/lib/metrics/report'
+import { monthlyReport, type MetricsClient, type MetricsDeps, type MonthReport } from '@/lib/metrics/report'
 
 /**
  * Проверки задачи 5: итог, доля честности, товары, неполнота и месяцы.
@@ -276,7 +276,7 @@ describe('месячный отчёт', () => {
     expect(о.gaps).toHaveLength(11)
     expect(о.gaps.map((g) => g.kind)).toEqual([
       'скидки', 'оборот', 'возвраты без суммы', 'возвраты, не попавшие в счёт',
-      'возвращено больше, чем куплено', 'товары без цены поставщика',
+      'возвращено больше, чем куплено', 'строки продаж без цены поставщика',
       'ставки без процента или без фиксированной части', 'заказы с разными способами оплаты',
       'постоянные расходы без суммы', 'реклама без суммы', 'дни рекламы без курса',
     ])
@@ -355,9 +355,169 @@ describe('месячный отчёт', () => {
       expect(о.month).toBe('2026-03')
       expect(о.revenue.gross).toBe('192.30')   // 24,90 + 51,80 + 25,90 + 89,70
     } finally {
-      for (const table of ['orders', 'refunds', 'costs', 'fees', 'opex', 'fx', 'ads']) {
-        await pool.query(`delete from fact.${table}`)
-      }
+      // Один оператор, а не семь: отказ третьего из семи `delete` оставлял бы базу
+      // наполовину прибранной и заслонял бы исходную ошибку своей собственной.
+      await pool.query(
+        'truncate fact.orders, fact.refunds, fact.costs, fact.fees, fact.opex, fact.fx, fact.ads',
+      )
     }
+  })
+})
+
+/**
+ * Каждый вид дыры доказывается случаем, когда он срабатывает, а не только случаем, когда
+ * дыр нет. Правило появилось после проверки кода: счётчик, ослеплённый в постоянный ноль,
+ * проходит проверку «все виды на месте и все нули» идеально — она доказывает состав
+ * списка, а не работу счётчиков. Каждая раскладка ниже собрана так, чтобы создавать ровно
+ * одну дыру, и только её: остальные десять счётчиков на ней остаются нулём — иначе
+ * проверка доказывала бы не тот счётчик, который названа.
+ */
+const раскладкаБезСкидки = {
+  orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '50.00', discount: null, gateway: 'card' }],
+  costs: [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+  extras: {},
+}
+
+const раскладкаБезСуммы = {
+  orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: null, discount: '0.00', gateway: 'card' }],
+  costs: [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+  extras: {},
+}
+
+const раскладкаВозвратаБезСуммы = {
+  orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 3, gross: '90.00', discount: '0.00', gateway: 'card' }],
+  refunds: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-09', units: 1, amount: null }],
+  costs: [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+  extras: {},
+}
+
+const раскладкаЧужогоВозврата = {
+  orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '50.00', discount: '0.00', gateway: 'card' }],
+  refunds: [{ order: 'A-9', sku: 'NP-777', date: '2026-03-09', units: 1, amount: '50.00' }],
+  costs: [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+  extras: {},
+}
+
+const раскладкаИзбыточногоВозврата = {
+  orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 2, gross: '60.00', discount: '0.00', gateway: 'card' }],
+  refunds: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-09', units: 5, amount: '10.00' }],
+  costs: [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+  extras: {},
+}
+
+const раскладкаБезЦены = {
+  orders: [{ order: 'A-1', sku: 'NP-012', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' }],
+  costs: [],
+  extras: {},
+}
+
+const раскладкаНеполнойСтавки = {
+  orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '50.00', discount: '0.00', gateway: 'card' }],
+  costs: [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+  extras: { fees: [{ gateway: 'card', percent: null, fixed: '0.25' }] },
+}
+
+const раскладкаСмешаннойОплаты = {
+  orders: [
+    { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' },
+    { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'paypal' },
+  ],
+  costs: [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+  extras: {},
+}
+
+const раскладкаРасходаБезСуммы = {
+  orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '50.00', discount: '0.00', gateway: 'card' }],
+  costs: [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+  extras: { opex: [{ month: '2026-03-01', category: 'бухгалтерия', amount: null }] },
+}
+
+const раскладкаРекламыБезСуммы = {
+  orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '50.00', discount: '0.00', gateway: 'card' }],
+  costs: [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+  extras: {
+    ads: [{ file: 'meta.csv', row: 1, date: '2026-03-01', campaign: 'a', platform: 'meta', spend: null }],
+    fx: [{ date: '2026-03-01', rate: '2.0000' }],
+  },
+}
+
+const раскладкаБезКурса = {
+  orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '50.00', discount: '0.00', gateway: 'card' }],
+  costs: [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+  extras: {
+    ads: [{ file: 'meta.csv', row: 1, date: '2026-03-01', campaign: 'a', platform: 'meta', spend: '100.00' }],
+    fx: [],
+  },
+}
+
+describe('блок неполноты — каждый счётчик доказан случаем, когда он не ноль', () => {
+  test.each([
+    ['скидки', раскладкаБезСкидки, 1, ['1']],
+    ['оборот', раскладкаБезСуммы, 1, ['1']],
+    ['возвраты без суммы', раскладкаВозвратаБезСуммы, 1, ['1']],
+    ['возвраты, не попавшие в счёт', раскладкаЧужогоВозврата, 1, ['A-9 / NP-777']],
+    ['возвращено больше, чем куплено', раскладкаИзбыточногоВозврата, 1, ['A-1 / NP-001']],
+    ['строки продаж без цены поставщика', раскладкаБезЦены, 1, ['NP-012']],
+    ['ставки без процента или без фиксированной части', раскладкаНеполнойСтавки, 1, ['card']],
+    ['заказы с разными способами оплаты', раскладкаСмешаннойОплаты, 1, ['A-1']],
+    ['постоянные расходы без суммы', раскладкаРасходаБезСуммы, 1, ['бухгалтерия']],
+    ['реклама без суммы', раскладкаРекламыБезСуммы, 1, ['meta.csv:1']],
+    ['дни рекламы без курса', раскладкаБезКурса, 1, ['2026-03-01']],
+  ])('счётчик «%s» срабатывает и называет адрес', async (вид, раскладка, число, адреса) => {
+    const о = await reportOn(раскладка as Layout, '2026-03')
+    const дыра = о.gaps.find((g) => g.kind === вид)!
+    expect(дыра.count).toBe(число)
+    expect(дыра.at).toEqual(адреса)
+  })
+
+  test('дыра соседнего месяца в счётчики не попадает', async () => {
+    const о = await reportOn({
+      orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-04-02', units: 1, gross: '10.00', discount: null, gateway: 'card' }],
+      costs: [{ sku: 'NP-001', cost: '1.00', from: '2026-01-01' }], extras: {},
+    }, '2026-03')
+    expect(о.gaps.find((g) => g.kind === 'скидки')!.count).toBe(0)
+  })
+
+  test('штуки товара не бывают отрицательными на экране', async () => {
+    const о = await reportOn({
+      orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 2, gross: '80.00', discount: '0.00', gateway: 'card' }],
+      refunds: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-09', units: 5, amount: '0.00' }],
+      costs: [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }], extras: {},
+    }, '2026-03')
+    expect(о.items[0].units).toBe('0')   // не «−3»
+  })
+
+  test('заказ, оплаченный двумя способами по одному артикулу, комиссии не даёт и назван', async () => {
+    const о = await reportOn({
+      orders: [
+        { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' },
+        { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'paypal' },
+      ],
+      costs: [{ sku: 'NP-001', cost: '1.00', from: '2026-01-01' }],
+      extras: { fees: [
+        { gateway: 'card', percent: '1.0000', fixed: '0.00' },
+        { gateway: 'paypal', percent: '50.0000', fixed: '0.00' },
+      ] },
+    }, '2026-03')
+    expect(о.costs.fees).toBe('0.00')   // не 2.00 по ставке алфавитно первого способа
+    expect(о.gaps.find((g) => g.kind === 'заказы с разными способами оплаты')!.count).toBe(1)
+  })
+})
+
+describe('кривой месяц отклоняется до похода в базу', () => {
+  // Дверь, которая не должна открыться: проверка формы обязана отказать раньше первого
+  // обращения к соединению. Если бы отказ приходил из SQL («invalid input syntax for
+  // type date»), эта подставка сама бы это доказала своей ошибкой — а не читаемым словом
+  // «ГГГГ-ММ».
+  const подставки: Partial<MetricsDeps> = {
+    announce: () => {},
+    connect: async () => {
+      throw new Error('за проверкой формы месяца в базу ходить не должны')
+    },
+  }
+
+  test('кривой месяц — отказ нашими словами, а не ошибка базы', async () => {
+    await expect(monthlyReport('boom', подставки)).rejects.toThrow(/ГГГГ-ММ/)
+    await expect(monthlyReport('2026-13', подставки)).rejects.toThrow(/ГГГГ-ММ/)
   })
 })

@@ -146,7 +146,17 @@ export type MonthReport = {
 }
 
 /** Вид дыры, чьи адреса переиспользует «доля честности» — своего запроса ей не нужно. */
-const NO_PRICE_GAP = 'товары без цены поставщика'
+const NO_PRICE_GAP = 'строки продаж без цены поставщика'
+
+/**
+ * Форма месяца — ровно `ГГГГ-ММ`, месяц от 01 до 12. Проверяется до похода в базу и до
+ * `withFactSnapshot`: на S6 месяц придёт из адреса страницы (`?m=...`), и без этой
+ * проверки любой посетитель погасил бы экран сырой ошибкой Postgres (`invalid input
+ * syntax for type date`) вместо читаемого отказа. Инъекции здесь нет — довод уходит
+ * только параметром `$1`, — но нечитаемый отказ настолько же плохая защита от кривого
+ * адреса, насколько плохая её отсутствие.
+ */
+const MONTH_SHAPE = /^\d{4}-(0[1-9]|1[0-2])$/
 
 /**
  * Отчёт месяца целиком — задача 5. Один снимок фактов (`withFactSnapshot`) на весь экран:
@@ -167,6 +177,12 @@ export async function monthlyReport(
   month?: string,
   deps: Partial<MetricsDeps> = {},
 ): Promise<MonthReport> {
+  if (month !== undefined && !MONTH_SHAPE.test(month)) {
+    throw new Error(
+      `месяц обязан быть в форме ГГГГ-ММ (пример: «2026-03»), а пришло «${month}»`,
+    )
+  }
+
   let target = ''
   const announce = (line: string) => {
     target = line

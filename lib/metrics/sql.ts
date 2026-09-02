@@ -188,19 +188,33 @@ ads_eur as (
     join bounds b on a.date >= b.first_day and a.date < b.next_month
     join fact.fx f on f.date = a.date
 ),
+-- Способ(ы) оплаты заказа считаются по СЫРЫМ строкам fact.orders месяца, а не через
+-- \`lines\`: \`lines\` уже свёрнута по паре «заказ + артикул» (\`min(o.gateway)\` внутри
+-- каждой такой пары), и заказ, оплаченный двумя способами обеими строками ОДНОГО
+-- артикула, свёртку переживал — на уровне заказа оставался один способ. Проверка кода
+-- доказала это запуском: 2,00 € комиссии по ставке алфавитно первого способа вместо
+-- отказа. \`order_gateways\` смотрит туда же, откуда смотрит \`lines\`, но до свёртки.
+order_gateways as (
+  select o.order_id,
+         min(o.gateway)           as gateway,
+         count(distinct o.gateway) as gateways
+    from fact.orders o
+    join order_day d on d.order_id = o.order_id
+    cross join bounds b
+   where d.sold_on >= b.first_day and d.sold_on < b.next_month
+   group by o.order_id
+),
 paid_orders as (
-  select order_id,
-         min(gateway)          as gateway,
-         count(distinct gateway) as gateways,
-         sum(gross - discount) as amount
+  select order_id, sum(gross - discount) as amount
     from lines group by order_id
 ),
 gateway_fees as (
   select coalesce(sum(o.amount * fe.percent / 100), 0)
        + coalesce(sum(fe.fixed), 0) as total
     from paid_orders o
-    join fact.fees fe on fe.gateway = o.gateway
-   where o.gateways = 1
+    join order_gateways g on g.order_id = o.order_id
+    join fact.fees fe on fe.gateway = g.gateway
+   where g.gateways = 1
 ),
 fixed_costs as (
   select coalesce(sum(x.amount), 0) as total
@@ -340,9 +354,13 @@ counted as (
     from lines l
     left join returned t on t.order_id = l.order_id and t.sku = l.sku
 ),
+-- Тот же приём, что в MONTH_TOTALS: способы оплаты считаются по сырым строкам
+-- fact.orders месяца (\`month_orders\`), а не через свёрнутую \`lines\` — иначе заказ,
+-- оплаченный двумя способами обеими строками одного артикула, свёртку переживал бы
+-- молча, и эта самая дыра осталась бы неназванной.
 paid_orders as (
   select order_id, count(distinct gateway) as gateways
-    from lines
+    from month_orders
    group by order_id
 ),
 missing_refunds as (
@@ -374,8 +392,13 @@ select kind, count, at
            array(select order_id || ' / ' || sku from counted
                   where refund_units > units order by order_id, sku)
     union all
-    select 6, 'товары без цены поставщика',
-           (select count(distinct sku) from counted where price is null)::int,
+    -- Считает СТРОКИ (пары «заказ + артикул»), а не различные артикулы: доля честности
+    -- тоже считается по строкам (\`net_real\` в MONTH_TOTALS суммирует \`net\` по строке), и
+    -- число здесь обязано стоять на том же основании — иначе товар с ценой до 15 марта и
+    -- пустой ценой после засчитывался бы «без цены» целиком, хотя честна половина его
+    -- выручки. Адреса при этом — артикулы: они полезнее номеров строк.
+    select 6, 'строки продаж без цены поставщика',
+           (select count(*) from counted where price is null)::int,
            array(select distinct sku from counted where price is null order by sku)
     union all
     select 7, 'ставки без процента или без фиксированной части',
@@ -397,7 +420,7 @@ select kind, count, at
            (select count(*) from fact.ads a join bounds b
               on a.date >= b.first_day and a.date < b.next_month
              where a.spend is null)::int,
-           array(select a.file_name || ' / ' || a.row_no::text from fact.ads a join bounds b
+           array(select a.file_name || ':' || a.row_no::text from fact.ads a join bounds b
                    on a.date >= b.first_day and a.date < b.next_month
                   where a.spend is null order by a.file_name, a.row_no)
     union all
