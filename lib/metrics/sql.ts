@@ -14,6 +14,17 @@
  * calculations (such as for monetary amounts), use the numeric type instead»
  * (https://www.postgresql.org/docs/15/datatype-numeric.html). Промежуточных округлений
  * нет нигде — сложение шестнадцатизначных дробей не уползает на копейку раньше времени.
+ *
+ * `o.gross is not null` стоит в `lines` — отсеивает строку источника, а не свёрнутую
+ * пару «заказ + артикул». Первая редакция ставила условие после свёртки, в `counted`, и
+ * это оказалось неверно: пара с одной пустой и одной заполненной строкой переживает
+ * такой отсев — `sum(gross)` пропускает пустые значения молча — и приносит в счёт скидку
+ * той строки, выручки которой мы не знаем. Проверено запуском на настоящей базе: отсев
+ * по свёртке даёт оборот 10,00 при скидках 5,00, отсев по строке — оборот 10,00 при
+ * скидках 0,00. Вычет неизвестного происхождения — то же враньё, что ноль вместо пустой
+ * ячейки, только с другой стороны. Условия в `counted` при этом нет: после отсева по
+ * строке пара без единой суммы просто не существует, и повторное условие было бы
+ * недостижимым замком.
  */
 
 export const MONTH_TOTALS = `
@@ -29,6 +40,7 @@ lines as (
          sum(coalesce(o.discount, 0)) as discount
     from fact.orders o, bounds b
    where o.date >= b.first_day and o.date < b.next_month
+     and o.gross is not null
    group by o.order_id, o.sku
 ),
 returned as (
@@ -44,7 +56,6 @@ counted as (
          coalesce(t.units, 0)  as refund_units
     from lines l
     left join returned t on t.order_id = l.order_id and t.sku = l.sku
-   where l.gross is not null
 ),
 money as (
   select c.*, c.gross - c.discount - c.refund_amount as net from counted c

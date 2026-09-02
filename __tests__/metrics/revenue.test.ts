@@ -300,6 +300,16 @@ describe('выручка, скидки и возвраты', () => {
     expect(totals.discounts).toBe('0.00')
   })
 
+  test('в паре с пустой суммой пустая строка уносит свою скидку, а сосед остаётся', async () => {
+    const totals = await totalsOn([
+      { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: null, discount: '5.00', gateway: 'card' },
+      { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '10.00', discount: '0.00', gateway: 'card' },
+    ], [], '2026-03')
+    expect(totals.gross).toBe('10.00')
+    expect(totals.discounts).toBe('0.00')  // не 5.00: вычет неизвестного происхождения
+    expect(totals.net).toBe('10.00')
+  })
+
   test('заказ соседнего месяца в счёт не попадает', async () => {
     const totals = await totalsOn([
       { order: 'A-1', sku: 'NP-001', date: '2026-04-01', units: 1, gross: '99.00', discount: '0.00', gateway: 'card' },
