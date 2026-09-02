@@ -137,7 +137,22 @@ export default async function HomePage({
 }) {
   const params = await searchParams
   const monthParam = Array.isArray(params.m) ? params.m[0] : params.m
-  const report = await monthlyReport(monthParam)
+
+  let report: MonthReport
+  try {
+    report = await monthlyReport(monthParam)
+  } catch (error) {
+    // Месяц приходит из адреса — его задаёт кто угодно. `monthlyReport()` уже отказывает
+    // читаемым текстом на форме, отличной от ГГГГ-ММ; здесь этот текст просто показывается
+    // на экране, а не роняет запрос до страницы ошибки Next.
+    return (
+      <main>
+        <h1>Nordic Pet — прибыль</h1>
+        <p role="alert">{(error as Error).message}</p>
+      </main>
+    )
+  }
+
   return (
     <RefreshPanel>
       <Dashboard report={report} />
