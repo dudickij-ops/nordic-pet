@@ -63,6 +63,38 @@
  * `net_real` выведен колонкой в итоговом `select` уже здесь, а не только копится для
  * задачи 5: колонка без выхода наружу — механизм, который нечем наблюдать и нечем
  * сторожить проверкой.
+ *
+ * Задача 4 — правила 6 и 7. Три новые общие таблицы читают только `fact.ads`, `fact.fx`,
+ * `fact.fees`, `fact.opex` и не трогают уже написанные `lines`/`counted`/`money`/`totals`.
+ *
+ * `ads_eur`: `usd_per_eur` — сколько долларов дают за евро, поэтому перевод в евро — это
+ * `spend / usd_per_eur`, деление, а не умножение. Курс берётся за **тот же день**, что и
+ * расход (`join fact.fx f on f.date = a.date`), а не курс на конец месяца или на любой
+ * другой день: у рекламного дня без курса в `fact.fx` соединение просто не находит строку,
+ * и расход этого дня в сумму не попадает — тот самый вид дыры «дней рекламы без курса» из
+ * контракта, а не отказ всего расчёта.
+ *
+ * `gateway_fees`: комиссия считается по заказу целиком, не по строке счёта — решение
+ * владельца 2 и 3. Подзапрос сворачивает `lines` (уже без строк с пустой суммой — отсев
+ * там сделан ещё в задаче 2) до одной строки на заказ: `sum(gross - discount)` — сумма
+ * заказа после скидок, `min(gateway)` — способ оплаты один на заказ. Возвраты в эту сумму
+ * не входят: решение владельца 3, платёж прошёл и комиссию с него уже удержали. `percent`
+ * хранится в **процентных пунктах** (`1.9000`, а не `0.0190` — проверено на местной базе,
+ * `fees_percent_is_points` запрещает и ноль, и отрицательное значение), поэтому
+ * `fe.percent / 100` — не лишняя предосторожность, а обязательная часть формулы: без неё
+ * комиссия выходит в сто раз больше и не бросается в глаза на итоге месяца. `fixed`
+ * прибавляется один раз на заказ — он уже внутри свёрнутого подзапроса, а не снаружи суммы
+ * по строкам.
+ *
+ * `fixed_costs`: `fact.opex` за месяц `M`, тот же `bounds`, что у остальных таблиц.
+ * `x.amount is not null` — пустая сумма расхода не считается нулём молча, строка просто
+ * не входит в сумму (вид дыры «строк постоянных расходов без суммы» из контракта).
+ *
+ * Все три суммы обёрнуты `coalesce(…, 0)` внутри своей CTE: это разрешённое контрактом
+ * место — пустая сумма по нулю строк (нет рекламы, нет комиссий, нет расходов за месяц)
+ * не то же самое, что источник промолчал о значении, и отдельной строки в блоке
+ * неполноты не требует (контракт, раздел «Пустая ячейка», абзац про `coalesce` в итоговых
+ * суммах).
  */
 
 export const MONTH_TOTALS = `
@@ -121,12 +153,33 @@ totals as (
          sum(cogs) as cogs,
          sum(net) filter (where price is not null) as net_real
     from money
+),
+ads_eur as (
+  select coalesce(sum(a.spend / f.usd_per_eur), 0) as total
+    from fact.ads a
+    join bounds b on a.date >= b.first_day and a.date < b.next_month
+    join fact.fx f on f.date = a.date
+   where a.spend is not null
+),
+gateway_fees as (
+  select coalesce(sum(o.amount * fe.percent / 100 + fe.fixed), 0) as total
+    from (select order_id, min(gateway) as gateway, sum(gross - discount) as amount
+            from lines group by order_id) o
+    join fact.fees fe on fe.gateway = o.gateway
+),
+fixed_costs as (
+  select coalesce(sum(x.amount), 0) as total
+    from fact.opex x, bounds b
+   where x.month = b.first_day and x.amount is not null
 )
 select round(coalesce(gross, 0), 2)::text     as gross,
        round(coalesce(discounts, 0), 2)::text as discounts,
        round(coalesce(refunds, 0), 2)::text   as refunds,
        round(coalesce(net, 0), 2)::text       as net,
        round(coalesce(cogs, 0), 2)::text      as cogs,
-       round(coalesce(net_real, 0), 2)::text  as net_real
+       round(coalesce(net_real, 0), 2)::text  as net_real,
+       round((select total from ads_eur), 2)::text      as ads,
+       round((select total from gateway_fees), 2)::text as fees,
+       round((select total from fixed_costs), 2)::text  as fixed
   from totals
 `
