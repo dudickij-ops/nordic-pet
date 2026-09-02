@@ -1,6 +1,7 @@
 import { ingestAdsFolder } from './ingest/load-ads.ts'
 import { ingestSheets } from './ingest/load-sheets.ts'
 import { buildFacts } from './facts/build.ts'
+import { monthlyReport } from './metrics/report.ts'
 
 /**
  * Список команд, ходящих в базу, и их обязательств.
@@ -131,6 +132,16 @@ const COMMAND_FIXTURES: Omit<DatabaseCommand, 'real'>[] = [
     outsideWorld: [],
     run: (probes) => buildFacts({ announce: probes.announce, connect: probes.connect }),
   },
+  {
+    name: 'metrics',
+    script: 'scripts/print-metrics.ts',
+    refusal: 'команда метрик отменена',
+    // Слой метрик читает снимок фактов и никуда больше не ходит — ни в Google, ни в
+    // какую другую сеть.
+    outsideWorld: [],
+    run: (probes) =>
+      monthlyReport(undefined, { announce: probes.announce, connect: probes.connect }),
+  },
 ]
 
 /**
@@ -141,6 +152,7 @@ const REAL_CALLS: Record<string, () => Promise<unknown>> = {
   'ingest:sheets': () => ingestSheets({ announce: (line) => console.log(line) }),
   'ingest:ads': () => ingestAdsFolder({ announce: (line) => console.log(line) }),
   facts: () => buildFacts({ announce: (line) => console.log(line) }),
+  metrics: () => monthlyReport(undefined, { announce: (line) => console.log(line) }),
 }
 
 /**
