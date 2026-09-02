@@ -1,4 +1,4 @@
-import { count, money, percent } from '@/lib/metrics/format'
+import { count, money, percent, ratio } from '@/lib/metrics/format'
 import { monthlyReport, type MonthReport } from '@/lib/metrics/report'
 import { RefreshPanel } from './refresh-panel'
 
@@ -64,7 +64,7 @@ export function Dashboard({ report }: { report: MonthReport }) {
           <dt>Маржа</dt>
           <dd>{percent(report.bottom.marginPct)}</dd>
           <dt>окупаемость рекламы (по обороту)</dt>
-          <dd>{percent(report.bottom.roasByGross)}</dd>
+          <dd>{ratio(report.bottom.roasByGross)}</dd>
         </dl>
       </section>
 

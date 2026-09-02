@@ -1,4 +1,4 @@
-import { count, money, percent } from '../lib/metrics/format.ts'
+import { count, money, percent, ratio } from '../lib/metrics/format.ts'
 import { monthlyReport, type MetricsDeps, type MonthReport } from '../lib/metrics/report.ts'
 
 /**
@@ -46,7 +46,7 @@ function printReport(report: MonthReport, announce: (line: string) => void): voi
   announce('итог')
   announce(`  прибыль: ${money(report.bottom.profit)}`)
   announce(`  маржа: ${percent(report.bottom.marginPct)}`)
-  announce(`  окупаемость рекламы (по обороту): ${percent(report.bottom.roasByGross)}`)
+  announce(`  окупаемость рекламы (по обороту): ${ratio(report.bottom.roasByGross)}`)
 
   announce('')
   announce('товары (артикул: продано за вычетом возвратов, чистая выручка, себестоимость, прибыль)')
