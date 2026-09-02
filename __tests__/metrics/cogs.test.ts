@@ -79,6 +79,35 @@ describe('себестоимость', () => {
     expect(totals.cogs).toBe('40.00') // запасные 40%, а не 6.80
   })
 
+  test('возвращено больше, чем куплено: себестоимость строки ноль, а не отрицательная', async () => {
+    const totals = await totalsOn(
+      [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 2, gross: '60.00', discount: '0.00', gateway: 'card' }],
+      [{ order: 'A-1', sku: 'NP-001', date: '2026-03-09', units: 5, amount: '10.00' }],
+      '2026-03', [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+    )
+    expect(totals.cogs).toBe('0.00')   // не −30.00
+    expect(totals.net).toBe('50.00')
+  })
+
+  test('чистая выручка по строкам с настоящей ценой считается отдельно', async () => {
+    const totals = await totalsOn([
+      { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '900.00', discount: '0.00', gateway: 'card' },
+      { order: 'A-2', sku: 'NP-012', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' },
+    ], [], '2026-03', [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }])
+    expect(totals.net).toBe('1000.00')
+    expect(totals.net_real).toBe('900.00')   // без строки товара без цены
+  })
+
+  test('запасные проценты от некруглой выручки не теряют копеек', async () => {
+    // 40% от 33,33 — это 13,332. Любое промежуточное округление сдвинет итог.
+    const totals = await totalsOn(
+      [{ order: 'A-1', sku: 'NP-012', date: '2026-03-02', units: 1, gross: '33.33', discount: '0.00', gateway: 'card' }],
+      [], '2026-03', [],
+    )
+    expect(totals.cogs).toBe('13.33')
+    expect(totals.net).toBe('33.33')
+  })
+
   test('цена, начинающая действовать после продажи, не берётся', async () => {
     const totals = await totalsOn(
       [{ order: 'A-1', sku: 'NP-005', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' }],
