@@ -15,6 +15,16 @@
  * (https://www.postgresql.org/docs/15/datatype-numeric.html). Промежуточных округлений
  * нет нигде — сложение шестнадцатизначных дробей не уползает на копейку раньше времени.
  *
+ * Месяц берётся у **заказа целиком**, через `order_day`, а не у отдельной строки. Заказ
+ * принадлежит одному дню — это обязательство S4, — но слой метрик не опирается на чужой
+ * отказ, а исполняет то же сам. Без этого заказ, чьи строки разошлись датой, получил бы
+ * свой возврат дважды: свёртка `returned` идёт по паре «заказ + артикул» и месяца не
+ * знает. Проверка кода доказала это запуском: пара со строками 100,00 марта и 100,00
+ * апреля и одним возвратом 40,00 давала чистую выручку 60,00 в обоих месяцах разом —
+ * возврат вычитался из каждого. Через боевой путь это состояние недостижимо (S4
+ * отказывается разбирать заказ с разошедшимися датами строк), но слой метрик держит
+ * правило и сам, а не только чужим отказом.
+ *
  * `o.gross is not null` стоит в `lines` — отсеивает строку источника, а не свёрнутую
  * пару «заказ + артикул». Первая редакция ставила условие после свёртки, в `counted`, и
  * это оказалось неверно: пара с одной пустой и одной заполненной строкой переживает
@@ -31,15 +41,22 @@ export const MONTH_TOTALS = `
 with bounds as (
   select $1::date as first_day, ($1::date + interval '1 month')::date as next_month
 ),
+order_day as (
+  select o.order_id, min(o.date) as sold_on
+    from fact.orders o
+   group by o.order_id
+),
 lines as (
   select o.order_id, o.sku,
-         min(o.date)                  as sold_on,
+         min(d.sold_on)               as sold_on,
          min(o.gateway)               as gateway,
          sum(o.units)                 as units,
          sum(o.gross)                 as gross,
          sum(coalesce(o.discount, 0)) as discount
-    from fact.orders o, bounds b
-   where o.date >= b.first_day and o.date < b.next_month
+    from fact.orders o
+    join order_day d on d.order_id = o.order_id
+    cross join bounds b
+   where d.sold_on >= b.first_day and d.sold_on < b.next_month
      and o.gross is not null
    group by o.order_id, o.sku
 ),

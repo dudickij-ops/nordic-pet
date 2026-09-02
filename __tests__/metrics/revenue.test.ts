@@ -264,6 +264,8 @@ describe('выручка, скидки и возвраты', () => {
     ]
     const близко = await totalsOn(orders, [{ order: 'A-1', sku: 'NP-001', date: '2026-03-31', units: 1, amount: '40.00' }], '2026-03')
     const далеко = await totalsOn(orders, [{ order: 'A-1', sku: 'NP-001', date: '2026-04-30', units: 1, amount: '40.00' }], '2026-03')
+    // Сравнение двух итогов друг с другом зелено и на сплошных нулях; число закрепляется отдельно.
+    expect(близко.net).toBe('60.00')
     expect(далеко).toEqual(близко)
   })
 
@@ -298,6 +300,18 @@ describe('выручка, скидки и возвраты', () => {
     ], [], '2026-03')
     expect(totals.gross).toBe('10.00')
     expect(totals.discounts).toBe('0.00')
+  })
+
+  test('заказ с разошедшимися датами строк идёт в один месяц, и возврат вычитается один раз', async () => {
+    const заказ = [
+      { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' },
+      { order: 'A-1', sku: 'NP-001', date: '2026-04-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' },
+    ]
+    const возврат = [{ order: 'A-1', sku: 'NP-001', date: '2026-03-09', units: 1, amount: '40.00' }]
+    const март = await totalsOn(заказ, возврат, '2026-03')
+    const апрель = await totalsOn(заказ, возврат, '2026-04')
+    expect(март.net).toBe('160.00')   // 200 − 40, а не 60
+    expect(апрель.net).toBe('0.00')   // а не вторые 60
   })
 
   test('в паре с пустой суммой пустая строка уносит свою скидку, а сосед остаётся', async () => {
