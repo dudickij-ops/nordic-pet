@@ -1,5 +1,6 @@
 import { count, money, percent } from '@/lib/metrics/format'
 import { monthlyReport, type MonthReport } from '@/lib/metrics/report'
+import { RefreshPanel } from './refresh-panel'
 
 /**
  * Разметка экрана — задача 7. Чистый компонент: получает готовый отчёт и только
@@ -125,6 +126,9 @@ export function Dashboard({ report }: { report: MonthReport }) {
  * `monthlyReport()` сама берёт последний месяц, за который есть заказы (см. её
  * документацию в `lib/metrics/report.ts`). Один снимок фактов на весь экран, разметка
  * не считает ничего — всё выше уже готовыми строками.
+ *
+ * Кнопка «Обновить данные» (задача 8) оборачивает отчёт панелью `RefreshPanel`: разметка
+ * отчёта приходит ей детьми, поэтому серверный рендер здесь не дублируется.
  */
 export default async function HomePage({
   searchParams,
@@ -134,5 +138,9 @@ export default async function HomePage({
   const params = await searchParams
   const monthParam = Array.isArray(params.m) ? params.m[0] : params.m
   const report = await monthlyReport(monthParam)
-  return <Dashboard report={report} />
+  return (
+    <RefreshPanel>
+      <Dashboard report={report} />
+    </RefreshPanel>
+  )
 }

@@ -5,8 +5,13 @@ import { DATABASE_COMMANDS, type DatabaseCommand } from '../commands.ts'
  *
  * Три шага в жёстком порядке: загрузка Таблицы → загрузка папки → разбор. Каждый шаг —
  * своя транзакция, доставшаяся от S2, S3 и S4, и отсюда щель, названная в контракте S4
- * заранее: если загрузки прошли, а разбор отказался, сырьё новое, а факты вчерашние, и
- * по фактам этого не видно. `stale: true` у отказа разбора — это и есть отметка щели: её
+ * заранее: если хоть один шаг успел записать, а следующий отказался, сырьё частично новое,
+ * а факты — вчерашние, и по фактам этого не видно.
+ *
+ * Щель есть тогда, когда хоть один шаг успел записать (контракт S5, «Кнопка „Обновить
+ * данные“ и щель между загрузкой и разбором»): отказ Таблицы щели не создаёт — записать
+ * никто не успел, — а отказ папки и отказ разбора создают, потому что Таблица к этому
+ * моменту уже записана своей транзакцией. `stale: true` — это и есть отметка щели: её
  * обязана показать панель, а не только текст.
  *
  * Своей дороги в базу у кнопки нет: она не импортирует ни `ingestSheets`, ни
@@ -41,6 +46,17 @@ const STEP_LABEL: Record<StepName, 'Таблица' | 'папка' | 'разбо
 }
 
 /**
+ * Щель есть тогда, когда хоть один шаг успел записать до отказавшего. Таблица идёт первой
+ * — на её отказе щели нет; папка и разбор идут после уже записавшей Таблицы — на их отказе
+ * щель есть.
+ */
+const STEP_STALE: Record<StepName, boolean> = {
+  'ingest:sheets': false,
+  'ingest:ads': true,
+  facts: true,
+}
+
+/**
  * Ищет боевой вызов работы по имени в списке команд.
  *
  * Разрешается до всякой работы, а не в момент вызова шага: имени, которого в списке нет, —
@@ -60,29 +76,30 @@ function messageOf(error: unknown): string {
 }
 
 /** Отказ — читаемым текстом: какой шаг, что случилось, и что сделать. */
-function refusal(step: StepName, error: unknown, stale: boolean): RefreshOutcome {
+function refusal(step: StepName, error: unknown): RefreshOutcome {
   const reason = messageOf(error)
   const what =
     step === 'ingest:sheets'
       ? `загрузка Google Таблицы не удалась: ${reason}. Папка и разбор не запускались, ` +
         'числа ниже не менялись.'
       : step === 'ingest:ads'
-        ? `загрузка папки ads-exports не удалась: ${reason}. Разбор не запускался, числа ` +
-          'ниже не менялись.'
+        ? `Таблица перечитана, но загрузка папки ads-exports не удалась: ${reason}. Разбор ` +
+          'не запускался, числа ниже — от прежнего удачного разбора и устарели.'
         : `источники перечитаны, но разбор не удался: ${reason}. Числа ниже — от прежнего ` +
           'удачного разбора и устарели.'
   return {
     ok: false,
     step: STEP_LABEL[step],
     text: `${what} Нажмите «Обновить данные» ещё раз.`,
-    stale,
+    stale: STEP_STALE[step],
   }
 }
 
 /**
- * Зовёт три шага по порядку. Отказ первого или второго шага не создаёт щели — сырьё и
- * факты остаются согласованными, — но показывается тем же способом и с тем же текстом
- * про шаг. Отказ разбора после удачных загрузок — щель: `stale: true`.
+ * Зовёт три шага по порядку. Отказ Таблицы щели не создаёт — сырьё и факты остаются
+ * согласованными, — а отказ папки и отказ разбора создают: Таблица к этому моменту уже
+ * записана своей транзакцией. Показывается всё тремя одинаковым способом, и у каждого шага
+ * своя проверка отказа.
  */
 export async function refreshEverything(deps: Partial<RefreshDeps> = {}): Promise<RefreshOutcome> {
   const announce = deps.announce ?? (() => {})
@@ -96,21 +113,21 @@ export async function refreshEverything(deps: Partial<RefreshDeps> = {}): Promis
   try {
     await ingestSheets()
   } catch (error) {
-    return refusal('ingest:sheets', error, false)
+    return refusal('ingest:sheets', error)
   }
 
   announce('папка')
   try {
     await ingestAds()
   } catch (error) {
-    return refusal('ingest:ads', error, false)
+    return refusal('ingest:ads', error)
   }
 
   announce('разбор')
   try {
     await buildFacts()
   } catch (error) {
-    return refusal('facts', error, true)
+    return refusal('facts', error)
   }
 
   return { ok: true }

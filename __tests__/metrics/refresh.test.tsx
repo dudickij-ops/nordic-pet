@@ -6,10 +6,11 @@ import { dirname, join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
-import { DATABASE_COMMANDS } from '@/lib/commands'
+import { DATABASE_COMMANDS, withRealCalls } from '@/lib/commands'
 import { refreshEverything } from '@/lib/metrics/refresh'
 import { refreshAction } from '@/app/refresh-action'
 import { RefreshView } from '@/app/refresh-panel'
+import HomePage from '@/app/page'
 import { blockNetwork } from '../commands/network'
 
 /**
@@ -95,11 +96,21 @@ test('порядок шагов: Таблица, папка, разбор', asyn
   expect(лента).toEqual(['ingest:sheets', 'ingest:ads', 'facts'])
 })
 
-test('отказ загрузки Таблицы называет свой шаг и до разбора не доходит', async () => {
+test('отказ загрузки Таблицы называет свой шаг, щели не объявляет и до разбора не доходит', async () => {
+  // Записать никто не успел, значит числа на экране верны своему сырью: щели нет.
   const { лента, deps } = шагиС('ingest:sheets')
   const итог = await refreshEverything(deps)
   expect(итог).toMatchObject({ ok: false, step: 'Таблица', stale: false })
   expect(лента).toEqual(['ingest:sheets'])
+})
+
+test('отказ загрузки папки называет свой шаг и объявляет щель', async () => {
+  // Щель есть тогда, когда хоть один шаг успел записать. К отказу папки Таблица уже
+  // записана своей транзакцией: сырьё наполовину новое, факты вчерашние.
+  const { лента, deps } = шагиС('ingest:ads')
+  const итог = await refreshEverything(deps)
+  expect(итог).toMatchObject({ ok: false, step: 'папка', stale: true })
+  expect(лента).toEqual(['ingest:sheets', 'ingest:ads'])
 })
 
 test('отказ разбора после удачных загрузок называет щель', async () => {
@@ -118,6 +129,17 @@ test('текст отказа несёт причину, а не только ш
   expect(итог.ok).toBe(false)
   if (итог.ok) return
   expect(итог.text).toContain('курса на 2026-03-07 нет')
+})
+
+test('запись команды без боевого вызова — отказ, называющий имя', () => {
+  // Словарь боевых вызовов по строковому ключу молча отдаёт пустоту на незнакомом имени,
+  // а тип обещает функцию. Задача 9 добавляет в этот же список команду метрик — и её
+  // боевой вызов оказался бы пустотой при зелёном наборе и чистых типах.
+  expect(() =>
+    withRealCalls([
+      { name: 'нет-такой', script: 's.ts', refusal: 'x', outsideWorld: [], run: async () => {} },
+    ]),
+  ).toThrow(/нет-такой/)
 })
 
 test('кнопка зовёт только работы из списка команд, и все три', async () => {
@@ -231,4 +253,17 @@ test('отказ со щелью: и текст, и изменённый вид 
   expect(html).toContain('data-stale="true"')
   expect(html).toContain('устарел') // пометка видна без чтения текста отказа
   expect(html).toContain('ЧИСЛА') // числа не пропадают, а меняют вид
+})
+
+/**
+ * Проверка круга правок 2: кнопку на экран ставит эта задача. `HomePage` бьёт в местную
+ * базу по-настоящему через `monthlyReport()`, поэтому цель называется явно, тем же
+ * приёмом, что и у остальных проверок этого файла.
+ */
+test('экран содержит кнопку и оборачивает ею отчёт', async () => {
+  await withLocalTarget(async () => {
+    const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }))
+    expect(html).toContain('Обновить данные')
+    expect(html).toContain('data-stale=')
+  })
 })

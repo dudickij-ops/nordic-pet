@@ -143,10 +143,27 @@ const REAL_CALLS: Record<string, () => Promise<unknown>> = {
   facts: () => buildFacts({ announce: (line) => console.log(line) }),
 }
 
-export const DATABASE_COMMANDS: DatabaseCommand[] = COMMAND_FIXTURES.map((command) => ({
-  ...command,
-  real: REAL_CALLS[command.name],
-}))
+/**
+ * Достраивает список команд боевыми вызовами по имени.
+ *
+ * Запись без своей строки в `REAL_CALLS` получила бы `real: undefined` молча: словарь по
+ * строковому ключу тихо отдаёт пустоту на незнакомом имени, а тип обещает функцию — типы
+ * проходят, набор остаётся зелёным. Задача 9 добавляет в этот же список ещё одну запись
+ * (команду метрик) и наступила бы на это первой. Поэтому здесь не тихая подстановка, а
+ * отказ, называющий имя команды без боевого вызова, — сразу при сборке списка, а не когда
+ * кто-нибудь наконец позовёт `real`.
+ */
+export function withRealCalls(commands: Omit<DatabaseCommand, 'real'>[]): DatabaseCommand[] {
+  return commands.map((command) => {
+    const real = REAL_CALLS[command.name]
+    if (real === undefined) {
+      throw new Error(`у команды «${command.name}» нет боевого вызова в REAL_CALLS`)
+    }
+    return { ...command, real }
+  })
+}
+
+export const DATABASE_COMMANDS: DatabaseCommand[] = withRealCalls(COMMAND_FIXTURES)
 
 /**
  * Сценарии, которые командами дашборда не являются, и почему.
