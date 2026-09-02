@@ -176,21 +176,34 @@ try {
     // Каждое объявленное имя обязано подходить ровно к одной проверке набора. Иначе
     // красное у соседки засчиталось бы вместо красного у своей — так слом защиты у одной
     // таблицы «доказывался» бы проверкой другой.
-    const expected = [one.mustRedden, ...(one.alsoRedden ?? []).map((also) => also.name)]
-    const misnamed = expected
-      .map((name) => ({ name, hits: catalogue.filter((test) => test.includes(name)) }))
-      .filter((one) => one.hits.length !== 1)
+    // Имя своей проверки обязано подходить ровно к одной: на нём держится доказательство,
+    // и красное у соседки не должно засчитываться вместо красного у своей.
+    const ownHits = catalogue.filter((test) => test.includes(one.mustRedden))
 
-    if (misnamed.length > 0) {
-      const empty = misnamed.some((one) => one.hits.length === 0)
+    // Побочные объявляются с причиной и могут называть целую семью проверок разом: когда
+    // слом валит сборку целиком, перечислять два десятка имён — это и есть то «сметание
+    // лишнего красного», ради запрета которого затевалось объявление. Причина у семьи
+    // одна и осмысленная, а вот совсем не подходящее имя — опечатка, и это отказ.
+    const alsoHits = (one.alsoRedden ?? []).map((also) => ({
+      name: also.name,
+      hits: catalogue.filter((test) => test.includes(also.name)).length,
+    }))
+
+    const missing = ownHits.length === 0 || alsoHits.some((also) => also.hits === 0)
+    if (missing || ownHits.length > 1) {
       results.push({
         Break: one,
-        verdict: empty ? 'такой проверки нет' : 'ожидание двусмысленно',
+        verdict: missing ? 'такой проверки нет' : 'ожидание двусмысленно',
         exitCode: -1,
-        reddened: misnamed.map((one) => `${one.name} → ${one.hits.length}`),
+        reddened: [
+          `${one.mustRedden} → ${ownHits.length}`,
+          ...alsoHits.filter((also) => also.hits === 0).map((also) => `${also.name} → 0`),
+        ],
       })
       continue
     }
+
+    const expected = [one.mustRedden, ...(one.alsoRedden ?? []).map((also) => also.name)]
 
     const failure = applyBreak(one)
     if (failure !== null) {
