@@ -11,10 +11,10 @@ import { count, money, percent } from '../../lib/metrics/format.ts'
 
 describe('money: деньги', () => {
   test('деньги: разряды неразрывным пробелом, запятая, знак евро', () => {
-    expect(money('1234.50')).toBe('1 234,50 €')
+    expect(money('1234.50')).toBe('1 234,50 €')
     expect(money('0.00')).toBe('0,00 €')
     expect(money('-133.80')).toBe('−133,80 €')
-    expect(money('18764.00')).toBe('18 764,00 €')
+    expect(money('18764.00')).toBe('18 764,00 €')
   })
 
   test('формат ничего не округляет и не досчитывает', () => {
@@ -35,12 +35,12 @@ describe('percent: проценты', () => {
 
 describe('count: штуки', () => {
   test('штуки: разряды неразрывным пробелом, без знака и без запятой', () => {
-    expect(count('1234')).toBe('1 234')
+    expect(count('1234')).toBe('1 234')
     expect(count('0')).toBe('0')
-    expect(count('18764')).toBe('18 764')
+    expect(count('18764')).toBe('18 764')
   })
 
   test('формат штук ничего не округляет и не досчитывает', () => {
-    expect(count('1234.50')).toBe('1 234,50')
+    expect(count('1234.50')).toBe('1 234,50')
   })
 })
