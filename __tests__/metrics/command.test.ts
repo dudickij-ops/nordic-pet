@@ -11,6 +11,10 @@ import { monthlyReport, type MetricsDeps, type MonthReport } from '@/lib/metrics
  * здесь не проверяются: их проверяет `__tests__/commands/obligations.test.ts` сам, тем же
  * набором, что и у остальных, — просто перебирая `DATABASE_COMMANDS`, куда команда вошла
  * обычной записью.
+ *
+ * Круг правок 1 нашёл дыру в проверке печати (она же и в `__tests__/metrics/screen.test.tsx`
+ * задачи 7): `ОТЧЁТ` ниже дан несогласованным нарочно — почему, сказано в комментарии перед
+ * первым тестом.
  */
 
 const ОТЧЁТ: MonthReport = {
@@ -19,10 +23,10 @@ const ОТЧЁТ: MonthReport = {
   months: [{ month: '2026-03', hasOrders: true }],
   revenue: { gross: '2000.00', discounts: '10.00', refunds: '755.50', net: '1234.50' },
   costs: { cogs: '300.00', ads: '150.00', fees: '25.00', fixed: '100.00' },
-  bottom: { profit: '659.50', marginPct: '53.4', roasByGross: '13.3' },
-  items: [{ sku: 'NP-001', units: '10', net: '500.00', cogs: '100.00', profit: '400.00' }],
+  bottom: { profit: '8888.88', marginPct: '53.4', roasByGross: '13.3' },
+  items: [{ sku: 'NP-001', units: '10', net: '500.00', cogs: '100.00', profit: '404.04' }],
   honesty: { sharePct: '80.0', skusWithoutPrice: ['NP-011'] },
-  gaps: [{ kind: 'строк заказов без скидки', count: 0, at: [] }],
+  gaps: [{ kind: 'скидки', count: 0, at: [] }],
 }
 
 /**
@@ -43,12 +47,23 @@ async function отчётПодставка(month?: string, deps?: Partial<Metri
 const подставки = { announce: () => {}, report: monthlyReport }
 
 describe('команда метрик', () => {
+  // Числа подставки намеренно не сходятся между собой: прибыль не равна выручке минус
+  // затраты, прибыль товара не выводится из его выручки и себестоимости. Первая редакция
+  // плана утверждала одно денежное поле из одиннадцати — снятие формата с оборота проходило
+  // зелёным, и арифметика в печати тоже не поймалась бы.
   test('месяц берётся из довода командной строки', async () => {
     const строки: string[] = []
     await printMetrics(['2026-03'], { announce: (l) => строки.push(l), report: отчётПодставка })
     expect(строки[0]).toMatch(/^цель: /)
-    expect(строки.join('\n')).toContain('чистая выручка')
-    expect(строки.join('\n')).toContain('1 234,50 €')
+    const вывод = строки.join('\n')
+    expect(вывод).toContain('чистая выручка')
+    for (const ожидание of [
+      '2 000,00 €', '10,00 €', '755,50 €', '1 234,50 €',
+      '300,00 €', '150,00 €', '25,00 €', '100,00 €', '8 888,88 €',
+      '500,00 €', '100,00 €', '404,04 €',
+    ]) expect(вывод).toContain(ожидание)
+    expect(вывод).toContain('53,4 %')
+    expect(вывод).toContain('80,0 %')
   })
 
   test('без довода печатается месяц по умолчанию', async () => {
