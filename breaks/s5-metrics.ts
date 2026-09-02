@@ -103,7 +103,7 @@ export const BREAKS: Break[] = [
     file: "lib/metrics/sql.ts",
     find: "sum(net) filter (where price is not null) as net_real,",
     replace: "sum(net) as net_real,",
-    tests: "__tests__/metrics/report.test.ts",
+    tests: "все",
   },
   {
     id: "fee-one-formula",
@@ -223,6 +223,11 @@ export const BREAKS: Break[] = [
     id: "net-no-refund",
     claim: "не вычитать возвраты из чистой выручки",
     mustRedden: "чистая выручка = оборот − скидки − возвраты",
+    alsoRedden: [
+      { name: "возврат уменьшает месяц заказа, а не месяц возврата", why: "та же чистая выручка без вычета возврата используется и здесь" },
+      { name: "сдвиг даты возврата на месяц вперёд не меняет ни один итог марта", why: "то же" },
+      { name: "заказ с разошедшимися датами строк идёт в один месяц, и возврат вычитается один раз", why: "то же" },
+    ],
     file: "lib/metrics/sql.ts",
     find: "c.gross - c.discount - c.refund_amount as net,",
     replace: "c.gross - c.discount as net,",
@@ -277,6 +282,7 @@ export const BREAKS: Break[] = [
     alsoRedden: [
       { name: "возвращено больше, чем куплено: себестоимость строки ноль, а не отрицательная", why: "тот же множитель без вычета возвращённых штук меняет и этот случай" },
       { name: "товары отсортированы по чистой выручке убыванием, штуки — за вычетом возвращённых", why: "себестоимость строки с ценой — общий механизм для итогов и для таблицы товаров" },
+      { name: "возврат без суммы штуки снимает, хотя выручку не уменьшает", why: "то же: множитель без вычета возвращённых штук меняет и эту проверку" },
     ],
     file: "lib/metrics/sql.ts",
     find: "then greatest(c.units - c.refund_units, 0) * c.price",
@@ -843,6 +849,9 @@ export const BREAKS: Break[] = [
     id: "months-include-empty",
     claim: "показать месяц, за который данных нет",
     mustRedden: "месяц по умолчанию — последний, за который есть заказы",
+    alsoRedden: [
+      { name: "пустой слой фактов не роняет отчёт", why: "выдуманный месяц попадает в список даже при пустом слое фактов" },
+    ],
     file: "lib/metrics/sql.ts",
     find: "select am.month as month,\n       exists(select 1 from orders_months om where om.month = am.month) as has_orders\n  from all_months am\n order by am.month desc",
     replace: "select am.month as month,\n       exists(select 1 from orders_months om where om.month = am.month) as has_orders\n  from all_months am\n union all\n select '2099-01', false\n order by month desc",
