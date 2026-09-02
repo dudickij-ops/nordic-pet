@@ -885,4 +885,17 @@ export const BREAKS: Break[] = [
     replace: "sum(units)::text as units,",
     tests: "__tests__/metrics/report.test.ts",
   },
+  {
+    id: "no-revalidate-after-refresh",
+    claim: "не обновлять экран после нажатия кнопки",
+    mustRedden: "удачный исход: экран ревалидируется",
+    alsoRedden: [
+      { name: "отказной исход: экран тоже ревалидируется — числа устарели, но не остаются прежними на вид", why: "тот же убранный вызов сторожит и отказный путь" },
+      { name: "ошибка устройства (не операционный отказ): ревалидация всё равно доходит", why: "тот же убранный вызов сторожит и путь с брошенной ошибкой устройства" },
+    ],
+    file: "app/refresh-action.ts",
+    find: "export async function refreshAction(): Promise<RefreshOutcome> {\n  try {\n    return await refreshEverything()\n  } finally {\n    revalidateAfterAttempt()\n  }\n}",
+    replace: "export async function refreshAction(): Promise<RefreshOutcome> {\n  return refreshEverything()\n}",
+    tests: "__tests__/metrics/refresh-action.test.ts",
+  },
 ]
