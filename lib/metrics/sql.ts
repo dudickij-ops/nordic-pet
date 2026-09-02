@@ -35,6 +35,23 @@
  * ячейки, только с другой стороны. Условия в `counted` при этом нет: после отсева по
  * строке пара без единой суммы просто не существует, и повторное условие было бы
  * недостижимым замком.
+ *
+ * Себестоимость — правила 3, 4 и 5. `price` в `counted` берёт **действующую** строку
+ * `fact.costs` (`valid_from` не позже даты продажи, максимальная из таких) и не смотрит,
+ * пуста ли в ней `cost`: пустая цена даёт `price = null` и уводит строку на запасные 40%,
+ * а откат к более ранней, ещё не отменённой строке здесь невозможен по построению — это
+ * отступление 2 контракта, названное вслух, а не недосмотр. Причина: более ранняя цена
+ * отменена более поздней записью, и подставить её значило бы показать цену, которой на
+ * дату продажи уже не было, — причём в доле «посчитано по настоящей цене», то есть
+ * соврать именно там, где эта доля заведена против вранья.
+ *
+ * Ветка `else` в `money.cogs` берёт `c.gross - c.discount - c.refund_amount` — ту же
+ * величину, что и `net`, где возвраты уже вычтены один раз. Это стык правил 4 и 5:
+ * буква правила 5 велит снять возвраты из себестоимости отдельно, но у строки без цены
+ * себестоимость и так считается от **чистой** выручки, и второе вычитание сняло бы
+ * возвраты дважды. На боевых числах марта 2026 это стоит 133,80 € себестоимости (7 из
+ * 19 возвратов приходятся ровно на NP-011 и NP-012 — два товара без цены поставщика) —
+ * подробный расчёт в contract.md, «Отступления от буквы», пункт 1.
  */
 
 export const MONTH_TOTALS = `
@@ -70,21 +87,35 @@ returned as (
 counted as (
   select l.order_id, l.sku, l.sold_on, l.gateway, l.units, l.gross, l.discount,
          coalesce(t.amount, 0) as refund_amount,
-         coalesce(t.units, 0)  as refund_units
+         coalesce(t.units, 0)  as refund_units,
+         (select c.cost
+            from fact.costs c
+           where c.sku = l.sku and c.valid_from <= l.sold_on
+           order by c.valid_from desc
+           limit 1) as price
     from lines l
     left join returned t on t.order_id = l.order_id and t.sku = l.sku
 ),
 money as (
-  select c.*, c.gross - c.discount - c.refund_amount as net from counted c
+  select c.*, c.gross - c.discount - c.refund_amount as net,
+         case when c.price is not null
+              then (c.units - c.refund_units) * c.price
+              else 0.40 * (c.gross - c.discount - c.refund_amount)
+         end as cogs
+    from counted c
 ),
 totals as (
   select sum(gross) as gross, sum(discount) as discounts,
-         sum(refund_amount) as refunds, sum(net) as net
+         sum(refund_amount) as refunds, sum(net) as net,
+         sum(cogs) as cogs,
+         sum(net) filter (where price is not null) as net_real
     from money
 )
 select round(coalesce(gross, 0), 2)::text     as gross,
        round(coalesce(discounts, 0), 2)::text as discounts,
        round(coalesce(refunds, 0), 2)::text   as refunds,
-       round(coalesce(net, 0), 2)::text       as net
+       round(coalesce(net, 0), 2)::text       as net,
+       round(coalesce(cogs, 0), 2)::text      as cogs,
+       round(coalesce(net_real, 0), 2)::text  as net_real
   from totals
 `
