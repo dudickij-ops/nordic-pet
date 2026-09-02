@@ -478,6 +478,20 @@ describe('блок неполноты — каждый счётчик доказ
     expect(о.gaps.find((g) => g.kind === 'скидки')!.count).toBe(0)
   })
 
+  test('дыра рекламы соседнего месяца в счётчики не попадает', async () => {
+    const о = await reportOn({
+      orders: [], costs: [], extras: {
+        ads: [
+          { file: 'meta.csv', row: 1, date: '2026-04-01', campaign: 'a', platform: 'meta', spend: null },
+          { file: 'meta.csv', row: 2, date: '2026-04-02', campaign: 'b', platform: 'meta', spend: '10.00' },
+        ],
+        fx: [],
+      },
+    }, '2026-03')
+    expect(о.gaps.find((g) => g.kind === 'реклама без суммы')!.count).toBe(0)
+    expect(о.gaps.find((g) => g.kind === 'дни рекламы без курса')!.count).toBe(0)
+  })
+
   test('штуки товара не бывают отрицательными на экране', async () => {
     const о = await reportOn({
       orders: [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 2, gross: '80.00', discount: '0.00', gateway: 'card' }],
