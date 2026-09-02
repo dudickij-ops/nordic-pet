@@ -136,7 +136,7 @@ export const BREAKS: Break[] = [
     file: "lib/metrics/sql.ts",
     find: "    join fact.fees fe on fe.gateway = g.gateway\n   where g.gateways = 1\n),",
     replace: "    join fact.fees fe on fe.gateway = g.gateway\n),",
-    tests: "__tests__/metrics/spend.test.ts",
+    tests: "все",
   },
   {
     id: "ads-no-month-bound",
@@ -581,7 +581,7 @@ export const BREAKS: Break[] = [
     file: "lib/metrics/sql.ts",
     find: "select coalesce(sum(a.spend / nullif(f.usd_per_eur, 0)), 0) as total",
     replace: "select coalesce(sum(round(a.spend / nullif(f.usd_per_eur, 0), 2)), 0) as total",
-    tests: "__tests__/metrics/spend.test.ts",
+    tests: "__tests__/metrics/report.test.ts",
   },
   {
     id: "pair-max-not-sum",
