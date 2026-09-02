@@ -70,6 +70,64 @@ describe('реклама, комиссии, постоянные расходы'
     expect(два.fees).toBe('0.70')
   })
 
+  test('пустой процент ставки не обнуляет фиксированную часть комиссии', async () => {
+    const totals = await totalsOn([
+      { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' },
+    ], [], '2026-03', [], { fees: [{ gateway: 'card', percent: null, fixed: '0.25' }] })
+    expect(totals.fees).toBe('0.25')   // не 0.00: известная часть считается
+  })
+
+  test('пустая фиксированная часть не обнуляет процент', async () => {
+    const totals = await totalsOn([
+      { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' },
+    ], [], '2026-03', [], { fees: [{ gateway: 'card', percent: '2.0000', fixed: null }] })
+    expect(totals.fees).toBe('2.00')   // не 0.00
+  })
+
+  test('нулевой курс не рвёт запрос, а считается днём без курса', async () => {
+    const totals = await totalsOn([], [], '2026-03', [], {
+      ads: [
+        { file: 'meta.csv', row: 1, date: '2026-03-01', campaign: 'a', platform: 'meta', spend: '100.00' },
+        { file: 'meta.csv', row: 2, date: '2026-03-02', campaign: 'b', platform: 'meta', spend: '100.00' },
+      ],
+      fx: [{ date: '2026-03-01', rate: '0' }, { date: '2026-03-02', rate: '2.0000' }],
+    })
+    expect(totals.ads).toBe('50.00')   // день с нулевым курсом выпал, а не уронил запрос
+  })
+
+  test('пустой курс уносит расход своего дня и только своего', async () => {
+    const totals = await totalsOn([], [], '2026-03', [], {
+      ads: [
+        { file: 'meta.csv', row: 1, date: '2026-03-01', campaign: 'a', platform: 'meta', spend: '100.00' },
+        { file: 'meta.csv', row: 2, date: '2026-03-02', campaign: 'b', platform: 'meta', spend: '100.00' },
+      ],
+      fx: [{ date: '2026-03-01', rate: null }, { date: '2026-03-02', rate: '2.0000' }],
+    })
+    expect(totals.ads).toBe('50.00')
+  })
+
+  test('реклама соседнего месяца в счёт не попадает', async () => {
+    const totals = await totalsOn([], [], '2026-03', [], {
+      ads: [{ file: 'meta.csv', row: 1, date: '2026-04-01', campaign: 'a', platform: 'meta', spend: '100.00' }],
+      fx: [{ date: '2026-04-01', rate: '1.0000' }],
+    })
+    expect(totals.ads).toBe('0.00')
+  })
+
+  test('заказ с разными способами оплаты комиссии не даёт вовсе', async () => {
+    const totals = await totalsOn([
+      { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' },
+      { order: 'A-1', sku: 'NP-002', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'paypal' },
+      { order: 'A-2', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' },
+    ], [], '2026-03', [], {
+      fees: [
+        { gateway: 'card', percent: '1.0000', fixed: '0.25' },
+        { gateway: 'paypal', percent: '10.0000', fixed: '5.00' },
+      ],
+    })
+    expect(totals.fees).toBe('1.25')   // только заказ A-2; смешанный A-1 не даёт ничего
+  })
+
   test('постоянные расходы берутся за свой месяц, пустая сумма не считается нулём молча', async () => {
     const totals = await totalsOn([], [], '2026-03', [], {
       opex: [

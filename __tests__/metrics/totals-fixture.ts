@@ -89,13 +89,13 @@ export type OrderRow = {
 export type RefundRow = { order: string; sku: string; date: string; units: number; amount: string | null }
 export type CostRow = { sku: string; cost: string | null; from: string }
 export type Extras = {
-  fees?: Array<{ gateway: string; percent: string; fixed: string }>
+  fees?: Array<{ gateway: string; percent: string | null; fixed: string | null }>
   opex?: Array<{ month: string; category: string; amount: string | null }>
   ads?: Array<{
     file: string; row: number; date: string; campaign: string
     platform: string; spend: string | null
   }>
-  fx?: Array<{ date: string; rate: string }>
+  fx?: Array<{ date: string; rate: string | null }>
 }
 
 /** `YYYY-MM` → первое число месяца: `fact.opex.month` — колонка типа `date`. */
