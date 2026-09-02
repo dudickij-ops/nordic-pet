@@ -2,7 +2,7 @@ import { Client } from 'pg'
 
 import { clearPostgresEnvironment } from '../db-url.ts'
 import { resolveIngestTarget, type ProductionConnection } from '../ingest/target.ts'
-import { MONTH_TOTALS } from './sql.ts'
+import { ALL_MONTHS, MONTH_GAPS, MONTH_ITEMS, MONTH_TOTALS } from './sql.ts'
 
 /**
  * Дверь слоя метрик в базу — один снимок фактов на весь экран.
@@ -121,4 +121,111 @@ export async function monthTotals(
 ): Promise<Record<string, string | null>> {
   const { rows } = await client.query(MONTH_TOTALS, [`${month}-01`])
   return rows[0] as Record<string, string | null>
+}
+
+/**
+ * Деньги — строка, округленная в SQL: «1234.50». Никогда не число, ни разу за весь путь
+ * от базы до экрана — двоичная дробь не проходит через слой метрик.
+ */
+export type Money = string
+
+/** `null` значит «нет данных», а не ноль: деление на ноль в SQL даёт `null` через `nullif`. */
+export type Maybe = string | null
+
+export type MonthReport = {
+  /** Куда ходили за отчётом — `target.label` из `resolveIngestTarget()`, без пароля. */
+  target: string
+  month: string | null
+  months: Array<{ month: string; hasOrders: boolean }>
+  revenue: { gross: Money; discounts: Money; refunds: Money; net: Money }
+  costs: { cogs: Money; ads: Money; fees: Money; fixed: Money }
+  bottom: { profit: Money; marginPct: Maybe; roasByGross: Maybe }
+  items: Array<{ sku: string; units: string; net: Money; cogs: Money; profit: Money }>
+  honesty: { sharePct: Maybe; skusWithoutPrice: string[] }
+  gaps: Array<{ kind: string; count: number; at: string[] }>
+}
+
+/** Вид дыры, чьи адреса переиспользует «доля честности» — своего запроса ей не нужно. */
+const NO_PRICE_GAP = 'товары без цены поставщика'
+
+/**
+ * Отчёт месяца целиком — задача 5. Один снимок фактов (`withFactSnapshot`) на весь экран:
+ * список месяцев, итоги, таблицу товаров и блок неполноты запрашивает одна и та же
+ * транзакция `repeatable read read only`, а не пять разных, — иначе экран мог бы сложиться
+ * из двух разных состояний фактов.
+ *
+ * Довод `month` — `YYYY-MM`, как и у `monthTotals`. Когда его нет, берётся последний
+ * месяц из списка месяцев, у которого `hasOrders` истинно (контракт: «месяц по умолчанию
+ * — последний, за который есть заказы»), а если заказов нет вовсе — `null`: пустой слой
+ * фактов не роняет отчёт, а показывает его пустым.
+ *
+ * `null`-месяц уходит в SQL как есть, не строкой `'null-01'`: `$1::date` из `null`
+ * становится SQL `NULL`, и каждое условие вида `дата >= NULL` не находит ни одной строки
+ * — тот же результат, что и у месяца, за который данных нет, без отдельной ветки кода.
+ */
+export async function monthlyReport(
+  month?: string,
+  deps: Partial<MetricsDeps> = {},
+): Promise<MonthReport> {
+  let target = ''
+  const announce = (line: string) => {
+    target = line
+    deps.announce?.(line)
+  }
+
+  return withFactSnapshot(async (client) => {
+    const { rows: monthRows } = await client.query(ALL_MONTHS)
+    const months = monthRows.map((row) => ({
+      month: row.month as string,
+      hasOrders: row.has_orders as boolean,
+    }))
+
+    const resolvedMonth = month ?? months.find((m) => m.hasOrders)?.month ?? null
+    const dayParam = resolvedMonth === null ? null : `${resolvedMonth}-01`
+
+    const totalsResult = await client.query(MONTH_TOTALS, [dayParam])
+    const itemsResult = await client.query(MONTH_ITEMS, [dayParam])
+    const gapsResult = await client.query(MONTH_GAPS, [dayParam])
+
+    const totals = totalsResult.rows[0] as Record<string, string | null>
+    const items = itemsResult.rows.map((row) => ({
+      sku: row.sku as string,
+      units: row.units as string,
+      net: row.net as string,
+      cogs: row.cogs as string,
+      profit: row.profit as string,
+    }))
+    const gaps = gapsResult.rows.map((row) => ({
+      kind: row.kind as string,
+      count: row.count as number,
+      at: row.at as string[],
+    }))
+    const skusWithoutPrice = gaps.find((g) => g.kind === NO_PRICE_GAP)?.at ?? []
+
+    return {
+      target,
+      month: resolvedMonth,
+      months,
+      revenue: {
+        gross: totals.gross as string,
+        discounts: totals.discounts as string,
+        refunds: totals.refunds as string,
+        net: totals.net as string,
+      },
+      costs: {
+        cogs: totals.cogs as string,
+        ads: totals.ads as string,
+        fees: totals.fees as string,
+        fixed: totals.fixed as string,
+      },
+      bottom: {
+        profit: totals.profit as string,
+        marginPct: totals.margin_pct,
+        roasByGross: totals.roas_by_gross,
+      },
+      items,
+      honesty: { sharePct: totals.honest_pct, skusWithoutPrice },
+      gaps,
+    }
+  }, { ...deps, announce })
 }
