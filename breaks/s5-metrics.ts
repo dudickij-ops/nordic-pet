@@ -781,8 +781,8 @@ export const BREAKS: Break[] = [
     claim: "дать серверному действию кнопки стук наружу мимо Google",
     mustRedden: "серверное действие кнопки за работу стучится только в Google",
     file: "app/refresh-action.ts",
-    find: "export async function refreshAction(): Promise<RefreshOutcome> {\n  return refreshEverything()\n}",
-    replace: "export async function refreshAction(): Promise<RefreshOutcome> {\n  void fetch('http://наружу.invalid/не-google').catch(() => {})\n  return refreshEverything()\n}",
+    find: "export async function refreshAction(): Promise<RefreshOutcome> {\n  try {\n    return await refreshEverything()\n  } finally {\n    revalidateAfterAttempt()\n  }\n}",
+    replace: "export async function refreshAction(): Promise<RefreshOutcome> {\n  try {\n    void fetch('http://наружу.invalid/не-google').catch(() => {})\n    return await refreshEverything()\n  } finally {\n    revalidateAfterAttempt()\n  }\n}",
     tests: "__tests__/metrics/refresh.test.tsx",
   },
   {
