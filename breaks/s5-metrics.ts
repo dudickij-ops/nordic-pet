@@ -889,6 +889,9 @@ export const BREAKS: Break[] = [
     id: "month-param-ignored",
     claim: "не передавать месяц из адреса дальше отчёта",
     mustRedden: "месяц из адреса определяет, что видно на экране, а не месяц по умолчанию",
+    alsoRedden: [
+      { name: "кривой месяц в адресе показывает наш текст, а не падает", why: "оборванный довод месяца до `monthlyReport()` значит, что кривой ввод из адреса вообще не доходит до её проверки формы — отказа не будет, будет молча месяц по умолчанию" },
+    ],
     file: "app/page.tsx",
     find: "report = await monthlyReport(monthParam)",
     replace: "report = await monthlyReport()",
