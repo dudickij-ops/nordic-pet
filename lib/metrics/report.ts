@@ -2,6 +2,7 @@ import { Client } from 'pg'
 
 import { clearPostgresEnvironment } from '../db-url.ts'
 import { resolveIngestTarget, type ProductionConnection } from '../ingest/target.ts'
+import { MONTH_TOTALS } from './sql.ts'
 
 /**
  * Дверь слоя метрик в базу — один снимок фактов на весь экран.
@@ -100,4 +101,23 @@ export async function withFactSnapshot<T>(
     await client.query('rollback').catch(() => {})
     await client.release().catch(() => {})
   }
+}
+
+/**
+ * Итоги месяца — правила 1 и 2 задания.
+ *
+ * Строку месяца `M` называют, как везде в проекте: первым числом, `YYYY-MM-01`. Запрос
+ * `MONTH_TOTALS` сам берёт границу до первого числа следующего месяца — второй довод ему
+ * не нужен.
+ *
+ * Деньги приходят из базы строкой (`numeric`, приведённый к `text` в самом запросе) и
+ * строкой уходят наружу: слой метрик не переводит их в `number` ни разу, чтобы не потерять
+ * точность в двоичной дроби.
+ */
+export async function monthTotals(
+  client: MetricsClient,
+  month: string,
+): Promise<Record<string, string | null>> {
+  const { rows } = await client.query(MONTH_TOTALS, [`${month}-01`])
+  return rows[0] as Record<string, string | null>
 }
