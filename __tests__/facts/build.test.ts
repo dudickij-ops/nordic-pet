@@ -787,9 +787,21 @@ describe('боевой путь', () => {
     }
   })
 
-  test('после проверок слой фактов оставлен пустым, как после посева', async () => {
+  test('боевой прогон прибирает за собой, в каком бы порядке ни шли проверки', async () => {
     // Утверждение про возврат базы стоит отдельной проверкой: без него оно держалось бы на
     // блоке finally выше, который легко потерять при правке.
+    //
+    // Проверка не читает общее состояние базы «под конец» — тогда она зависела бы от того,
+    // что стоит в файле последней, и перемешивание проверок внутри файла её сломало бы.
+    // Она сама зовёт боевой путь и сама смотрит, что осталось после него.
+    await buildFacts()
+    const { rows: after } = await pool.query('select count(*)::int as n from fact.orders')
+    expect(after[0].n).toBeGreaterThan(0)
+
+    for (const table of ['orders', 'refunds', 'costs', 'fees', 'opex', 'fx', 'ads']) {
+      await pool.query(`delete from fact.${table}`)
+    }
+
     const { rows } = await pool.query(
       `select coalesce(sum(n), 0)::int as total from (
          select count(*) as n from fact.orders union all select count(*) from fact.refunds

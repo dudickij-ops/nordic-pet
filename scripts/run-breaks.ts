@@ -87,7 +87,12 @@ function resetDatabase(): void {
   const reset = spawnSync('npm', ['run', 'db:reset'], { encoding: 'utf8' })
   if (reset.status !== 0) {
     restoreAll()
-    console.error(`пересоздание базы вернуло ${reset.status ?? 'ничего'}. Прогон остановлен`)
+    console.error(
+      `пересоздание базы вернуло ${reset.status ?? 'ничего'}. Прогон остановлен, файлы ` +
+        'возвращены. База осталась в том состоянии, до которого дошло пересоздание: ' +
+        'почините её командой `npm run db:reset` — прогон этого за вас не сделал, ' +
+        'потому что как раз она и не отработала',
+    )
     console.error(reset.stderr ?? '')
     process.exit(1)
   }
@@ -132,12 +137,15 @@ function applyBreak(one: Break): BreakVerdict | null {
   const occurrences = original.split(one.find).length - 1
   if (occurrences === 0) return 'не применился'
   if (occurrences > 1) return 'двусмысленный'
-  let patched = original.replace(one.find, one.replace)
+  // Замена идёт через функцию, а не строкой: в строке замены `$&`, `$'` и `$$` были бы
+  // молча подставлены содержимым совпадения. Сегодня таких знаков в списке нет, но
+  // ловушка стояла бы взведённой.
+  let patched = original.replace(one.find, () => one.replace)
   if (one.andThen !== undefined) {
     const secondary = patched.split(one.andThen.find).length - 1
     if (secondary === 0) return 'не применился'
     if (secondary > 1) return 'двусмысленный'
-    patched = patched.replace(one.andThen.find, one.andThen.replace)
+    patched = patched.replace(one.andThen.find, () => (one.andThen as { replace: string }).replace)
   }
   writeFileSync(one.file, patched)
   return null
@@ -165,16 +173,21 @@ try {
   for (const one of chosen) {
     console.error(`слом: ${one.claim}`)
 
-    // Имя, которое слом обещает покраснить, обязано подходить ровно к одной проверке
-    // набора. Иначе красное у соседки засчиталось бы вместо красного у своей — так слом
-    // защиты у одной таблицы «доказывался» бы проверкой другой.
-    const matching = catalogue.filter((name) => name.includes(one.mustRedden))
-    if (matching.length !== 1) {
+    // Каждое объявленное имя обязано подходить ровно к одной проверке набора. Иначе
+    // красное у соседки засчиталось бы вместо красного у своей — так слом защиты у одной
+    // таблицы «доказывался» бы проверкой другой.
+    const expected = [one.mustRedden, ...(one.alsoRedden ?? []).map((also) => also.name)]
+    const misnamed = expected
+      .map((name) => ({ name, hits: catalogue.filter((test) => test.includes(name)) }))
+      .filter((one) => one.hits.length !== 1)
+
+    if (misnamed.length > 0) {
+      const empty = misnamed.some((one) => one.hits.length === 0)
       results.push({
         Break: one,
-        verdict: 'ожидание двусмысленно',
+        verdict: empty ? 'такой проверки нет' : 'ожидание двусмысленно',
         exitCode: -1,
-        reddened: matching,
+        reddened: misnamed.map((one) => `${one.name} → ${one.hits.length}`),
       })
       continue
     }
@@ -193,10 +206,25 @@ try {
     if (one.resetDb === true) resetDatabase()
 
     const own = failed.filter((name) => name.includes(one.mustRedden))
-    const verdict: BreakVerdict =
-      exitCode === 0 ? 'зелено' : own.length > 0 ? 'своё' : 'чужое'
+    // Лишнее красное — то, чего слом не объявлял. Оно означает, что он ломает шире, чем
+    // обещает его строка, и доказывает поэтому не то утверждение, которое написано.
+    const extra = failed.filter((name) => !expected.some((wanted) => name.includes(wanted)))
 
-    results.push({ Break: one, verdict, exitCode, reddened: failed })
+    const verdict: BreakVerdict =
+      exitCode === 0
+        ? 'зелено'
+        : own.length === 0
+          ? 'чужое'
+          : extra.length > 0
+            ? 'ломает больше обещанного'
+            : 'своё'
+
+    results.push({
+      Break: one,
+      verdict,
+      exitCode,
+      reddened: verdict === 'ломает больше обещанного' ? extra : failed,
+    })
   }
 } finally {
   restoreAll()
@@ -210,7 +238,9 @@ const mark: Record<BreakVerdict, string> = {
   'зелено': '**зелено**',
   'не применился': '**слом не применился**',
   'двусмысленный': '**образец найден дважды**',
-  'ожидание двусмысленно': '**ожидание подходит не к одной проверке**',
+  'ожидание двусмысленно': '**ожидание подходит к нескольким проверкам**',
+  'такой проверки нет': '**такой проверки в наборе нет**',
+  'ломает больше обещанного': '**ломает больше, чем объявлено**',
 }
 
 console.log(`# Прогон сломов: ${list}\n`)
@@ -233,8 +263,11 @@ if (bad.length > 0) {
     if (result.verdict === 'чужое') {
       console.log(`  вместо неё покраснели: ${result.reddened.slice(0, 3).join('; ')}`)
     }
-    if (result.verdict === 'ожидание двусмысленно') {
-      console.log(`  подходит к ${result.reddened.length} проверкам: ${result.reddened.slice(0, 3).join('; ')}`)
+    if (result.verdict === 'ожидание двусмысленно' || result.verdict === 'такой проверки нет') {
+      console.log(`  совпадений: ${result.reddened.join('; ')}`)
+    }
+    if (result.verdict === 'ломает больше обещанного') {
+      console.log(`  покраснело сверх объявленного: ${result.reddened.join('; ')}`)
     }
     console.log()
   }
