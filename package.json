@@ -13,6 +13,7 @@
     "ingest:sheets": "node --env-file-if-exists=.env.local scripts/ingest-sheets.ts",
     "ingest:ads": "node --env-file-if-exists=.env.local scripts/ingest-ads.ts",
     "facts": "node --env-file-if-exists=.env.local scripts/build-facts.ts",
+    "metrics": "node --env-file-if-exists=.env.local scripts/print-metrics.ts",
     "breaks": "node scripts/run-breaks.ts",
     "test:live": "node --env-file-if-exists=.env.local node_modules/vitest/vitest.mjs run --config vitest.live.config.ts"
   },

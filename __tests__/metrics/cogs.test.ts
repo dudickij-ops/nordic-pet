@@ -1,0 +1,137 @@
+import { describe, expect, test } from 'vitest'
+
+import { totalsOn } from './totals-fixture'
+
+/**
+ * Себестоимость — правила 3, 4 и 5 задания.
+ *
+ * Подставка `totalsOn` — общая с `revenue.test.ts`, живёт в `./totals-fixture`.
+ */
+
+describe('себестоимость', () => {
+  test('цена берётся действовавшая на дату продажи, а не последняя', async () => {
+    const цены = [
+      { sku: 'NP-004', cost: '16.50', from: '2026-01-01' },
+      { sku: 'NP-004', cost: '21.90', from: '2026-03-15' },
+    ]
+    const до = await totalsOn([{ order: 'A-1', sku: 'NP-004', date: '2026-03-10', units: 1, gross: '49.00', discount: '0.00', gateway: 'card' }], [], '2026-03', цены)
+    const после = await totalsOn([{ order: 'A-2', sku: 'NP-004', date: '2026-03-20', units: 1, gross: '49.00', discount: '0.00', gateway: 'card' }], [], '2026-03', цены)
+    expect(до.cogs).toBe('16.50')
+    expect(после.cogs).toBe('21.90')
+  })
+
+  test('возврат снимает себестоимость возвращённых штук', async () => {
+    const totals = await totalsOn(
+      [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 3, gross: '90.00', discount: '0.00', gateway: 'card' }],
+      [{ order: 'A-1', sku: 'NP-001', date: '2026-03-09', units: 1, amount: '30.00' }],
+      '2026-03',
+      [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+    )
+    expect(totals.cogs).toBe('20.00')
+  })
+
+  test('возврат без суммы штуки снимает, хотя выручку не уменьшает', async () => {
+    const totals = await totalsOn(
+      [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 3, gross: '90.00', discount: '0.00', gateway: 'card' }],
+      [{ order: 'A-1', sku: 'NP-001', date: '2026-03-09', units: 1, amount: null }],
+      '2026-03',
+      [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+    )
+    expect(totals.net).toBe('90.00')
+    expect(totals.cogs).toBe('20.00')
+  })
+
+  test('товар без цены поставщика считается по 40% чистой выручки строки', async () => {
+    const totals = await totalsOn(
+      [{ order: 'A-1', sku: 'NP-012', date: '2026-03-02', units: 2, gross: '100.00', discount: '20.00', gateway: 'card' }],
+      [], '2026-03', [],
+    )
+    expect(totals.cogs).toBe('32.00')
+  })
+
+  test('правило 5 не применяется второй раз к товару без цены', async () => {
+    // 100 − 0 − 40 = 60 чистой выручки; 40% = 24.00. Второе прочтение дало бы 0.40×(60−40)=8.00
+    const totals = await totalsOn(
+      [{ order: 'A-1', sku: 'NP-012', date: '2026-03-02', units: 2, gross: '100.00', discount: '0.00', gateway: 'card' }],
+      [{ order: 'A-1', sku: 'NP-012', date: '2026-03-09', units: 1, amount: '40.00' }],
+      '2026-03', [],
+    )
+    expect(totals.cogs).toBe('24.00')
+  })
+
+  test('запасной процент берётся от строки, а не от чистой выручки всего месяца', async () => {
+    const totals = await totalsOn([
+      { order: 'A-1', sku: 'NP-012', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' },
+      { order: 'A-2', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '900.00', discount: '0.00', gateway: 'card' },
+    ], [], '2026-03', [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }])
+    expect(totals.cogs).toBe('50.00') // 40.00 запасных + 10.00 настоящих, а не 400.00
+  })
+
+  test('пустая цена у действующей строки не откатывается к отменённой', async () => {
+    const totals = await totalsOn(
+      [{ order: 'A-1', sku: 'NP-003', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' }],
+      [], '2026-03',
+      [
+        { sku: 'NP-003', cost: '6.80', from: '2026-01-01' },
+        { sku: 'NP-003', cost: null, from: '2026-02-01' },
+      ],
+    )
+    expect(totals.cogs).toBe('40.00') // запасные 40%, а не 6.80
+  })
+
+  test('возвращено больше, чем куплено: себестоимость строки ноль, а не отрицательная', async () => {
+    const totals = await totalsOn(
+      [{ order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 2, gross: '60.00', discount: '0.00', gateway: 'card' }],
+      [{ order: 'A-1', sku: 'NP-001', date: '2026-03-09', units: 5, amount: '10.00' }],
+      '2026-03', [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }],
+    )
+    expect(totals.cogs).toBe('0.00')   // не −30.00
+    expect(totals.net).toBe('50.00')
+  })
+
+  test('чистая выручка по строкам с настоящей ценой считается отдельно', async () => {
+    const totals = await totalsOn([
+      { order: 'A-1', sku: 'NP-001', date: '2026-03-02', units: 1, gross: '900.00', discount: '0.00', gateway: 'card' },
+      { order: 'A-2', sku: 'NP-012', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' },
+    ], [], '2026-03', [{ sku: 'NP-001', cost: '10.00', from: '2026-01-01' }])
+    expect(totals.net).toBe('1000.00')
+    expect(totals.net_real).toBe('900.00')   // без строки товара без цены
+  })
+
+  test('запасные проценты от некруглой выручки не теряют копеек', async () => {
+    // 40% от 33,33 — это 13,332. Любое промежуточное округление сдвинет итог.
+    const totals = await totalsOn(
+      [{ order: 'A-1', sku: 'NP-012', date: '2026-03-02', units: 1, gross: '33.33', discount: '0.00', gateway: 'card' }],
+      [], '2026-03', [],
+    )
+    expect(totals.cogs).toBe('13.33')
+    expect(totals.net).toBe('33.33')
+  })
+
+  test('цена, начинающая действовать после продажи, не берётся', async () => {
+    const totals = await totalsOn(
+      [{ order: 'A-1', sku: 'NP-005', date: '2026-03-02', units: 1, gross: '100.00', discount: '0.00', gateway: 'card' }],
+      [], '2026-03', [{ sku: 'NP-005', cost: '3.05', from: '2026-03-20' }],
+    )
+    expect(totals.cogs).toBe('40.00')
+  })
+})
+
+/**
+ * Раскладки задачи 10 — под сломы, которые первый прогон прибора нашёл «зелёными»: ни одна
+ * прежняя раскладка не различала правильное поведение и слом, потому что везде была ровно
+ * одна дробная строка. Ни одна строка выше не тронута — только новая проверка.
+ */
+describe('запасные проценты нескольких дробных строк — копейка не теряется на сумме', () => {
+  test('три строки по 0,40 × 1,11 = 0,444 каждая: сумма остатков округляется один раз', async () => {
+    // Округли каждую строку по отдельности — 0,44 × 3 = 1,32. Сложи точные остатки и
+    // округли один раз — 1,332 → 1,33. Разница — ровно копейка, и видна только на сумме
+    // нескольких строк: одна строка эту разницу не показывает.
+    const totals = await totalsOn([
+      { order: 'A-1', sku: 'NP-777', date: '2026-03-02', units: 1, gross: '1.11', discount: '0.00', gateway: 'card' },
+      { order: 'A-2', sku: 'NP-777', date: '2026-03-02', units: 1, gross: '1.11', discount: '0.00', gateway: 'card' },
+      { order: 'A-3', sku: 'NP-777', date: '2026-03-02', units: 1, gross: '1.11', discount: '0.00', gateway: 'card' },
+    ], [], '2026-03', [])
+    expect(totals.cogs).toBe('1.33')   // не 1.32
+  })
+})

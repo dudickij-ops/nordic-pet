@@ -1,6 +1,7 @@
 import { ingestAdsFolder } from './ingest/load-ads.ts'
 import { ingestSheets } from './ingest/load-sheets.ts'
 import { buildFacts } from './facts/build.ts'
+import { monthlyReport } from './metrics/report.ts'
 
 /**
  * Список команд, ходящих в базу, и их обязательств.
@@ -54,6 +55,15 @@ export type DatabaseCommand = {
   outsideWorld: string[]
   /** Позвать работу команды с зацепками вместо базы и внешнего мира. */
   run: (probes: Probes) => Promise<unknown>
+  /**
+   * Боевой вызов работы команды — тот же, что зовёт её сценарий.
+   *
+   * Заведён ради кнопки «Обновить данные». Кнопка — не сценарий, и записью списка стать не
+   * может: принятая проверка S4 требует у каждой записи строки в package.json. Но она и не
+   * новая дверь в базу — она зовёт те же три работы. Поле `real` даёт ей звать их через
+   * список, а не мимо него.
+   */
+  real: () => Promise<unknown>
 }
 
 /** Заголовок и одна строка данных — ровно столько, чтобы разбор дошёл до соединения. */
@@ -82,7 +92,15 @@ const ADS_FIXTURE = {
   skipped: [],
 }
 
-export const DATABASE_COMMANDS: DatabaseCommand[] = [
+/**
+ * Пробные записи команд — обязательства и подставки, ровно как их проверяет S4.
+ *
+ * Без поля `real`, и нарочно: объекты здесь остаются тем же самым текстом, что и
+ * до задачи 8, чтобы прибор сломов `breaks/s4-facts.ts` — принятый инструмент
+ * прошлого куска — продолжал находить их своими сломами по буквальному тексту, не
+ * зная, что кнопка «Обновить данные» вообще существует.
+ */
+const COMMAND_FIXTURES: Omit<DatabaseCommand, 'real'>[] = [
   {
     name: 'ingest:sheets',
     script: 'scripts/ingest-sheets.ts',
@@ -114,7 +132,50 @@ export const DATABASE_COMMANDS: DatabaseCommand[] = [
     outsideWorld: [],
     run: (probes) => buildFacts({ announce: probes.announce, connect: probes.connect }),
   },
+  {
+    name: 'metrics',
+    script: 'scripts/print-metrics.ts',
+    refusal: 'команда метрик отменена',
+    // Слой метрик читает снимок фактов и никуда больше не ходит — ни в Google, ни в
+    // какую другую сеть.
+    outsideWorld: [],
+    run: (probes) =>
+      monthlyReport(undefined, { announce: probes.announce, connect: probes.connect }),
+  },
 ]
+
+/**
+ * Боевой вызов каждой команды по имени — тот же самый, что делает её сценарий в
+ * `scripts/*.ts`: печать строк в консоль и ничего больше.
+ */
+const REAL_CALLS: Record<string, () => Promise<unknown>> = {
+  'ingest:sheets': () => ingestSheets({ announce: (line) => console.log(line) }),
+  'ingest:ads': () => ingestAdsFolder({ announce: (line) => console.log(line) }),
+  facts: () => buildFacts({ announce: (line) => console.log(line) }),
+  metrics: () => monthlyReport(undefined, { announce: (line) => console.log(line) }),
+}
+
+/**
+ * Достраивает список команд боевыми вызовами по имени.
+ *
+ * Запись без своей строки в `REAL_CALLS` получила бы `real: undefined` молча: словарь по
+ * строковому ключу тихо отдаёт пустоту на незнакомом имени, а тип обещает функцию — типы
+ * проходят, набор остаётся зелёным. Задача 9 добавляет в этот же список ещё одну запись
+ * (команду метрик) и наступила бы на это первой. Поэтому здесь не тихая подстановка, а
+ * отказ, называющий имя команды без боевого вызова, — сразу при сборке списка, а не когда
+ * кто-нибудь наконец позовёт `real`.
+ */
+export function withRealCalls(commands: Omit<DatabaseCommand, 'real'>[]): DatabaseCommand[] {
+  return commands.map((command) => {
+    const real = REAL_CALLS[command.name]
+    if (real === undefined) {
+      throw new Error(`у команды «${command.name}» нет боевого вызова в REAL_CALLS`)
+    }
+    return { ...command, real }
+  })
+}
+
+export const DATABASE_COMMANDS: DatabaseCommand[] = withRealCalls(COMMAND_FIXTURES)
 
 /**
  * Сценарии, которые командами дашборда не являются, и почему.
