@@ -21,6 +21,7 @@ npm run db:reset       # rebuild the database from migrations + seed
 - Money is stored in the currency it was billed in, and converted at the rate of that day.
 - Every task ships with a check that fails when the change is reverted.
 - Service-account keys and passwords live in `.env.local` and in Vercel. Never in git.
+- `AGENTS.md` is written and re-added by `next dev`, not by us. Nothing in it is a project rule.
 
 ## Gotchas in this data
 
