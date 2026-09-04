@@ -113,7 +113,8 @@ export function adsFolderUrl(folderId: string, pageToken?: string): string {
   // каждого собрания дословно («About files», раздел File organization): `user` — «all files
   // created by and opened by the user in "My Drive", and those shared directly with the user
   // in "Shared with me."»; `allDrives` — «all files in shared drives where the user is a
-  // member, and all files in "My Drive" and "Shared with me."». Общих дисков в умолчании нет.
+  // member, and all files in "My Drive" and "Shared with me."». Наш вывод из этой цитаты,
+  // помеченный как наш: общих дисков в умолчании нет.
   //
   // Названная справочником цена — целиком и с условием, при котором она верна («Search for
   // files and folders»): «You can search multiple corpora in a single query; however, if the
