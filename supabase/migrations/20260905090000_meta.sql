@@ -90,3 +90,29 @@ language sql
 as $$
   delete from meta.login_attempts where address = p_address;
 $$;
+
+-- Отметить, по какому сырью собраны факты.
+--
+-- Функцией, а не запросом из кода, и это устройство всего проекта: сырьё и факты пишутся
+-- функциями снимка, а не операторами записи из загрузчика. Принятая проверка S4 сторожит
+-- именно это — сборка фактов не посылает в базу ни одного оператора записи, — и отметка
+-- свежести не исключение.
+--
+-- Зовётся разбором внутри его же транзакции: читается тот самый снимок сырья, по которому
+-- собраны факты, и откат разбора уносит отметку вместе с фактами.
+create function meta.mark_fact_freshness()
+returns void
+language sql
+as $$
+  insert into meta.fact_freshness (raw_seen_at)
+  select coalesce(max(updated_at), to_timestamp(0)) from (
+    select updated_at from raw.orders
+    union all select updated_at from raw.refunds
+    union all select updated_at from raw.costs
+    union all select updated_at from raw.fees
+    union all select updated_at from raw.opex
+    union all select updated_at from raw.fx
+    union all select updated_at from raw.ads
+  ) as сырьё
+  on conflict (only_row) do update set raw_seen_at = excluded.raw_seen_at;
+$$;

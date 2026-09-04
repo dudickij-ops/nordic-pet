@@ -143,7 +143,42 @@ export type MonthReport = {
   items: Array<{ sku: string; units: string; net: Money; cogs: Money; profit: Money }>
   honesty: { sharePct: Maybe; skusWithoutPrice: string[] }
   gaps: Array<{ kind: string; count: number; at: string[] }>
+  /**
+   * Сырьё новее фактов — числа на экране отстали (задача 5 куска S8).
+   *
+   * Поле необязательное нарочно: отчёты, собранные руками в принятых проверках прошлых
+   * кусков, о нём не знают, и знать не обязаны — правка принятой проверки ради удобства
+   * нового куска запрещена. Отсутствие поля читается как «сказать нечего».
+   *
+   * Это **не** та же щель, что у кнопки «Обновить данные». Та говорит о неудачном нажатии
+   * прямо сейчас; эта — о том, что человек открыл страницу, а факты давно отстали от сырья.
+   * Механизмы разные, и один другого не заменяет.
+   */
+  устарели?: boolean
 }
+
+/**
+ * Отстали ли факты от сырья.
+ *
+ * Сравнивается самое позднее изменение сырья с отметкой, которую разбор записал в своей же
+ * транзакции. Читается тем же снимком, что и сами числа, — иначе ответ был бы о другом
+ * состоянии базы, чем показанные рядом числа.
+ *
+ * Нет отметки вовсе — значит «устарели»: факты собраны не этим разбором или не собраны
+ * никогда, и молчать об этом хуже, чем сказать лишний раз.
+ */
+const STALE = `
+select coalesce(
+  (select coalesce(max(updated_at), to_timestamp(0)) from (
+     select updated_at from raw.orders
+     union all select updated_at from raw.refunds
+     union all select updated_at from raw.costs
+     union all select updated_at from raw.fees
+     union all select updated_at from raw.opex
+     union all select updated_at from raw.fx
+     union all select updated_at from raw.ads
+   ) as сырьё) > (select raw_seen_at from meta.fact_freshness),
+  true) as stale`
 
 /** Вид дыры, чьи адреса переиспользует «доля честности» — своего запроса ей не нужно. */
 const NO_PRICE_GAP = 'строки продаж без цены поставщика'
@@ -248,6 +283,11 @@ export async function monthlyReport(
 
   async function прочитатьФакты(): Promise<MonthReport> {
   return withFactSnapshot(async (client) => {
+    // Спрашивается тем же снимком, что и числа: ответ обязан быть о том же состоянии базы,
+    // которое показано рядом.
+    const { rows: staleRows } = await client.query(STALE)
+    const stale = staleRows[0]?.stale === true
+
     const { rows: monthRows } = await client.query(ALL_MONTHS)
     const months = monthRows.map((row) => ({
       month: row.month as string,
@@ -300,6 +340,7 @@ export async function monthlyReport(
       items,
       honesty: { sharePct: totals.honest_pct, skusWithoutPrice },
       gaps,
+      устарели: stale,
     }
   }, { ...deps, announce })
   }
