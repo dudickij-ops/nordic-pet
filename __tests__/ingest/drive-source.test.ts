@@ -131,6 +131,43 @@ describe('адреса запросов', () => {
     expect(new URL(adsFolderUrl(FOLDER)).searchParams.get('orderBy')).toBe('name')
   })
 
+  /**
+   * Три параметра общих дисков у списка папки — каждый своей проверкой.
+   *
+   * Проверяется состав адреса: то, что мы **отправляем**, а не то, что ответит Google.
+   * Общего диска у нас нет, и наблюдать его поведение нечем — это названо вслух в
+   * контракте куска и в теле pull request, а не спрятано.
+   *
+   * Состав взят из готового запроса, показанного руководством «Implement shared drive
+   * support», а не выведен нами из толкования отдельных описаний.
+   *
+   * Проверки разведены по одной на параметр нарочно: одна общая осталась бы красной от
+   * снятия любого из трёх, и снятие каждого доказывалось бы красным от соседнего.
+   */
+  it('список папки просит поддержку общих дисков', () => {
+    const url = new URL(adsFolderUrl(FOLDER))
+    expect(url.searchParams.get('supportsAllDrives')).toBe('true')
+  })
+
+  it('список папки включает в ответ файлы общих дисков', () => {
+    const url = new URL(adsFolderUrl(FOLDER))
+    expect(url.searchParams.get('includeItemsFromAllDrives')).toBe('true')
+  })
+
+  /**
+   * Цитата, дословно («About files», раздел File organization): `user` — «all files created
+   * by and opened by the user in "My Drive", and those shared directly with the user in
+   * "Shared with me."», `allDrives` — «all files in shared drives where the user is a member,
+   * and all files in "My Drive" and "Shared with me."».
+   *
+   * Наш вывод из неё, помеченный как наш: общих дисков в умолчании нет, поэтому область
+   * поиска задаётся — и задаётся тем же значением, что в готовом запросе руководства.
+   */
+  it('список папки ищет по всем дискам, а не только по личному', () => {
+    const url = new URL(adsFolderUrl(FOLDER))
+    expect(url.searchParams.get('corpora')).toBe('allDrives')
+  })
+
   it('следующую страницу просит по метке страницы', () => {
     expect(new URL(adsFolderUrl(FOLDER, 'метка')).searchParams.get('pageToken')).toBe('метка')
   })
@@ -139,6 +176,13 @@ describe('адреса запросов', () => {
     const url = new URL(fileMediaUrl('a/b?c'))
     expect(url.pathname).toBe('/drive/v3/files/a%2Fb%3Fc')
     expect(url.searchParams.get('alt')).toBe('media')
+  })
+
+  // Скачивание — второй адрес, и поддержка общих дисков нужна ему своя: без неё список
+  // вернулся бы полным, а скачивание каждого файла отказало бы.
+  it('содержимое файла просится с поддержкой общих дисков', () => {
+    const url = new URL(fileMediaUrl('id-meta_2026-03.csv'))
+    expect(url.searchParams.get('supportsAllDrives')).toBe('true')
   })
 
   /**
@@ -223,6 +267,30 @@ describe('отбор файлов папки', () => {
     }
     expect(text).toMatch(/ни одного файла \.csv/i)
     expect(text).toContain('заметки.txt')
+  })
+
+  /**
+   * Половина беды, которую человек чинит руками: папка лежит на общем диске, а доступ
+   * служебному аккаунту открыт к ней одной, а не к самому диску. Отказ при этом придёт
+   * прежний — «ни одного файла .csv», — и он правдив, но уводит в сторону. Правдивая
+   * причина, уводящая в сторону, хуже отсутствия причины.
+   *
+   * Отказ узнаётся по своему признаку, а не по одному лишь упоминанию общего диска:
+   * красное на чужой ошибке ничего не доказывало бы.
+   */
+  it('отказ на ноль выгрузок называет доступ к общему диску', () => {
+    let text = ''
+    try {
+      chooseExportFiles([driveFile('заметки.txt', 'x', { mimeType: 'text/plain' })])
+    } catch (error) {
+      text = String(error)
+    }
+    expect(text).toMatch(/ни одного файла \.csv/i)
+    // Кириллица нарочно перечислена буквами: `\w` в JavaScript — только латиница, и
+    // образец с ним не совпал бы ни с одним падежом.
+    expect(text).toMatch(/общ[а-я]* диск/i)
+    // Мало назвать общий диск: отказ обязан сказать, что человеку сделать.
+    expect(text).toMatch(/откройте/i)
   })
 
   it('файл из корзины в снимок не попадает молча', () => {
@@ -329,6 +397,28 @@ describe('чтение папки целиком', () => {
 
     expect(text).toMatch(/неполный список/i)
     expect(drive.calls.some((call) => call.includes('alt=media'))).toBe(false)
+  })
+
+  /**
+   * Цена поиска сразу по всем дискам, названная справочником: «if the combined corpora is
+   * too large, the API might return incomplete results». Условие про большое совокупное
+   * собрание к нашему запросу по одной папке относится слабо, но изъян назван документацией,
+   * и потому отказ обязан быть громким: человек, у которого папка на общем диске, должен
+   * узнать причину и то, что с ней делать, а не упереться в «список неполный, повторите».
+   *
+   * Отказ узнаётся по своему признаку — «неполный список», — а не по одному лишь упоминанию
+   * дисков: красное на чужой ошибке ничего не доказывало бы.
+   */
+  it('отказ на неполный список называет общий диск и говорит, что делать', async () => {
+    const drive = access([{ files: [driveFile('meta_2026-03.csv', META)], incompleteSearch: true }], {
+      'id-meta_2026-03.csv': META,
+    })
+
+    const text = await refusal(() => readAdsFolder(drive, ENV))
+
+    expect(text).toMatch(/неполный список/i)
+    expect(text).toMatch(/общ[а-я]* диск/i)
+    expect(text).toMatch(/сузить|назовите/i)
   })
 
   it('одна и та же метка страницы по кругу — отказ, а не вечное ожидание', async () => {

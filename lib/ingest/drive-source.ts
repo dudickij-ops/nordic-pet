@@ -95,6 +95,39 @@ export function adsFolderUrl(folderId: string, pageToken?: string): string {
   // Порядок просим у службы: снимок папки не должен зависеть от того, в каком порядке
   // она решила отдать файлы.
   url.searchParams.set('orderBy', 'name')
+  // Общие диски. Без первых двух параметров файлы общего диска не возвращаются вовсе:
+  // руководство Drive про общие диски говорит, что без `supportsAllDrives` «shared drive
+  // items, including both shared drives and files within a shared drive, aren't returned».
+  // Папка `ads-exports` сегодня лежит на личном диске служебного аккаунта, но переносит её
+  // не наша рука: список вернулся бы пустым, и отказ «ноль файлов .csv» назвал бы неверную
+  // причину — файлы в папке есть, их не видит запрос. По неверной причине чинят не то.
+  url.searchParams.set('supportsAllDrives', 'true')
+  url.searchParams.set('includeItemsFromAllDrives', 'true')
+  // Область поиска. Руководство «Implement shared drive support» показывает готовый запрос
+  // списка со всеми тремя параметрами разом:
+  //   files?corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true
+  // Мы берём показанный пример, а не выводим состав запроса из толкования отдельных
+  // описаний: между примером руководства и нашим толкованием выбирают пример.
+  //
+  // Почему область задаётся, а не оставляется умолчанию. Справочник перечисляет состав
+  // каждого собрания дословно («About files», раздел File organization): `user` — «all files
+  // created by and opened by the user in "My Drive", and those shared directly with the user
+  // in "Shared with me."»; `allDrives` — «all files in shared drives where the user is a
+  // member, and all files in "My Drive" and "Shared with me."». Наш вывод из этой цитаты,
+  // помеченный как наш: общих дисков в умолчании нет.
+  //
+  // Названная справочником цена — целиком и с условием, при котором она верна («Search for
+  // files and folders»): «You can search multiple corpora in a single query; however, if the
+  // combined corpora is too large, the API might return incomplete results. Check the
+  // `incompleteSearch` field in the response body. If it's `true`, then some documents were
+  // omitted» — и лечение: «To resolve this, narrow the `corpora` to use either `user` or
+  // `drive`». Условие — большое совокупное собрание; наш запрос идёт по одной папке по её
+  // идентификатору.
+  //
+  // Наш вывод из этого, помеченный как наш: цену принимаем, но не прячем. Поле неполноты у
+  // нас отказ (ниже по файлу), и текст того отказа называет общий диск и говорит человеку,
+  // что делать. Иначе документированный изъян пришёл бы к нему непонятной ошибкой.
+  url.searchParams.set('corpora', 'allDrives')
   if (pageToken !== undefined) url.searchParams.set('pageToken', pageToken)
   return url.toString()
 }
@@ -103,6 +136,13 @@ export function adsFolderUrl(folderId: string, pageToken?: string): string {
 export function fileMediaUrl(fileId: string): string {
   const url = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`)
   url.searchParams.set('alt', 'media')
+  // Скачивание — второй адрес, и поддержка общих дисков нужна ему своя: руководство Drive
+  // перечисляет `files.get` среди методов, которым передают `supportsAllDrives`, а
+  // скачивание — это он и есть. Что именно ответит Диск без него, справочник не говорит:
+  // сказано только, что файлы общего диска в ответ не попадают. Форму отказа мы не
+  // выдумываем — важно, что список приходил бы полным, а скачивание не удавалось бы, то
+  // есть беда сдвинулась бы на шаг и стала непонятнее, а не исчезла.
+  url.searchParams.set('supportsAllDrives', 'true')
   return url.toString()
 }
 
@@ -189,7 +229,8 @@ export function chooseExportFiles(files: readonly DriveFile[]): {
     throw new Error(
       'в папке ads-exports нет ни одного файла .csv. Ноль выгрузок почти всегда означает ' +
         'сбой чтения папки, а не опустевшую папку, и грузить такой снимок нельзя: он стёр ' +
-        'бы из базы всё, что там есть' +
+        'бы из базы всё, что там есть. Если папка лежит на общем диске, откройте служебному ' +
+        'аккаунту доступ к самому общему диску: доступа к одной папке на нём мало' +
         (skipped.length > 0 ? `. Пропущено как не выгрузки: ${skipped.join(', ')}` : ''),
     )
   }
@@ -269,7 +310,10 @@ export async function readAdsFolder(
     if (page.incompleteSearch === true) {
       throw new Error(
         'Диск отдал неполный список папки. Грузить такой снимок нельзя: строки файлов, ' +
-          'не попавших в список, были бы удалены из базы. Запустите загрузку заново',
+          'не попавших в список, были бы удалены из базы. Запустите загрузку заново. Если ' +
+          'это повторяется, а папка лежит на общем диске, скорее всего дело в поиске сразу ' +
+          'по всем дискам: скажите об этом разработчику и назовите свой общий диск — поиск ' +
+          'нужно сузить до него одного',
       )
     }
 
