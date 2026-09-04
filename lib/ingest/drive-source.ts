@@ -103,26 +103,30 @@ export function adsFolderUrl(folderId: string, pageToken?: string): string {
   // причину — файлы в папке есть, их не видит запрос. По неверной причине чинят не то.
   url.searchParams.set('supportsAllDrives', 'true')
   url.searchParams.set('includeItemsFromAllDrives', 'true')
-  // Область поиска не задаётся вовсе: умолчание остаётся за Диском. Решение владельца от
-  // 4 сентября 2026 года, принятое по итогам проверки кода.
+  // Область поиска. Руководство «Implement shared drive support» показывает готовый запрос
+  // списка со всеми тремя параметрами разом:
+  //   files?corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true
+  // Мы берём показанный пример, а не выводим состав запроса из толкования отдельных
+  // описаний: между примером руководства и нашим толкованием выбирают пример.
   //
-  // Цитаты, дословно. Руководство «Implement shared drive support» для поддержки общих
-  // дисков предписывает списку два параметра выше и области поиска не требует. Справочник
-  // `files.list`: «By default, corpora is set to `user`. However, this can change depending
-  // on the filter set through the `q` parameter» — а наш запрос как раз задаёт такой фильтр,
-  // по родительской папке. Руководство «Search for files and folders»: «if the combined
-  // corpora is too large, the API might return incomplete results… To resolve this, narrow
-  // the `corpora` to use either `user` or `drive`».
+  // Почему область задаётся, а не оставляется умолчанию. Справочник перечисляет состав
+  // каждого собрания дословно («About files», раздел File organization): `user` — «all files
+  // created by and opened by the user in "My Drive", and those shared directly with the user
+  // in "Shared with me."»; `allDrives` — «all files in shared drives where the user is a
+  // member, and all files in "My Drive" and "Shared with me."». Общих дисков в умолчании нет.
   //
-  // Наш вывод из этих цитат, помеченный как наш: значение `allDrives` — это поиск по
-  // нескольким собраниям сразу, то есть ровно тот случай, для которого справочник называет
-  // неполную выдачу и советует область сузить. Неполный список папки — наш отказ (ниже по
-  // файлу), и загрузка упала бы целиком, назвав человеку причину, которую он не может
-  // починить. Мы бы завели беду того же класса, ради которой этот параметр и ставился.
+  // Названная справочником цена — целиком и с условием, при котором она верна («Search for
+  // files and folders»): «You can search multiple corpora in a single query; however, if the
+  // combined corpora is too large, the API might return incomplete results. Check the
+  // `incompleteSearch` field in the response body. If it's `true`, then some documents were
+  // omitted» — и лечение: «To resolve this, narrow the `corpora` to use either `user` or
+  // `drive`». Условие — большое совокупное собрание; наш запрос идёт по одной папке по её
+  // идентификатору.
   //
-  // Чего справочник не говорит и чего мы за него не додумываем: достаточно ли двух флагов
-  // выше, когда область поиска оставлена умолчанию. Это помечено допущением в контракте
-  // куска; общего диска у нас нет, и проверить нечем.
+  // Наш вывод из этого, помеченный как наш: цену принимаем, но не прячем. Поле неполноты у
+  // нас отказ (ниже по файлу), и текст того отказа называет общий диск и говорит человеку,
+  // что делать. Иначе документированный изъян пришёл бы к нему непонятной ошибкой.
+  url.searchParams.set('corpora', 'allDrives')
   if (pageToken !== undefined) url.searchParams.set('pageToken', pageToken)
   return url.toString()
 }
@@ -305,7 +309,10 @@ export async function readAdsFolder(
     if (page.incompleteSearch === true) {
       throw new Error(
         'Диск отдал неполный список папки. Грузить такой снимок нельзя: строки файлов, ' +
-          'не попавших в список, были бы удалены из базы. Запустите загрузку заново',
+          'не попавших в список, были бы удалены из базы. Запустите загрузку заново. Если ' +
+          'это повторяется, а папка лежит на общем диске, дело в поиске сразу по всем ' +
+          'дискам: скажите об этом разработчику и назовите свой общий диск — поиск нужно ' +
+          'сузить до него одного',
       )
     }
 
