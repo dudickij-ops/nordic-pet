@@ -131,6 +131,33 @@ describe('адреса запросов', () => {
     expect(new URL(adsFolderUrl(FOLDER)).searchParams.get('orderBy')).toBe('name')
   })
 
+  /**
+   * Три параметра общих дисков — каждый своей проверкой.
+   *
+   * Проверяется состав адреса: то, что мы **отправляем**, а не то, что ответит Google.
+   * Общего диска у нас нет, и наблюдать его поведение нечем — это названо вслух в
+   * контракте куска и в теле pull request, а не спрятано.
+   *
+   * Проверки разведены по одной на параметр нарочно: одна общая осталась бы красной от
+   * снятия любого из трёх, и снятие каждого доказывалось бы красным от соседнего.
+   */
+  it('список папки просит поддержку общих дисков', () => {
+    const url = new URL(adsFolderUrl(FOLDER))
+    expect(url.searchParams.get('supportsAllDrives')).toBe('true')
+  })
+
+  it('список папки включает в ответ файлы общих дисков', () => {
+    const url = new URL(adsFolderUrl(FOLDER))
+    expect(url.searchParams.get('includeItemsFromAllDrives')).toBe('true')
+  })
+
+  // Умолчание — `user`: только личный диск служебного аккаунта. Папку, лежащую на общем
+  // диске, такой запрос не увидел бы вовсе.
+  it('список папки ищет по всем дискам, а не только по личному', () => {
+    const url = new URL(adsFolderUrl(FOLDER))
+    expect(url.searchParams.get('corpora')).toBe('allDrives')
+  })
+
   it('следующую страницу просит по метке страницы', () => {
     expect(new URL(adsFolderUrl(FOLDER, 'метка')).searchParams.get('pageToken')).toBe('метка')
   })
@@ -139,6 +166,13 @@ describe('адреса запросов', () => {
     const url = new URL(fileMediaUrl('a/b?c'))
     expect(url.pathname).toBe('/drive/v3/files/a%2Fb%3Fc')
     expect(url.searchParams.get('alt')).toBe('media')
+  })
+
+  // Скачивание — второй адрес, и поддержка общих дисков нужна ему своя: без неё список
+  // вернулся бы полным, а скачивание каждого файла отказало бы.
+  it('содержимое файла просится с поддержкой общих дисков', () => {
+    const url = new URL(fileMediaUrl('id-meta_2026-03.csv'))
+    expect(url.searchParams.get('supportsAllDrives')).toBe('true')
   })
 
   /**

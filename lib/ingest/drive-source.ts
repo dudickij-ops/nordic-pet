@@ -95,6 +95,22 @@ export function adsFolderUrl(folderId: string, pageToken?: string): string {
   // Порядок просим у службы: снимок папки не должен зависеть от того, в каком порядке
   // она решила отдать файлы.
   url.searchParams.set('orderBy', 'name')
+  // Общие диски. Без первых двух параметров файлы общего диска не возвращаются вовсе:
+  // руководство Drive про общие диски говорит, что без `supportsAllDrives` «shared drive
+  // items, including both shared drives and files within a shared drive, aren't returned».
+  // Папка `ads-exports` сегодня лежит на личном диске служебного аккаунта, но переносит её
+  // не наша рука: список вернулся бы пустым, и отказ «ноль файлов .csv» назвал бы неверную
+  // причину — файлы в папке есть, их не видит запрос. По неверной причине чинят не то.
+  url.searchParams.set('supportsAllDrives', 'true')
+  url.searchParams.set('includeItemsFromAllDrives', 'true')
+  // Область поиска задаётся явно, а не оставляется на умолчании `user`. Справочник не
+  // описывает, достаточно ли двух флагов выше при этом умолчании, а проверить у себя нечем:
+  // общего диска у нас нет — и это помечено допущением, а не выдано за знание. `allDrives`
+  // — единственное значение, покрывающее и личный диск, и общий, не требуя знать
+  // идентификатор общего диска: мы знаем только идентификатор папки. Совет справочника
+  // «prefer user or drive to allDrives for efficiency» — о скорости, а не о верности, и на
+  // запросе одной папки по её идентификатору цены не имеет.
+  url.searchParams.set('corpora', 'allDrives')
   if (pageToken !== undefined) url.searchParams.set('pageToken', pageToken)
   return url.toString()
 }
@@ -103,6 +119,11 @@ export function adsFolderUrl(folderId: string, pageToken?: string): string {
 export function fileMediaUrl(fileId: string): string {
   const url = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`)
   url.searchParams.set('alt', 'media')
+  // Скачивание — второй адрес, и поддержка общих дисков нужна ему своя: руководство Drive
+  // перечисляет `files.get` среди методов, которым передают `supportsAllDrives`. Без него
+  // список вернулся бы полным, а скачивание каждого файла отказало бы — беда сдвинулась бы
+  // на шаг и стала непонятнее, а не исчезла.
+  url.searchParams.set('supportsAllDrives', 'true')
   return url.toString()
 }
 
