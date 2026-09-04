@@ -155,11 +155,13 @@ describe('адреса запросов', () => {
   })
 
   /**
-   * Умолчание общих дисков не покрывает. Справочник перечисляет состав собраний дословно
-   * («About files», раздел File organization): `user` — «all files created by and opened by
-   * the user in "My Drive", and those shared directly with the user in "Shared with me."»,
-   * `allDrives` — «all files in shared drives where the user is a member, and all files in
-   * "My Drive" and "Shared with me."».
+   * Цитата, дословно («About files», раздел File organization): `user` — «all files created
+   * by and opened by the user in "My Drive", and those shared directly with the user in
+   * "Shared with me."», `allDrives` — «all files in shared drives where the user is a member,
+   * and all files in "My Drive" and "Shared with me."».
+   *
+   * Наш вывод из неё, помеченный как наш: общих дисков в умолчании нет, поэтому область
+   * поиска задаётся — и задаётся тем же значением, что в готовом запросе руководства.
    */
   it('список папки ищет по всем дискам, а не только по личному', () => {
     const url = new URL(adsFolderUrl(FOLDER))

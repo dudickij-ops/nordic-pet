@@ -67,18 +67,17 @@
 
 ## Что говорит документация и чего она не говорит
 
-Пять мест справочника Google Drive API v3, сверенных по страницам, а не по памяти. Цитаты
-приводятся целиком и с условием, при котором они верны: обрезанная цитата опаснее пересказа —
-пересказ читается как мнение, а обрезанная цитата выглядит как источник.
+Семь мест на четырёх страницах справочника Google Drive API v3, сверенных по страницам, а не
+по памяти. Цитаты приводятся целиком и с условием, при котором они верны: обрезанная цитата
+опаснее пересказа — пересказ читается как мнение, а обрезанная цитата выглядит как источник.
 
 | Что сказано | Где |
 |---|---|
 | без `supportsAllDrives` файлы общего диска не возвращаются вовсе | руководство «Implement shared drive support» |
 | `includeItemsFromAllDrives` включает файлы общих дисков в ответ; только у `files.list` | справочник `files.list` |
 | «By default, corpora is set to `user`. However, this can change depending on the filter set through the `q` parameter» | справочник `files.list` |
-| «if the combined corpora is too large, the API might return incomplete results… To resolve this, narrow the `corpora` to use either `user` or `drive`» | руководство «Search for files and folders» |
+| «You can search multiple corpora in a single query; however, if the combined corpora is too large, the API might return incomplete results. Check the `incompleteSearch` field in the response body. If it's `true`, then some documents were omitted» и лечение: «To resolve this, narrow the `corpora` to use either `user` or `drive`» | руководство «Search for files and folders» |
 | `supportsAllDrives` передают и в `files.get`, а не только в `files.list` | руководство «Implement shared drive support» |
-
 | `user` — «all files created by and opened by the user in "My Drive", and those shared directly with the user in "Shared with me."»; `allDrives` — «all files in shared drives where the user is a member, and all files in "My Drive" and "Shared with me."» | руководство «About files», раздел File organization |
 | готовый запрос списка: `corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true` | руководство «Implement shared drive support» |
 
@@ -155,8 +154,11 @@ request.
 
 ## Задача 6 — pull request и проверка головы
 
-- [ ] Тело pull request: допущение об области поиска, отступление про план в `docs/plans/`,
-      отложенные задачи, названное вслух «чего этим не доказано».
+- [ ] Тело pull request: история решения об области поиска — что было выбрано, на каком
+      доводе, чем довод оказался неверен и почему решение развернули; отступления про план
+      в `docs/plans/` и про пояснение живых проверок; отложенные задачи; названное вслух
+      «чего этим не доказано» — поведение настоящего общего диска; вывод прогона сломов с
+      кодом возврата и оба вывода живой загрузки.
 - [ ] Проверка кода тем, у кого нет контекста автора: только дифф и требования.
 - [ ] Замечания исправить, поднять вторую проверку — узко на дельту с новой головой.
       Сливается тот коммит, который оценён.
