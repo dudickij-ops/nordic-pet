@@ -1,7 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 
+import { проверитьДоступ } from '@/lib/auth/guard'
 import { refreshEverything, type RefreshOutcome } from '@/lib/metrics/refresh'
 
 /**
@@ -24,8 +26,21 @@ import { refreshEverything, type RefreshOutcome } from '@/lib/metrics/refresh'
  * (`stale`) и рисует `RefreshView`. `try/finally` — чтобы вызов дошёл и в том редком
  * случае, когда `refreshEverything()` не вернула исход, а бросила ошибку устройства
  * (имя команды не нашлось в списке, см. `lib/metrics/refresh.ts`).
+ *
+ * **Свой сторож — до всякой работы** (S6). Серверное действие — это POST на тот путь, где
+ * оно живёт, и общий слой закрытия его накрывает; но документация Next требует проверять
+ * доступ внутри каждого серверного действия, а не полагаться на общий слой: перенос
+ * действия на другой путь или правка образца молча вывели бы его из-под закрытия. Здесь
+ * это стоит дороже, чем на странице: действие не отдаёт числа, а **пишет** — перечитывает
+ * оба источника и пересобирает факты.
+ *
+ * Отказ — переход на вход, а не исход `RefreshOutcome`: у исхода три шага работы, и
+ * «сессия кончилась» не один из них. Человек, у которого истекли двенадцать часов, увидит
+ * страницу входа, а не отказ шага, которого не было.
  */
 export async function refreshAction(): Promise<RefreshOutcome> {
+  if ((await проверитьДоступ()) === 'отказать') redirect('/login')
+
   try {
     return await refreshEverything()
   } finally {

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 import { renderToStaticMarkup } from 'react-dom/server'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 
 import { DATABASE_COMMANDS, withRealCalls } from '@/lib/commands'
 import { refreshEverything } from '@/lib/metrics/refresh'
@@ -25,6 +25,35 @@ import { blockNetwork } from '../commands/network'
  * Проверка «второе нажатие подряд ничего не меняет» ходит в Google по-настоящему —
  * она в живом наборе, `__tests__/live/refresh.live.ts`, а не здесь.
  */
+
+/**
+ * Обвязка S6, добавленная с разрешения владельца. Страница отчёта и серверное действие
+ * кнопки закрыты сторожем доступа, а сторож читает cookie из запроса Next — вне запроса
+ * чтение отказывает, и прямой вызов, каким он написан ниже, до работы бы не дошёл.
+ *
+ * Здесь изображается **запрос с годной cookie**: подставляется окружение вокруг вызова, а
+ * не сам сторож — он остаётся настоящим и продолжает работать. Ни одно утверждение этого
+ * файла не тронуто; что они уцелели, доказано прогоном прежних сломов S5 по именам —
+ * вывод в теле pull request.
+ *
+ * Секрет и cookie заведомо ненастоящие: настоящие придумывает владелец и кладёт в
+ * переменные проекта.
+ */
+const СЕКРЕТ_ПРОВЕРКИ = 'не-настоящий-секрет-подписи-для-проверок-0123456789'
+process.env.NORDIC_PET_SESSION_SECRET = СЕКРЕТ_ПРОВЕРКИ
+
+vi.mock('next/headers', () => ({
+  cookies: async () => {
+    // Ввоз внутри, а не наверху файла: подставки поднимаются выше любых ввозов, и величина
+    // из тела файла на момент первого срабатывания подставки ещё не существует.
+    const { начеканить, SESSION_COOKIE } = await import('@/lib/auth/session')
+    const годная = начеканить(Date.now(), СЕКРЕТ_ПРОВЕРКИ).value
+    return {
+      get: (имя: string) => (имя === SESSION_COOKIE ? { name: имя, value: годная } : undefined),
+    }
+  },
+}))
+
 
 /** Задаёт локальную цель на время тела и возвращает окружение как было. */
 async function withLocalTarget(run: () => Promise<void> | void): Promise<void> {
