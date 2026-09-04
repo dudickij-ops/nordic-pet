@@ -72,6 +72,15 @@ export const BREAKS: Break[] = [
     tests: '__tests__/auth/closed.test.ts',
   },
   {
+    id: 'matcher-widened',
+    claim: 'расширить выведенное из образца путей со сборочной выдачи до всего `_next`',
+    mustRedden: 'образец путей зовёт первый слой на всё, кроме сборочной выдачи',
+    file: 'proxy.ts',
+    find: "  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],",
+    replace: "  matcher: ['/((?!_next|favicon.ico).*)'],",
+    tests: '__tests__/auth/closed.test.ts',
+  },
+  {
     id: 'health-says-more',
     claim: 'заставить `/health` отдать что-нибудь сверх номера коммита',
     mustRedden: '/health отдаёт ровно номер коммита',

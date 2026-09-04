@@ -925,7 +925,7 @@ export const BREAKS: Break[] = [
     ],
     file: "app/refresh-action.ts",
     find: "export async function refreshAction(): Promise<RefreshOutcome> {\n  if ((await проверитьДоступ()) === 'отказать') redirect('/login')\n\n  try {\n    return await refreshEverything()\n  } finally {\n    revalidateAfterAttempt()\n  }\n}",
-    replace: "export async function refreshAction(): Promise<RefreshOutcome> {\n  if ((await проверитьДоступ()) === 'отказать') redirect('/login')\n\n  return refreshEverything()\n}\n",
+    replace: "export async function refreshAction(): Promise<RefreshOutcome> {\n  if ((await проверитьДоступ()) === 'отказать') redirect('/login')\n\n  return refreshEverything()\n}",
     tests: "__tests__/metrics/refresh-action.test.ts",
   },
 ]
