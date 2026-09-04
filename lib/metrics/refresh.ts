@@ -1,4 +1,6 @@
 import { DATABASE_COMMANDS, type DatabaseCommand } from '../commands.ts'
+import { connectToDatabase } from '../facts/build.ts'
+import { resolveIngestTarget } from '../ingest/target.ts'
 
 /**
  * Кнопка «Обновить данные» — задача 8.
@@ -25,12 +27,62 @@ import { DATABASE_COMMANDS, type DatabaseCommand } from '../commands.ts'
 export type RefreshOutcome =
   | { ok: true }
   | { ok: false; step: 'Таблица' | 'папка' | 'разбор'; text: string; stale: boolean }
+  /**
+   * Обновление уже идёт — задача 6 куска S8.
+   *
+   * Отдельный вид, а не отказ шага: ни один шаг не отказал, потому что ни один и не начался.
+   * `stale: false` здесь честно: мы ничего не тронули, и числа на экране такие же, какими
+   * были, — не свежее и не устарелее.
+   */
+  | { ok: false; занято: true; text: string; stale: false }
+
+/**
+ * Ключ совещательного замка. Постоянное число: замок общий на всю базу, и обе стороны обязаны
+ * назвать одно и то же. Взято от даты куска — лишь бы не совпало со случайным чужим.
+ */
+export const КЛЮЧ_ЗАМКА = 20260905
+
+/** Взятый замок умеет только одно — отпуститься. */
+export type Замок = { взят: boolean; отпустить: () => Promise<void> }
+
+/**
+ * Настоящий замок — совещательный замок PostgreSQL на отдельном соединении.
+ *
+ * Пробующий, а не ждущий, и это главное в нём. Справочник: `pg_try_advisory_lock` «Obtains an
+ * exclusive session-level advisory lock if available. This will either obtain the lock
+ * immediately and return `true`, or return `false` without waiting if the lock cannot be
+ * acquired immediately». Ждущий замок дал бы второму нажатию дождаться очереди и записать —
+ * то есть ровно то, чего мы не хотим: человек нажал дважды, и вторая загрузка пошла следом.
+ *
+ * Замок берётся **на уровне соединения**, а не транзакции: три шага кнопки — три отдельные
+ * транзакции, и транзакционный замок отпустился бы после первой. Справочник там же: «Once
+ * acquired at session level, an advisory lock is held until explicitly released or the session
+ * ends», — значит брошенный процесс замок не удержит: соединение закроется, и замок отпустится
+ * сам. Своё соединение у замка ровно поэтому: чужое вернулось бы в пул вместе с замком.
+ */
+export async function замокВБазе(): Promise<Замок> {
+  const цель = resolveIngestTarget()
+  const клиент = await connectToDatabase(цель.connection)
+
+  const ответ = await клиент.query('select pg_try_advisory_lock($1) as взят', [КЛЮЧ_ЗАМКА])
+  const взят = (ответ.rows[0] as { взят: boolean } | undefined)?.взят === true
+
+  return {
+    взят,
+    отпустить: async () => {
+      if (взят) await клиент.query('select pg_advisory_unlock($1)', [КЛЮЧ_ЗАМКА])
+      await клиент.release()
+    },
+  }
+}
 
 export type RefreshDeps = {
   /** Куда дошли — говорится до всякой работы, а не после. */
   announce: (line: string) => void
   /** Список команд, из которого шаги берутся по имени. По умолчанию — боевой список. */
   commands: DatabaseCommand[]
+  /** Как брать замок. По умолчанию — настоящий, в базе. */
+  замок: () => Promise<Замок>
   ingestSheets: () => Promise<unknown>
   ingestAds: () => Promise<unknown>
   buildFacts: () => Promise<unknown>
@@ -109,26 +161,48 @@ export async function refreshEverything(deps: Partial<RefreshDeps> = {}): Promis
   const ingestAds = deps.ingestAds ?? stepFromCommands(commands, 'ingest:ads')
   const buildFacts = deps.buildFacts ?? stepFromCommands(commands, 'facts')
 
-  announce('Таблица')
-  try {
-    await ingestSheets()
-  } catch (error) {
-    return refusal('ingest:sheets', error)
+  // Замок берётся **до первого шага**, а не внутри них: второе нажатие обязано не начать
+  // работу вовсе, а не отказаться на середине. Прежде два нажатия внахлёст ложились в базу
+  // параллельно, и Postgres отвечал на это взаимной блокировкой — отказом, из которого
+  // человеку не понять ничего.
+  const замок = await (deps.замок ?? замокВБазе)()
+  if (!замок.взят) {
+    await замок.отпустить()
+    return {
+      ok: false,
+      занято: true,
+      text:
+        'Обновление уже идёт — его запустили секунду назад. Подождите, пока оно закончится, ' +
+        'и обновите страницу: числа появятся сами. Второй раз нажимать не нужно.',
+      stale: false,
+    }
   }
 
-  announce('папка')
   try {
-    await ingestAds()
-  } catch (error) {
-    return refusal('ingest:ads', error)
-  }
+    announce('Таблица')
+    try {
+      await ingestSheets()
+    } catch (error) {
+      return refusal('ingest:sheets', error)
+    }
 
-  announce('разбор')
-  try {
-    await buildFacts()
-  } catch (error) {
-    return refusal('facts', error)
-  }
+    announce('папка')
+    try {
+      await ingestAds()
+    } catch (error) {
+      return refusal('ingest:ads', error)
+    }
 
-  return { ok: true }
+    announce('разбор')
+    try {
+      await buildFacts()
+    } catch (error) {
+      return refusal('facts', error)
+    }
+
+    return { ok: true }
+  } finally {
+    // Отпускается в любом исходе: иначе один отказ запер бы кнопку до перезапуска процесса.
+    await замок.отпустить()
+  }
 }

@@ -44,7 +44,14 @@ export function RefreshView({
         Обновить данные
       </button>
 
-      {outcome.ok === false && (
+      {/*
+        «Обновление уже идёт» — не отказ шага: ни один шаг не начался, и приписывать отказ
+        шагу значило бы соврать о том, что случилось. Поэтому у этого исхода нет `step`, и
+        текст показывается сам по себе (S8, задача 6).
+      */}
+      {outcome.ok === false && 'занято' in outcome && <p role="alert">{outcome.text}</p>}
+
+      {outcome.ok === false && !('занято' in outcome) && (
         <p role="alert">
           Шаг «{outcome.step}»: {outcome.text}
         </p>
