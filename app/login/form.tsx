@@ -20,7 +20,7 @@ const НАЧАЛО: ИсходВхода = { ok: true }
  */
 export function LoginView({ исход, ждём }: { исход: ИсходВхода; ждём: boolean }) {
   return (
-    <main>
+    <main className="login">
       <h1>Nordic Pet — вход</h1>
 
       <label htmlFor="login">Логин</label>
@@ -29,7 +29,7 @@ export function LoginView({ исход, ждём }: { исход: ИсходВх
       <label htmlFor="password">Пароль</label>
       <input id="password" name="password" type="password" autoComplete="current-password" required />
 
-      <button type="submit" disabled={ждём}>
+      <button type="submit" disabled={ждём} className="primary">
         Войти
       </button>
 

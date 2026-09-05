@@ -39,10 +39,17 @@ export function RefreshView({
   const stale = outcome.ok === false && outcome.stale
 
   return (
-    <div>
-      <button type="submit" disabled={pending}>
-        Обновить данные
-      </button>
+    <div className="panel">
+      {/*
+        Полоса действия — вид, кусок S9. Кнопка стоит в своей строке справа: она относится ко
+        всему отчёту сразу, а не к какому-то одному его блоку, и потому живёт над ними всеми.
+        Отступ строк ниже не тронут нарочно — их цитируют сломы прошлых кусков.
+      */}
+      <div className="actions">
+        <button type="submit" disabled={pending} className="primary">
+          Обновить данные
+        </button>
+      </div>
 
       {/*
         «Обновление уже идёт» — не отказ шага: ни один шаг не начался, и приписывать отказ
@@ -57,11 +64,14 @@ export function RefreshView({
         </p>
       )}
 
-      <div
-        data-stale={stale ? 'true' : 'false'}
-        style={stale ? { opacity: 0.5, filter: 'grayscale(1)' } : undefined}
-      >
-        {stale && <p>Числа ниже устарели</p>}
+      {/*
+        Гашение устаревших чисел переехало со встроенного стиля на класс — кусок S9. **Атрибут
+        `data-stale` оставлен нарочно**: на нём держатся принятые проверки прошлого куска, и он
+        же — единственный признак состояния, видимый снаружи разметки. У его удаления есть свой
+        слом.
+      */}
+      <div data-stale={stale ? 'true' : 'false'} className={stale ? 'numbers stale' : 'numbers'}>
+        {stale && <p className="stale-mark">Числа ниже устарели</p>}
         {children}
       </div>
     </div>

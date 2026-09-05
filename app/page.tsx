@@ -22,23 +22,37 @@ export const dynamic = 'force-dynamic'
  * (`__tests__/metrics/screen.test.tsx`) без базы: подставляется выдуманный `MonthReport`.
  */
 export function Dashboard({ report }: { report: MonthReport }) {
+  // Доля честности читается **один раз, в одну величину**, и дальше её берут оба показа:
+  // напечатанное число и длина полосы. Это условие владельца, а не удобство: пока значение
+  // одно, полоса не может разойтись с числом. Второе чтение того же поля рядом с первым
+  // было бы вторым источником правды, и однажды они разъехались бы молча.
+  const доля = report.honesty.sharePct
+
   return (
-    <main>
-      <h1>Nordic Pet — прибыль{report.month === null ? '' : ` за ${report.month}`}</h1>
+    <main className="report">
+      <header className="report-head">
+        <h1>Nordic Pet — прибыль{report.month === null ? '' : ` за ${report.month}`}</h1>
 
-      {report.months.length > 0 && (
-        <nav>
-          <ul>
-            {report.months.map((m) => (
-              <li key={m.month}>
-                <a href={`/?m=${m.month}`}>{m.month}</a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
+        {report.months.length > 0 && (
+          <nav className="months">
+            <ul>
+              {report.months.map((m) => (
+                <li key={m.month}>
+                  <a
+                    href={`/?m=${m.month}`}
+                    aria-current={m.month === report.month ? 'page' : undefined}
+                    data-empty={m.hasOrders ? undefined : 'true'}
+                  >
+                    {m.month}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+      </header>
 
-      <section>
+      <section className="block">
         <h2>Выручка</h2>
         <dl>
           <dt>Оборот</dt>
@@ -52,7 +66,7 @@ export function Dashboard({ report }: { report: MonthReport }) {
         </dl>
       </section>
 
-      <section>
+      <section className="block">
         <h2>Затраты</h2>
         <dl>
           <dt>Себестоимость проданного</dt>
@@ -66,7 +80,7 @@ export function Dashboard({ report }: { report: MonthReport }) {
         </dl>
       </section>
 
-      <section>
+      <section className="block bottom-line">
         <h2>Итог</h2>
         <dl>
           <dt>Прибыль</dt>
@@ -78,7 +92,7 @@ export function Dashboard({ report }: { report: MonthReport }) {
         </dl>
       </section>
 
-      <section>
+      <section className="block items">
         <h2>Товары</h2>
         <table>
           <thead>
@@ -104,23 +118,28 @@ export function Dashboard({ report }: { report: MonthReport }) {
         </table>
       </section>
 
-      <section>
+      <section className="block honesty">
         <h2>Честность данных</h2>
         <p>
           Посчитано по настоящей цене поставщика (доля от чистой выручки):{' '}
-          {percent(report.honesty.sharePct)}
+          <strong className="share-value">{percent(доля)}</strong>
         </p>
+        {доля !== null && (
+          <div className="share" aria-hidden="true">
+            <div className="share-fill" style={{ width: `${доля}%` }} />
+          </div>
+        )}
         {report.honesty.skusWithoutPrice.length > 0 && (
           <p>Без цены поставщика (запасные 40%): {report.honesty.skusWithoutPrice.join(', ')}</p>
         )}
       </section>
 
-      <section>
+      <section className="block gaps">
         <h2>Неполнота данных</h2>
         <p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p>
         <ul>
           {report.gaps.map((gap) => (
-            <li key={gap.kind}>
+            <li key={gap.kind} data-zero={gap.count === 0 ? 'true' : undefined}>
               {gap.kind}: {count(String(gap.count))}
               {gap.at.length > 0 ? ` (${gap.at.join(', ')})` : ''}
             </li>
