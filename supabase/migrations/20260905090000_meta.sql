@@ -130,7 +130,15 @@ $$;
 -- Строка в таблице сеансового состояния не требует и работает через любой объединитель.
 create table meta.refresh_lock (
   only_row boolean primary key default true check (only_row),
-  taken_at timestamptz
+  taken_at timestamptz,
+  -- Жетон владельца: по нему отпускание узнаёт свой замок.
+  --
+  -- Отдельным столбцом, а не отметкой времени. Отметка, съездившая в код и обратно, зависит от
+  -- того, как её отрисовал сеанс: часовой пояс и формат дат — сеансовые настройки, а взятие и
+  -- отпускание в бою идут разными обращениями через объединитель соединений. Разошлись бы
+  -- настройки — отпускание не совпало бы ни разу и молча: ноль строк, никакой ошибки, и кнопка
+  -- заперта на всю аренду после каждого обновления. Найдено проверкой кода.
+  token uuid
 );
 
 -- Взять замок, если он свободен или его аренда протухла.
@@ -147,26 +155,26 @@ create table meta.refresh_lock (
 -- пережившее аренду, отдало бы замок второму прогону, а потом своим же завершением открыло бы
 -- дорогу третьему — поверх работающего второго. Найдено проверкой кода.
 --
--- Расписка везётся **строкой**: у базы отметка времени с микросекундами, а у времени в коде —
--- миллисекунды, и расписка, съездившая туда и обратно значением времени, перестаёт совпадать
--- сама с собой. Тогда отпускание не срабатывало бы никогда, и замок держался бы до конца аренды
--- после каждого обновления.
+-- Возвращает **жетон владельца** строкой, или NULL, если замок занят. Жетон — случайный, а не
+-- производный от времени: отметка времени зависела бы и от точности (микросекунды базы против
+-- миллисекунд кода), и от сеансовых настроек отрисовки.
 create function meta.take_refresh_lock(p_lease interval)
 returns text
 language plpgsql
 as $$
 declare
-  расписка text;
+  жетон text;
 begin
   insert into meta.refresh_lock (only_row, taken_at) select true, null
   on conflict (only_row) do nothing;
 
   update meta.refresh_lock
-     set taken_at = clock_timestamp()
+     set taken_at = clock_timestamp(),
+         token = gen_random_uuid()
    where taken_at is null or taken_at < clock_timestamp() - p_lease
-  returning taken_at::text into расписка;
+  returning token::text into жетон;
 
-  return расписка;
+  return жетон;
 end;
 $$;
 
@@ -174,11 +182,13 @@ $$;
 --
 -- Расписка не совпала — значит замок уже отобрали по истечении аренды и он принадлежит другому
 -- прогону. Тогда не трогаем: чужой замок отпускает чужая работа.
-create function meta.release_refresh_lock(p_расписка text)
+create function meta.release_refresh_lock(p_жетон text)
 returns void
 language sql
 as $$
-  update meta.refresh_lock set taken_at = null where taken_at::text = p_расписка;
+  update meta.refresh_lock
+     set taken_at = null, token = null
+   where token::text = p_жетон;
 $$;
 
 -- Отстали ли факты от сырья.

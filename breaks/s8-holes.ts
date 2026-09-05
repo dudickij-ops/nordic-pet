@@ -3,7 +3,7 @@ import type { Break } from './types.ts'
 /**
  * Список сломов куска S8 — пять дыр, которые могут выстрелить у проверяющего.
  *
- * Двадцать девять строк: одиннадцать на замок от подбора пароля, три на выход, пять на свой
+ * Тридцать одна строка: тринадцать на замок от подбора пароля, три на выход, пять на свой
  * вид у отказа отчёта, две на отметку свежести, пять на замок от двух одновременных
  * обновлений, две на то, что человек вправду видит на экране, и одна на то, что новая схема
  * не выставлена наружу через API. Ссылаемся по имени, а не по номеру: вставка
@@ -45,7 +45,7 @@ export const BREAKS: Break[] = [
       },
     ],
     file: 'lib/auth/attempts.ts',
-    find: '    else await счёт.записатьНеудачу(deps.адрес)',
+    find: '      await счёт.записатьНеудачу(deps.адрес)\n',
     replace: '',
     tests: '__tests__/auth/attempts.test.ts',
   },
@@ -54,8 +54,8 @@ export const BREAKS: Break[] = [
     claim: 'не обнулять счёт при удачном входе',
     mustRedden: 'удачный вход обнуляет счёт: девять неудач, вход, снова девять — пускает',
     file: 'lib/auth/attempts.ts',
-    find: '    if (исход.ok) await счёт.обнулить(deps.адрес)',
-    replace: '    if (исход.ok) await Promise.resolve()',
+    find: '        await счёт.обнулить(deps.адрес)',
+    replace: '        await Promise.resolve()',
     tests: '__tests__/auth/attempts.test.ts',
   },
   {
@@ -73,11 +73,11 @@ export const BREAKS: Break[] = [
       },
     ],
     file: 'lib/auth/attempts.ts',
-    find: '    const { неудач, самаяРанняя } = await счёт.неудачи(deps.адрес)',
-    replace: '    const { неудач, самаяРанняя } = await счёт.неудачи(ОБЩЕЕ_ВЕДРО)',
+    find: '      состояние = await счёт.неудачи(deps.адрес)',
+    replace: '      состояние = await счёт.неудачи(ОБЩЕЕ_ВЕДРО)',
     andThen: {
-      find: '    else await счёт.записатьНеудачу(deps.адрес)',
-      replace: '    else await счёт.записатьНеудачу(ОБЩЕЕ_ВЕДРО)',
+      find: '      await счёт.записатьНеудачу(deps.адрес)',
+      replace: '      await счёт.записатьНеудачу(ОБЩЕЕ_ВЕДРО)',
     },
     tests: '__tests__/auth/attempts.test.ts',
   },
@@ -289,8 +289,8 @@ export const BREAKS: Break[] = [
     file: 'supabase/migrations/20260905090000_meta.sql',
     find:
       '   where taken_at is null or taken_at < clock_timestamp() - p_lease\n' +
-      '  returning taken_at::text into расписка;',
-    replace: '  returning taken_at::text into расписка;',
+      '  returning token::text into жетон;',
+    replace: '  returning token::text into жетон;',
     tests: '__tests__/metrics/refresh-lock.test.ts',
     resetDb: true,
   },
@@ -410,9 +410,41 @@ export const BREAKS: Break[] = [
     claim: 'отпускать замок не глядя, чей он',
     mustRedden: 'чужое отпускание замок не отдаёт',
     file: 'supabase/migrations/20260905090000_meta.sql',
-    find: '  update meta.refresh_lock set taken_at = null where taken_at::text = p_расписка;',
-    replace: '  update meta.refresh_lock set taken_at = null;',
+    find:
+      '  update meta.refresh_lock\n' +
+      '     set taken_at = null, token = null\n' +
+      '   where token::text = p_жетон;',
+    replace: '  update meta.refresh_lock set taken_at = null, token = null;',
     tests: '__tests__/metrics/refresh-lock.test.ts',
     resetDb: true,
+  },
+  {
+    id: 'refusal-after-login-swallows-success',
+    claim: 'накрыть перехватом и сверку — вместе с выдачей cookie',
+    mustRedden: 'сбой учёта после удачного входа не превращает удачу в отказ',
+    file: 'lib/auth/attempts.ts',
+    find:
+      '      try {\n' +
+      '        await счёт.обнулить(deps.адрес)\n' +
+      '      } catch (отказ) {\n' +
+      "        console.error('счёт попыток не обнулился после удачного входа:', отказ)\n" +
+      '      }\n' +
+      '      return исход',
+    replace:
+      '      await счёт.обнулить(deps.адрес)\n' +
+      '      return исход',
+    tests: '__tests__/auth/attempts.test.ts',
+  },
+  {
+    id: 'unrecorded-failure-lets-through',
+    claim: 'проглотить отказ записи неудачи — замок молча выключается',
+    mustRedden: 'незаписанная неудача — отказ про базу, а не обычное «пароль не тот»',
+    file: 'lib/auth/attempts.ts',
+    find:
+      "      console.error('неудачная попытка не записана — замок от подбора не считает:', отказ)\n" +
+      '      return { ok: false, text: СЧЁТ_НЕДОСТУПЕН }',
+    replace:
+      "      console.error('неудачная попытка не записана — замок от подбора не считает:', отказ)",
+    tests: '__tests__/auth/attempts.test.ts',
   },
 ]
