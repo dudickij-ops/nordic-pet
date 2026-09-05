@@ -377,6 +377,12 @@ export const BREAKS: Break[] = [
     id: 'counter-not-closed',
     claim: 'не закрывать соединение счёта',
     mustRedden: 'счёт закрывается и после удачи, и после неудачи',
+    alsoRedden: [
+      {
+        name: 'сбой выдачи cookie летит наружу, а не превращается в «база не ответила»',
+        why: 'она смотрит, что последним вызовом счёта было закрытие, — а его больше нет',
+      },
+    ],
     file: 'lib/auth/attempts.ts',
     find: '  } finally {\n    await счёт.закрыть().catch(() => {})\n  }',
     replace: '  } finally {\n    await Promise.resolve()\n  }',
@@ -434,17 +440,14 @@ export const BREAKS: Break[] = [
     claim: 'накрыть перехватом и сверку — вместе с выдачей cookie',
     mustRedden: 'сбой выдачи cookie летит наружу, а не превращается в «база не ответила»',
     file: 'lib/auth/attempts.ts',
-    find:
-      '      состояние = await счёт.неудачи(deps.адрес)\n' +
-      '    } catch {\n' +
-      "      return { ok: false, text: СЧЁТ_НЕДОСТУПЕН }\n" +
-      '    }\n',
+    find: '    const исход = войти(логин, пароль, общее)',
     replace:
-      '      состояние = await счёт.неудачи(deps.адрес)\n' +
-      '      войти(логин, пароль, общее)\n' +
+      '    let исход: ИсходВхода\n' +
+      '    try {\n' +
+      '      исход = войти(логин, пароль, общее)\n' +
       '    } catch {\n' +
       "      return { ok: false, text: СЧЁТ_НЕДОСТУПЕН }\n" +
-      '    }\n',
+      '    }',
     tests: '__tests__/auth/attempts.test.ts',
   },
   {
