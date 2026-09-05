@@ -71,15 +71,23 @@ export async function замокВБазе(): Promise<Замок> {
   const цель = resolveIngestTarget()
   const клиент = await connectToDatabase(цель.connection)
 
-  const ответ = await клиент.query('select meta.take_refresh_lock($1::interval) as взят', [
+  // Спрашивается вне транзакции, то есть на уровне «read committed»: там `update` перечитывает
+  // условие после чужой правки и честно отвечает «занято». Внутри `repeatable read` та же
+  // функция вместо отказа получила бы ошибку сериализации — поэтому замок берётся здесь, до
+  // всякой работы, а не изнутри чужой транзакции. Названо проверкой кода.
+  const ответ = await клиент.query('select meta.take_refresh_lock($1::interval) as расписка', [
     АРЕНДА_ЗАМКА,
   ])
-  const взят = (ответ.rows[0] as { взят: boolean } | undefined)?.взят === true
+  const расписка = (ответ.rows[0] as { расписка: string | null } | undefined)?.расписка ?? null
 
   return {
-    взят,
+    взят: расписка !== null,
     отпустить: async () => {
-      if (взят) await клиент.query('select meta.release_refresh_lock()')
+      // Отпускаем **свой** замок: расписка не совпадёт, если его уже отобрали по истечении
+      // аренды, и тогда трогать строку нельзя — она принадлежит другому прогону.
+      if (расписка !== null) {
+        await клиент.query('select meta.release_refresh_lock($1)', [расписка])
+      }
       await клиент.release()
     },
   }

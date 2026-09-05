@@ -61,3 +61,32 @@ test('в разметке страницы отказа нет ни адреса
   expect(разметка).not.toContain('пользователь-базы')
   expect(разметка).not.toContain('postgresql://')
 })
+
+/**
+ * Подлинная причина обязана доехать в журнал сервера. На экран она не идёт нарочно, и если её
+ * при этом никто не пишет, боевой сбой базы не оставляет следа вовсе — отлаживать нечем.
+ * Найдено проверкой кода.
+ */
+test('подлинная причина отказа уходит в журнал сервера', async () => {
+  const записи: unknown[][] = []
+  const прежний = console.error
+  console.error = (...аргументы: unknown[]) => {
+    записи.push(аргументы)
+  }
+
+  отчёт.mockImplementation(async () => {
+    throw new ОтказОтчёта(
+      'данные не читаются',
+      `не удалось соединиться: ${АДРЕС_БАЗЫ}`,
+      new Error(`не удалось соединиться: ${АДРЕС_БАЗЫ}`),
+    )
+  })
+
+  try {
+    renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({ m: '2026-03' }) }))
+  } finally {
+    console.error = прежний
+  }
+
+  expect(записи.map((з) => з.map(String).join(' ')).join('\n')).toContain('внутренний-хост.example')
+})

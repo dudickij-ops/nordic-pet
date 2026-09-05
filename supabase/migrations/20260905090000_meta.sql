@@ -141,12 +141,22 @@ create table meta.refresh_lock (
 --
 -- Второй вызов, пришедший вплотную, ждёт не дольше первой команды: `update` берёт замок строки,
 -- а дождавшись, перечитывает условие и видит уже занятое — и возвращает отказ, а не очередь.
+--
+-- Возвращает **отметку взятия** — она же расписка владельца, — или NULL, если замок занят.
+-- Расписка нужна отпусканию: без неё отпускание обнуляло бы строку не глядя, и обновление,
+-- пережившее аренду, отдало бы замок второму прогону, а потом своим же завершением открыло бы
+-- дорогу третьему — поверх работающего второго. Найдено проверкой кода.
+--
+-- Расписка везётся **строкой**: у базы отметка времени с микросекундами, а у времени в коде —
+-- миллисекунды, и расписка, съездившая туда и обратно значением времени, перестаёт совпадать
+-- сама с собой. Тогда отпускание не срабатывало бы никогда, и замок держался бы до конца аренды
+-- после каждого обновления.
 create function meta.take_refresh_lock(p_lease interval)
-returns boolean
+returns text
 language plpgsql
 as $$
 declare
-  взят boolean;
+  расписка text;
 begin
   insert into meta.refresh_lock (only_row, taken_at) select true, null
   on conflict (only_row) do nothing;
@@ -154,18 +164,21 @@ begin
   update meta.refresh_lock
      set taken_at = clock_timestamp()
    where taken_at is null or taken_at < clock_timestamp() - p_lease
-  returning true into взят;
+  returning taken_at::text into расписка;
 
-  return coalesce(взят, false);
+  return расписка;
 end;
 $$;
 
--- Отпустить замок. Зовётся в любом исходе работы.
-create function meta.release_refresh_lock()
+-- Отпустить замок — только свой.
+--
+-- Расписка не совпала — значит замок уже отобрали по истечении аренды и он принадлежит другому
+-- прогону. Тогда не трогаем: чужой замок отпускает чужая работа.
+create function meta.release_refresh_lock(p_расписка text)
 returns void
 language sql
 as $$
-  update meta.refresh_lock set taken_at = null;
+  update meta.refresh_lock set taken_at = null where taken_at::text = p_расписка;
 $$;
 
 -- Отстали ли факты от сырья.

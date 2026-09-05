@@ -3,10 +3,10 @@ import type { Break } from './types.ts'
 /**
  * Список сломов куска S8 — пять дыр, которые могут выстрелить у проверяющего.
  *
- * Двадцать три строки: восемь на замок от подбора пароля, три на выход, три на свой вид у
- * отказа отчёта, две на отметку свежести, четыре на замок от двух одновременных обновлений,
- * две на то, что человек вправду видит на экране, и одна на то, что новая схема не выставлена
- * наружу через API. Ссылаемся по имени, а не по номеру: вставка
+ * Двадцать девять строк: одиннадцать на замок от подбора пароля, три на выход, пять на свой
+ * вид у отказа отчёта, две на отметку свежести, пять на замок от двух одновременных
+ * обновлений, две на то, что человек вправду видит на экране, и одна на то, что новая схема
+ * не выставлена наружу через API. Ссылаемся по имени, а не по номеру: вставка
  * нового слома сдвигает номера, и текст, написанный номерами, начинает врать молча.
  *
  * **Чего в этом списке нет и почему.** У проверки «отказавший разбор отметку не сдвигает» своего
@@ -129,9 +129,14 @@ export const BREAKS: Break[] = [
     ],
     file: 'lib/auth/attempts.ts',
     find: '  if (непроставленныеПеременныеВхода(deps.env).length > 0) return войти(логин, пароль, общее)',
+    // Слом обязан **сам открыть счёт**: поля `счёт` в зависимостях больше нет, и вызов через
+    // него падал бы с ошибкой типа. Красное на падении доказывает падение, а не механизм.
+    // Найдено проверкой кода.
     replace:
       '  if (непроставленныеПеременныеВхода(deps.env).length > 0) {\n' +
-      '    await deps.счёт.записатьНеудачу(deps.адрес)\n' +
+      '    const счёт = await deps.открытьСчёт()\n' +
+      '    await счёт.записатьНеудачу(deps.адрес)\n' +
+      '    await счёт.закрыть()\n' +
       '    return войти(логин, пароль, общее)\n' +
       '  }',
     tests: '__tests__/auth/attempts.test.ts',
@@ -246,10 +251,6 @@ export const BREAKS: Break[] = [
         name: 'отказавший разбор отметку не сдвигает',
         why: 'она сравнивает отметку до и после, а без записи отметки сравнивать нечего',
       },
-      {
-        name: 'сырьё новее фактов — отчёт говорит, что числа отстали',
-        why: 'без отметки числа устарели всегда, и «отстали» перестаёт что-либо различать',
-      },
     ],
     file: 'lib/facts/build.ts',
     find: "    await client.query('select meta.mark_fact_freshness()')\n",
@@ -288,8 +289,8 @@ export const BREAKS: Break[] = [
     file: 'supabase/migrations/20260905090000_meta.sql',
     find:
       '   where taken_at is null or taken_at < clock_timestamp() - p_lease\n' +
-      '  returning true into взят;',
-    replace: '  returning true into взят;',
+      '  returning taken_at::text into расписка;',
+    replace: '  returning taken_at::text into расписка;',
     tests: '__tests__/metrics/refresh-lock.test.ts',
     resetDb: true,
   },
@@ -341,5 +342,73 @@ export const BREAKS: Break[] = [
     find: 'schemas = ["public", "graphql_public"]',
     replace: 'schemas = ["public", "graphql_public", "meta"]',
     tests: '__tests__/db/meta.test.ts',
+  },
+  {
+    id: 'counter-failure-lets-through',
+    claim: 'пускать, когда счёт попыток недоступен',
+    mustRedden: 'недоступный счёт — отказ, а не проход с годным паролем',
+    file: 'lib/auth/attempts.ts',
+    find:
+      '  let счёт: СчётПопыток\n' +
+      '  try {\n' +
+      '    счёт = await deps.открытьСчёт()\n' +
+      '  } catch {\n' +
+      '    return { ok: false, text: СЧЁТ_НЕДОСТУПЕН }\n' +
+      '  }',
+    replace:
+      '  let счёт: СчётПопыток\n' +
+      '  try {\n' +
+      '    счёт = await deps.открытьСчёт()\n' +
+      '  } catch {\n' +
+      '    return войти(логин, пароль, общее)\n' +
+      '  }',
+    tests: '__tests__/auth/attempts.test.ts',
+  },
+  {
+    id: 'counter-not-closed',
+    claim: 'не закрывать соединение счёта',
+    mustRedden: 'счёт закрывается и после удачи, и после неудачи',
+    file: 'lib/auth/attempts.ts',
+    find: '  } finally {\n    await счёт.закрыть().catch(() => {})\n  }',
+    replace: '  } finally {\n    await Promise.resolve()\n  }',
+    tests: '__tests__/auth/attempts.test.ts',
+  },
+  {
+    id: 'address-list-first-taken',
+    claim: 'брать из списка адресов первый, как раньше',
+    mustRedden: 'список адресов уходит в общее ведро целиком, а не разбирается по первому',
+    file: 'lib/auth/attempts.ts',
+    find: "  if (строка === '' || строка.includes(',')) return ОБЩЕЕ_ВЕДРО\n  return строка",
+    replace: "  if (строка === '') return ОБЩЕЕ_ВЕДРО\n  return строка.split(',')[0].trim()",
+    tests: '__tests__/auth/attempts.test.ts',
+  },
+  {
+    id: 'screen-text-diverges',
+    claim: 'развести текст отказа на экране с текстом слоя метрик',
+    mustRedden: 'текст отказа на экране и в слое метрик — один и тот же',
+    file: 'app/page.tsx',
+    find:
+      "  'Данные сейчас не читаются: база не ответила. Числа не показаны нарочно — показывать ' +",
+    replace: "  'Данные сейчас не читаются. ' +",
+    tests: '__tests__/metrics/screen-busy.test.tsx',
+  },
+  {
+    id: 'cause-not-logged',
+    claim: 'не писать подлинную причину отказа в журнал сервера',
+    mustRedden: 'подлинная причина отказа уходит в журнал сервера',
+    file: 'app/page.tsx',
+    find: "      if (вид === 'данные не читаются') console.error('отказ отчёта:', error)\n",
+    replace: '',
+    tests: '__tests__/metrics/screen-refusal.test.tsx',
+  },
+  {
+    id: 'release-without-token',
+    claim: 'отпускать замок не глядя, чей он',
+    mustRedden: 'чужое отпускание замок не отдаёт',
+    file: 'supabase/migrations/20260905090000_meta.sql',
+    find: '  update meta.refresh_lock set taken_at = null where taken_at::text = p_расписка;',
+    replace: '  update meta.refresh_lock set taken_at = null;',
+    tests: '__tests__/metrics/refresh-lock.test.ts',
+    resetDb: true,
   },
 ]
