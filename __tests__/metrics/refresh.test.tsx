@@ -101,6 +101,17 @@ function fakeServiceAccountKeyPath(): string {
   return path
 }
 
+/**
+ * Свободный замок — обвязка, добавленная в S8 с разрешения владельца.
+ *
+ * Замок на два одновременных обновления (S8, задача 6) по умолчанию настоящий и просит
+ * названную среду; эти проверки среды не называют и базы не трогают вовсе. Подставляется
+ * **обвязка вызова**, ни одно утверждение этих проверок не менялось: они как проверяли порядок
+ * шагов, отказы и щель, так и проверяют. Что замок вправду запирает, сторожат свои проверки в
+ * `refresh-lock.test.ts`.
+ */
+const свободныйЗамок = async () => ({ взят: true, отпустить: async () => {} })
+
 /** Собирает подставки трёх шагов и ленту того, что вправду позвали. */
 function шагиС(отказНа?: 'ingest:sheets' | 'ingest:ads' | 'facts', причина = 'нарочно') {
   const лента: string[] = []
@@ -112,6 +123,7 @@ function шагиС(отказНа?: 'ingest:sheets' | 'ingest:ads' | 'facts', �
     лента,
     deps: {
       announce: () => {},
+      замок: свободныйЗамок,
       ingestSheets: шаг('ingest:sheets'),
       ingestAds: шаг('ingest:ads'),
       buildFacts: шаг('facts'),
@@ -179,14 +191,14 @@ test('кнопка зовёт только работы из списка ком
       позвано.push(команда.name)
     },
   }))
-  await refreshEverything({ announce: () => {}, commands: список })
+  await refreshEverything({ announce: () => {}, замок: свободныйЗамок, commands: список })
   expect(позвано).toEqual(['ingest:sheets', 'ingest:ads', 'facts'])
 })
 
 test('шага, которого нет в списке команд, кнопка не выдумывает', async () => {
   const без = DATABASE_COMMANDS.filter((команда) => команда.name !== 'facts')
   await expect(
-    refreshEverything({ announce: () => {}, commands: без }),
+    refreshEverything({ announce: () => {}, замок: свободныйЗамок, commands: без }),
   ).rejects.toThrow(/нет в списке/)
 })
 
