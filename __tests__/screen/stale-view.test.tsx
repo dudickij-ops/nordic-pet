@@ -40,13 +40,12 @@ function вид(stale: boolean): string {
 test('устаревшие числа получают свой класс, свежие — не получают', () => {
   const устарели = вид(true)
   expect(устарели, 'числа со страницы не пропадают, а меняют вид').toContain('ЧИСЛА')
-  expect(устарели, 'обёртка устаревших чисел помечена своим классом').toMatch(
-    /class="[^"]*\bstale\b[^"]*"/,
+  expect(устарели, 'обёртка устаревших чисел помечена своим классом').toContain(
+    'class="numbers numbers-stale"',
   )
 
   const свежие = вид(false)
   expect(свежие).toContain('ЧИСЛА')
-  expect(свежие, 'свежие числа отдельного класса не несут').not.toMatch(
-    /class="[^"]*\bstale\b[^"]*"/,
-  )
+  expect(свежие, 'обёртка свежих чисел — только базовый класс').toContain('class="numbers"')
+  expect(свежие, 'и никакой пометки устаревания').not.toContain('numbers-stale')
 })

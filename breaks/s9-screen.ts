@@ -9,6 +9,13 @@ import type { Break } from './types.ts'
  * Девять сломов: четыре на сеть безопасности, три на полосу доли честности, два на
  * устаревание чисел. Разбивка сходится с итогом: 4+3+2.
  *
+ * **Слом `stale-class-dropped` со второго захода зеленел, и причина стоит того, чтобы её
+ * записать.** Обёртка чисел звалась классом `stale`, пометка над ней — `stale-mark`, а проверка
+ * искала слово «stale» в атрибуте класса. Она находила пометку вместо обёртки и потому зеленела
+ * на снятом классе: доказывала не то, что написано в её имени. Имена разведены — обёртка теперь
+ * `numbers-stale`, — и утверждение стало точным. Нашёл прогон сломов; ни глаз, ни проверка кода
+ * этого не показали.
+ *
  * **Слом `labels-swapped` появился после проверки кода и стоит отдельного слова.** Первая
  * редакция переписи снимала с экрана только числа. Рецензент показал дыру, и она подтвердилась
  * наблюдением: перестановка подписей «Скидки» и «Возвраты» местами — при значениях, оставшихся
@@ -106,6 +113,15 @@ export const BREAKS: Break[] = [
     id: 'share-bar-fixed-width',
     claim: 'задать полосе доли постоянную ширину',
     mustRedden: 'полоса берёт ту же величину, что и напечатанное рядом число',
+    alsoRedden: [
+      {
+        name: 'доля вне пределов уходит в полосу как есть, а не подправленной разметкой',
+        why:
+          'она утверждает то же самое устройство на другом значении: полоса получает ровно ' +
+          'то, что напечатано. Слом обрывает связь для всех долей разом, и обе проверки ' +
+          'краснеют — разными значениями об одном механизме',
+      },
+    ],
     file: 'app/page.tsx',
     find: "<div className=\"share-fill\" style={{ '--share': `${доля}%` } as CSSProperties} />",
     replace: "<div className=\"share-fill\" style={{ '--share': '100%' } as CSSProperties} />",
@@ -115,6 +131,15 @@ export const BREAKS: Break[] = [
     id: 'share-bar-other-value',
     claim: 'взять ширину полосы не из доли, а из соседнего числа отчёта',
     mustRedden: 'полоса берёт ту же величину, что и напечатанное рядом число',
+    alsoRedden: [
+      {
+        name: 'доля вне пределов уходит в полосу как есть, а не подправленной разметкой',
+        why:
+          'она утверждает то же самое устройство на другом значении: полоса получает ровно ' +
+          'то, что напечатано. Слом обрывает связь для всех долей разом, и обе проверки ' +
+          'краснеют — разными значениями об одном механизме',
+      },
+    ],
     file: 'app/page.tsx',
     find: "<div className=\"share-fill\" style={{ '--share': `${доля}%` } as CSSProperties} />",
     replace:
@@ -151,8 +176,9 @@ export const BREAKS: Break[] = [
       },
     ],
     file: 'app/refresh-panel.tsx',
-    find: "      <div data-stale={stale ? 'true' : 'false'} className={stale ? 'numbers stale' : 'numbers'}>",
-    replace: "      <div className={stale ? 'numbers stale' : 'numbers'}>",
+    find:
+      "      <div data-stale={stale ? 'true' : 'false'} className={stale ? 'numbers numbers-stale' : 'numbers'}>",
+    replace: "      <div className={stale ? 'numbers numbers-stale' : 'numbers'}>",
     tests: 'все',
   },
   {
@@ -160,7 +186,7 @@ export const BREAKS: Break[] = [
     claim: 'не менять класс обёртки, когда числа устарели',
     mustRedden: 'устаревшие числа получают свой класс, свежие — не получают',
     file: 'app/refresh-panel.tsx',
-    find: "className={stale ? 'numbers stale' : 'numbers'}",
+    find: "className={stale ? 'numbers numbers-stale' : 'numbers'}",
     replace: "className=\"numbers\"",
     tests: 'все',
   },

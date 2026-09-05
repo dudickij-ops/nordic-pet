@@ -70,7 +70,7 @@ export function RefreshView({
         же — единственный признак состояния, видимый снаружи разметки. У его удаления есть свой
         слом.
       */}
-      <div data-stale={stale ? 'true' : 'false'} className={stale ? 'numbers stale' : 'numbers'}>
+      <div data-stale={stale ? 'true' : 'false'} className={stale ? 'numbers numbers-stale' : 'numbers'}>
         {stale && <p className="stale-mark">Числа ниже устарели</p>}
         {children}
       </div>
