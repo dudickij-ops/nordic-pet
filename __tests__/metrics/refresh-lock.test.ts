@@ -169,3 +169,61 @@ test('чужое отпускание замок не отдаёт', async () =>
 
   await второй.отпустить()
 })
+
+/**
+ * Отказ **самого отпускания** не должен подменять собой исход обновления: `отпустить` зовётся в
+ * `finally`, и брошенная оттуда ошибка заменила бы и удачу, и читаемый отказ шага. Соединение
+ * при этом всё равно закрывается. Найдено проверкой кода.
+ */
+test('отказ отпускания не подменяет исход и не оставляет соединения', async () => {
+  const прежний = console.error
+  console.error = () => {}
+  const закрытий: string[] = []
+  try {
+    const замок = await замокВБазе(async () => ({
+      query: async (sql: string) => {
+        if (sql.includes('release_refresh_lock')) throw new Error('база не ответила')
+        return { rows: [{ жетон: 'не-настоящий-жетон' }] }
+      },
+      release: async () => {
+        закрытий.push('закрыто')
+      },
+    }))
+
+    expect(замок.взят).toBe(true)
+    await expect(замок.отпустить()).resolves.toBeUndefined()
+    expect(закрытий, 'соединение закрывается даже при отказе отпускания').toEqual(['закрыто'])
+  } finally {
+    console.error = прежний
+  }
+})
+
+/**
+ * Жетон — случайное значение, а не отрисовка времени, и вот на чём это видно: отпускание
+ * срабатывает из сеанса с **другими** часовым поясом и форматом дат. Отметка времени, съездившая
+ * туда и обратно строкой, в таком сеансе не совпала бы, и замок провисел бы всю аренду.
+ * Найдено проверкой кода.
+ */
+test('замок отпускается из сеанса с другими часовым поясом и форматом дат', async () => {
+  const свой = await pool.connect()
+  const чужой = await pool.connect()
+  try {
+    const { rows } = await свой.query<{ жетон: string | null }>(
+      "select meta.take_refresh_lock('10 minutes'::interval) as жетон",
+    )
+    const жетон = rows[0].жетон
+    expect(жетон).not.toBeNull()
+
+    await чужой.query("set time zone 'Pacific/Kiritimati'")
+    await чужой.query("set datestyle to 'German, DMY'")
+    await чужой.query('select meta.release_refresh_lock($1)', [жетон])
+
+    const после = await pool.query<{ taken_at: Date | null }>(
+      'select taken_at from meta.refresh_lock',
+    )
+    expect(после.rows[0].taken_at, 'чужие настройки сеанса отпусканию не мешают').toBeNull()
+  } finally {
+    свой.release()
+    чужой.release()
+  }
+})

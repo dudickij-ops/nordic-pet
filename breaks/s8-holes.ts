@@ -3,7 +3,7 @@ import type { Break } from './types.ts'
 /**
  * Список сломов куска S8 — пять дыр, которые могут выстрелить у проверяющего.
  *
- * Тридцать одна строка: тринадцать на замок от подбора пароля, три на выход, пять на свой
+ * Тридцать четыре строки: тринадцать на замок от подбора пароля, три на выход, пять на свой
  * вид у отказа отчёта, две на отметку свежести, пять на замок от двух одновременных
  * обновлений, две на то, что человек вправду видит на экране, и одна на то, что новая схема
  * не выставлена наружу через API. Ссылаемся по имени, а не по номеру: вставка
@@ -107,7 +107,8 @@ export const BREAKS: Break[] = [
     file: 'lib/auth/attempts.ts',
     find:
       '  const осталось = Math.max(0, Math.ceil((отпустит - сейчас) / 60_000))\n' +
-      '  return осталось === 0 ? { заперто: false, черезМинут: 0 } : { заперто: true, черезМинут: осталось }',
+      '  if (осталось === 0) return { заперто: false, черезМинут: 0 }\n' +
+      '  return { заперто: true, черезМинут: осталось }',
     replace: '  return { заперто: true, черезМинут: ОКНО_МИНУТ }',
     tests: '__tests__/auth/attempts.test.ts',
   },
@@ -423,21 +424,63 @@ export const BREAKS: Break[] = [
     resetDb: true,
   },
   {
-    id: 'refusal-after-login-swallows-success',
+    /**
+     * Прежний слом этой строки краснил **падением**: он снимал перехват учёта, и наружу летел
+     * необработанный отказ подставки. Красное на падении доказывает падение, а не механизм.
+     * Теперь слом делает ровно то, что говорит строка: возвращает сверку внутрь перехвата.
+     * Найдено проверкой кода.
+     */
+    id: 'login-back-inside-catch',
     claim: 'накрыть перехватом и сверку — вместе с выдачей cookie',
-    mustRedden: 'сбой учёта после удачного входа не превращает удачу в отказ',
+    mustRedden: 'сбой выдачи cookie летит наружу, а не превращается в «база не ответила»',
     file: 'lib/auth/attempts.ts',
     find:
-      '      try {\n' +
-      '        await счёт.обнулить(deps.адрес)\n' +
-      '      } catch (отказ) {\n' +
-      "        console.error('счёт попыток не обнулился после удачного входа:', отказ)\n" +
-      '      }\n' +
-      '      return исход',
+      '      состояние = await счёт.неудачи(deps.адрес)\n' +
+      '    } catch {\n' +
+      "      return { ok: false, text: СЧЁТ_НЕДОСТУПЕН }\n" +
+      '    }\n',
     replace:
-      '      await счёт.обнулить(deps.адрес)\n' +
-      '      return исход',
+      '      состояние = await счёт.неудачи(deps.адрес)\n' +
+      '      войти(логин, пароль, общее)\n' +
+      '    } catch {\n' +
+      "      return { ok: false, text: СЧЁТ_НЕДОСТУПЕН }\n" +
+      '    }\n',
     tests: '__tests__/auth/attempts.test.ts',
+  },
+  {
+    id: 'release-failure-replaces-outcome',
+    claim: 'дать отказу отпускания замка вылететь наружу',
+    mustRedden: 'отказ отпускания не подменяет исход и не оставляет соединения',
+    file: 'lib/metrics/refresh.ts',
+    find:
+      '      } catch (отказ) {\n' +
+      "        console.error('замок обновления не отпустился — провисит до конца аренды:', отказ)\n" +
+      '      } finally {',
+    replace: '      } finally {',
+    tests: '__tests__/metrics/refresh-lock.test.ts',
+  },
+  {
+    id: 'lock-connection-not-closed',
+    claim: 'не закрывать соединение замка',
+    mustRedden: 'отказ отпускания не подменяет исход и не оставляет соединения',
+    file: 'lib/metrics/refresh.ts',
+    find: '        await клиент.release().catch(() => {})',
+    replace: '        await Promise.resolve()',
+    tests: '__tests__/metrics/refresh-lock.test.ts',
+  },
+  {
+    id: 'token-is-rendered-time',
+    claim: 'вернуть отметку времени вместо случайного жетона',
+    mustRedden: 'замок отпускается из сеанса с другими часовым поясом и форматом дат',
+    file: 'supabase/migrations/20260905090000_meta.sql',
+    find: '  returning token::text into жетон;',
+    replace: '  returning taken_at::text into жетон;',
+    andThen: {
+      find: '   where token::text = p_жетон;',
+      replace: '   where taken_at::text = p_жетон;',
+    },
+    tests: '__tests__/metrics/refresh-lock.test.ts',
+    resetDb: true,
   },
   {
     id: 'unrecorded-failure-lets-through',
