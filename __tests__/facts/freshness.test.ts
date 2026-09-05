@@ -32,16 +32,35 @@ afterAll(async () => {
   await pool.end()
 })
 
-/** Клиент, у которого фиксация и откат подменены точками сохранения: настоящие сорвали бы откат. */
+/**
+ * Клиент, у которого фиксация и откат подменены точками сохранения: настоящие сорвали бы откат
+ * всей проверки.
+ *
+ * Точки складываются стопкой, и каждая своя: разбор и отчёт открывают транзакции по очереди, а
+ * одна точка на всех означала бы, что отчёт снимает точку разбора — и следующая же команда
+ * получает «current transaction is aborted». Наступил на это, когда проверка стала ходить
+ * разбор → отчёт → разбор.
+ */
+let точек = 0
+
 function savepointClient(client: PoolClient) {
+  const стопка: string[] = []
   return {
     query: async (sql: string, params?: unknown[]) => {
-      if (sql === 'begin isolation level repeatable read') {
-        return client.query('savepoint разбор')
+      if (sql.startsWith('begin')) {
+        точек += 1
+        const имя = `точка${точек}`
+        стопка.push(имя)
+        return client.query(`savepoint ${имя}`)
       }
-      if (sql === 'commit') return client.query('release savepoint разбор')
-      if (sql === 'rollback') return client.query('rollback to savepoint разбор')
-      if (sql.startsWith('begin')) return client.query('savepoint отчёт')
+      if (sql === 'commit') {
+        const имя = стопка.pop()
+        return имя === undefined ? { rows: [] } : client.query(`release savepoint ${имя}`)
+      }
+      if (sql === 'rollback') {
+        const имя = стопка.pop()
+        return имя === undefined ? { rows: [] } : client.query(`rollback to savepoint ${имя}`)
+      }
       return client.query(sql, params)
     },
     async release() {},
@@ -65,13 +84,35 @@ const разбор = (client: PoolClient) =>
 const отчёт = (client: PoolClient) =>
   monthlyReport(undefined, { connect: async () => savepointClient(client), announce: () => {} })
 
-test('после разбора числа не помечены устаревшими', async () => {
+/**
+ * Настоящее изменение сырья — той же функцией снимка, что и у загрузчика: `updated_at` двигается
+ * тогда и только тогда, когда содержимое строки стало другим.
+ */
+const тронутьСырьё = (client: PoolClient) =>
+  client.query(
+    `select raw.replace_fees($json$[
+       {"row_no": 1, "gateway": "stripe", "fee_pct": "2,9"},
+       {"row_no": 2, "gateway": "paypal", "fee_pct": "3,4"},
+       {"row_no": 3, "gateway": "klarna", "fee_pct": "1,1"}
+     ]$json$::jsonb)`,
+  )
+
+/**
+ * Переход состояния, а не снимок: тронули сырьё — отстали, разобрали заново — свежие. Прежде
+ * здесь стояло одно утверждение «после разбора не устарели», и обе его стороны считались одним
+ * и тем же выражением по одному снимку — то есть проверка сравнивала величину сама с собой.
+ * Найдено проверкой кода.
+ */
+test('разбор возвращает числа из отставших в свежие', async () => {
   await наБазе(async (client) => {
     await разбор(client)
+    expect((await отчёт(client)).устарели, 'сразу после разбора числа свежие').toBe(false)
 
-    const итог = await отчёт(client)
+    await тронутьСырьё(client)
+    expect((await отчёт(client)).устарели, 'сырьё тронули — числа отстали').toBe(true)
 
-    expect(итог.устарели).toBe(false)
+    await разбор(client)
+    expect((await отчёт(client)).устарели, 'разобрали заново — снова свежие').toBe(false)
   })
 })
 
@@ -83,15 +124,7 @@ test('сырьё новее фактов — отчёт говорит, что �
   await наБазе(async (client) => {
     await разбор(client)
 
-    // Настоящее изменение сырья, той же функцией снимка, что и у загрузчика: `updated_at`
-    // двигается тогда и только тогда, когда содержимое строки стало другим.
-    await client.query(
-      `select raw.replace_fees($json$[
-         {"row_no": 1, "gateway": "stripe", "fee_pct": "2,9"},
-         {"row_no": 2, "gateway": "paypal", "fee_pct": "3,4"},
-         {"row_no": 3, "gateway": "klarna", "fee_pct": "1,1"}
-       ]$json$::jsonb)`,
-    )
+    await тронутьСырьё(client)
 
     const итог = await отчёт(client)
 

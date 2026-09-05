@@ -116,3 +116,76 @@ as $$
   ) as сырьё
   on conflict (only_row) do update set raw_seen_at = excluded.raw_seen_at;
 $$;
+
+-- Замок на два одновременных обновления.
+--
+-- Строкой в таблице, а не совещательным замком PostgreSQL, и это решение по итогам проверки
+-- кода. Совещательный замок сеансового уровня в бою не работает вовсе: боевой адрес идёт через
+-- объединитель соединений в транзакционном режиме, а его карта возможностей говорит про
+-- сеансовые совещательные замки «Never» и предупреждает: «This mode breaks a few session-based
+-- features of PostgreSQL». Взятие ушло бы на один задний конец, отпускание — на другой, и
+-- кнопка «Обновить» закрылась бы навсегда после первого нажатия. Местная база этого не
+-- показывает: там прямое соединение.
+--
+-- Строка в таблице сеансового состояния не требует и работает через любой объединитель.
+create table meta.refresh_lock (
+  only_row boolean primary key default true check (only_row),
+  taken_at timestamptz
+);
+
+-- Взять замок, если он свободен или его аренда протухла.
+--
+-- Аренда нужна ровно потому, что таблица, в отличие от сеансового замка, сама не отпустится:
+-- процесс, убитый посреди обновления, оставил бы кнопку запертой навсегда. Длительность аренды
+-- называет зовущий — она живёт рядом с числами куска, а не спрятана здесь.
+--
+-- Второй вызов, пришедший вплотную, ждёт не дольше первой команды: `update` берёт замок строки,
+-- а дождавшись, перечитывает условие и видит уже занятое — и возвращает отказ, а не очередь.
+create function meta.take_refresh_lock(p_lease interval)
+returns boolean
+language plpgsql
+as $$
+declare
+  взят boolean;
+begin
+  insert into meta.refresh_lock (only_row, taken_at) select true, null
+  on conflict (only_row) do nothing;
+
+  update meta.refresh_lock
+     set taken_at = clock_timestamp()
+   where taken_at is null or taken_at < clock_timestamp() - p_lease
+  returning true into взят;
+
+  return coalesce(взят, false);
+end;
+$$;
+
+-- Отпустить замок. Зовётся в любом исходе работы.
+create function meta.release_refresh_lock()
+returns void
+language sql
+as $$
+  update meta.refresh_lock set taken_at = null;
+$$;
+
+-- Отстали ли факты от сырья.
+--
+-- Одно определение на весь проект: прежде объединение семи сырых таблиц было написано дважды —
+-- здесь и в слое метрик, — и восьмая таблица сырья развела бы половины молча, дав «свежо» на
+-- устаревших числах. Найдено проверкой кода.
+create function meta.facts_are_stale()
+returns boolean
+language sql
+as $$
+  select coalesce(
+    (select coalesce(max(updated_at), to_timestamp(0)) from (
+       select updated_at from raw.orders
+       union all select updated_at from raw.refunds
+       union all select updated_at from raw.costs
+       union all select updated_at from raw.fees
+       union all select updated_at from raw.opex
+       union all select updated_at from raw.fx
+       union all select updated_at from raw.ads
+     ) as сырьё) > (select raw_seen_at from meta.fact_freshness),
+    true);
+$$;

@@ -160,25 +160,14 @@ export type MonthReport = {
 /**
  * Отстали ли факты от сырья.
  *
- * Сравнивается самое позднее изменение сырья с отметкой, которую разбор записал в своей же
- * транзакции. Читается тем же снимком, что и сами числа, — иначе ответ был бы о другом
- * состоянии базы, чем показанные рядом числа.
+ * Спрашивается у базы одной функцией, а не своим объединением семи сырых таблиц: прежде такое
+ * объединение было написано и здесь, и в записи отметки, и восьмая таблица сырья развела бы
+ * половины молча — сравнение сказало бы «свежо» на устаревших числах. Найдено проверкой кода.
  *
- * Нет отметки вовсе — значит «устарели»: факты собраны не этим разбором или не собраны
- * никогда, и молчать об этом хуже, чем сказать лишний раз.
+ * Читается тем же снимком, что и сами числа: ответ обязан быть о том состоянии базы, которое
+ * показано рядом.
  */
-const STALE = `
-select coalesce(
-  (select coalesce(max(updated_at), to_timestamp(0)) from (
-     select updated_at from raw.orders
-     union all select updated_at from raw.refunds
-     union all select updated_at from raw.costs
-     union all select updated_at from raw.fees
-     union all select updated_at from raw.opex
-     union all select updated_at from raw.fx
-     union all select updated_at from raw.ads
-   ) as сырьё) > (select raw_seen_at from meta.fact_freshness),
-  true) as stale`
+const STALE = 'select meta.facts_are_stale() as stale'
 
 /** Вид дыры, чьи адреса переиспользует «доля честности» — своего запроса ей не нужно. */
 const NO_PRICE_GAP = 'строки продаж без цены поставщика'

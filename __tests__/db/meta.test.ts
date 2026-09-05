@@ -17,11 +17,15 @@ afterAll(() => pool.end())
 
 const ОКНО = '15 minutes'
 
-test('схема meta существует, и в ней ровно две таблицы', async () => {
+test('схема meta существует, и в ней ровно три таблицы', async () => {
   const found = await rows<{ tablename: string }>(
     `select tablename from pg_tables where schemaname = 'meta' order by tablename`,
   )
-  expect(found.map((r) => r.tablename)).toEqual(['fact_freshness', 'login_attempts'])
+  expect(found.map((r) => r.tablename)).toEqual([
+    'fact_freshness',
+    'login_attempts',
+    'refresh_lock',
+  ])
 })
 
 /**

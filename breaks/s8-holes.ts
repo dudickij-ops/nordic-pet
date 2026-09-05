@@ -3,9 +3,10 @@ import type { Break } from './types.ts'
 /**
  * Список сломов куска S8 — пять дыр, которые могут выстрелить у проверяющего.
  *
- * Двадцать строк: восемь на замок от подбора пароля, три на выход, три на свой вид у отказа
- * отчёта, две на отметку свежести, три на замок от двух одновременных обновлений и одна на то,
- * что новая схема не выставлена наружу через API. Ссылаемся по имени, а не по номеру: вставка
+ * Двадцать три строки: восемь на замок от подбора пароля, три на выход, три на свой вид у
+ * отказа отчёта, две на отметку свежести, четыре на замок от двух одновременных обновлений,
+ * две на то, что человек вправду видит на экране, и одна на то, что новая схема не выставлена
+ * наружу через API. Ссылаемся по имени, а не по номеру: вставка
  * нового слома сдвигает номера, и текст, написанный номерами, начинает врать молча.
  *
  * **Чего в этом списке нет и почему.** У проверки «отказавший разбор отметку не сдвигает» своего
@@ -15,9 +16,11 @@ import type { Break } from './types.ts'
  * Ближайшая ломаемая строка — сама запись отметки — закрыта сломом `freshness-not-marked`.
  * Названо здесь, чтобы читающий видел границу доказанного, а не считал её доказанной.
  *
- * `waiting-lock` краснит свою проверку **по истечении времени ожидания**, а не утверждением:
- * ждущий замок именно что ждёт, и проверка, которой обещано «второй уходит ни с чем», честно не
- * дожидается ответа. Это и есть её утверждение, просто выраженное временем.
+ * Слома «взять ждущий замок вместо пробующего» здесь больше нет: замок перестал быть
+ * совещательным. Проверка кода показала, что сеансовый совещательный замок в бою не работает
+ * вовсе — боевой адрес идёт через объединитель соединений в транзакционном режиме, — и замок
+ * переделан на строку в таблице. Ломается он теперь двумя строками: `lock-taken-unconditionally`
+ * снимает условие занятости, `lease-never-expires` делает аренду вечной.
  */
 
 export const BREAKS: Break[] = [
@@ -27,7 +30,7 @@ export const BREAKS: Break[] = [
     claim: 'не запирать вход после десяти неудач',
     mustRedden: 'после десяти неудач годный пароль не пускает',
     file: 'lib/auth/attempts.ts',
-    find: '  if (замок.заперто) return { ok: false, text: текстЗапертого(замок.черезМинут) }\n',
+    find: '    if (замок.заперто) return { ok: false, text: текстЗапертого(замок.черезМинут) }\n',
     replace: '',
     tests: '__tests__/auth/attempts.test.ts',
   },
@@ -42,7 +45,7 @@ export const BREAKS: Break[] = [
       },
     ],
     file: 'lib/auth/attempts.ts',
-    find: '  else await deps.счёт.записатьНеудачу(deps.адрес)',
+    find: '    else await счёт.записатьНеудачу(deps.адрес)',
     replace: '',
     tests: '__tests__/auth/attempts.test.ts',
   },
@@ -51,8 +54,8 @@ export const BREAKS: Break[] = [
     claim: 'не обнулять счёт при удачном входе',
     mustRedden: 'удачный вход обнуляет счёт: девять неудач, вход, снова девять — пускает',
     file: 'lib/auth/attempts.ts',
-    find: '  if (исход.ok) await deps.счёт.обнулить(deps.адрес)',
-    replace: '  if (исход.ok) await Promise.resolve()',
+    find: '    if (исход.ok) await счёт.обнулить(deps.адрес)',
+    replace: '    if (исход.ok) await Promise.resolve()',
     tests: '__tests__/auth/attempts.test.ts',
   },
   {
@@ -70,11 +73,11 @@ export const BREAKS: Break[] = [
       },
     ],
     file: 'lib/auth/attempts.ts',
-    find: '  const { неудач, самаяРанняя } = await deps.счёт.неудачи(deps.адрес)',
-    replace: '  const { неудач, самаяРанняя } = await deps.счёт.неудачи(ОБЩЕЕ_ВЕДРО)',
+    find: '    const { неудач, самаяРанняя } = await счёт.неудачи(deps.адрес)',
+    replace: '    const { неудач, самаяРанняя } = await счёт.неудачи(ОБЩЕЕ_ВЕДРО)',
     andThen: {
-      find: '  else await deps.счёт.записатьНеудачу(deps.адрес)',
-      replace: '  else await deps.счёт.записатьНеудачу(ОБЩЕЕ_ВЕДРО)',
+      find: '    else await счёт.записатьНеудачу(deps.адрес)',
+      replace: '    else await счёт.записатьНеудачу(ОБЩЕЕ_ВЕДРО)',
     },
     tests: '__tests__/auth/attempts.test.ts',
   },
@@ -263,19 +266,48 @@ export const BREAKS: Break[] = [
     tests: '__tests__/metrics/refresh-lock.test.ts',
   },
   {
-    id: 'waiting-lock',
-    claim: 'взять ждущий замок вместо пробующего',
+    id: 'lock-taken-unconditionally',
+    claim: 'выдавать замок всякому, кто попросит',
     mustRedden: 'настоящий замок второму не даётся и после отпускания даётся снова',
-    alsoRedden: [
-      {
-        name: 'замок не остаётся висеть в базе после отпускания',
-        why: 'ждущий замок не возвращает управления, и соседка не доходит до своего вопроса базе',
-      },
-    ],
-    file: 'lib/metrics/refresh.ts',
-    find: "'select pg_try_advisory_lock($1) as взят'",
-    replace: "'select pg_advisory_lock($1) is not null as взят'",
+    file: 'supabase/migrations/20260905090000_meta.sql',
+    find:
+      '   where taken_at is null or taken_at < clock_timestamp() - p_lease\n' +
+      '  returning true into взят;',
+    replace: '  returning true into взят;',
     tests: '__tests__/metrics/refresh-lock.test.ts',
+    resetDb: true,
+  },
+  {
+    /**
+     * Аренда — плата за то, что таблица сама не отпустится. Без неё обновление, убитое на
+     * середине, заперло бы кнопку навсегда: ровно тот дефект, ради которого замок и делался,
+     * только вывернутый.
+     */
+    id: 'lease-never-expires',
+    claim: 'сделать аренду вечной — брошенный замок не освобождается',
+    mustRedden: 'протухшая аренда освобождает замок',
+    file: 'lib/metrics/refresh.ts',
+    find: "export const АРЕНДА_ЗАМКА = '10 minutes'",
+    replace: "export const АРЕНДА_ЗАМКА = '100 years'",
+    tests: '__tests__/metrics/refresh-lock.test.ts',
+  },
+  {
+    id: 'busy-not-shown',
+    claim: 'не показывать человеку «обновление уже идёт»',
+    mustRedden: '«обновление уже идёт» человек видит на экране, а не только в возвращённом значении',
+    file: 'app/refresh-panel.tsx',
+    find: "      {outcome.ok === false && 'занято' in outcome && <p role=\"alert\">{outcome.text}</p>}\n",
+    replace: '',
+    tests: '__tests__/metrics/screen-busy.test.tsx',
+  },
+  {
+    id: 'stale-mark-not-shown',
+    claim: 'убрать со страницы пометку «числа отстали»',
+    mustRedden: 'сырьё новее фактов — на экране пометка, и она говорит, что нажать',
+    file: 'app/page.tsx',
+    find: '      {report.устарели === true && (',
+    replace: '      {false && (',
+    tests: '__tests__/metrics/screen-stale.test.tsx',
   },
 
   // ——— Задача 1: новая схема наружу не выставлена ———
