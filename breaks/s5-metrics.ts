@@ -680,8 +680,8 @@ export const BREAKS: Break[] = [
       { name: "текст отказа несёт причину, а не только шаг", why: "проглоченный отказ разбора не несёт причину и в этой проверке" },
     ],
     file: "lib/metrics/refresh.ts",
-    find: "  announce('разбор')\n  try {\n    await buildFacts()\n  } catch (error) {\n    return refusal('facts', error)\n  }",
-    replace: "  announce('разбор')\n  try {\n    await buildFacts()\n  } catch (error) {\n    return { ok: true }\n  }",
+    find: "    announce('разбор')\n    try {\n      await buildFacts()\n    } catch (error) {\n      return refusal('facts', error)\n    }",
+    replace: "    announce('разбор')\n    try {\n      await buildFacts()\n    } catch (error) {\n      return { ok: true }\n    }",
     tests: "__tests__/metrics/refresh.test.tsx",
   },
   {
@@ -724,8 +724,8 @@ export const BREAKS: Break[] = [
     claim: "назвать чужой шаг в отказе загрузки папки",
     mustRedden: "отказ загрузки папки называет свой шаг и объявляет щель",
     file: "lib/metrics/refresh.ts",
-    find: "  announce('папка')\n  try {\n    await ingestAds()\n  } catch (error) {\n    return refusal('ingest:ads', error)\n  }",
-    replace: "  announce('папка')\n  try {\n    await ingestAds()\n  } catch (error) {\n    return refusal('ingest:sheets', error)\n  }",
+    find: "    announce('папка')\n    try {\n      await ingestAds()\n    } catch (error) {\n      return refusal('ingest:ads', error)\n    }",
+    replace: "    announce('папка')\n    try {\n      await ingestAds()\n    } catch (error) {\n      return refusal('ingest:sheets', error)\n    }",
     tests: "__tests__/metrics/refresh.test.tsx",
   },
   {

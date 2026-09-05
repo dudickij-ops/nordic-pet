@@ -305,8 +305,11 @@ export const BREAKS: Break[] = [
     claim: 'расширить перехват отказа на странице обратно',
     mustRedden: 'отказ базы летит наружу, а не показывается страницей с кодом «всё хорошо»',
     file: 'app/page.tsx',
-    find: '    if (monthParam === undefined || ФОРМА_МЕСЯЦА.test(monthParam)) throw error\n',
-    replace: '',
+    // Переведён вместе с кодом в S8: страница теперь различает отказы по их виду, и
+    // «расширить перехват обратно» значит показывать страницей любую ошибку, а не только
+    // ту, что назвала свой вид. Утверждение слома и ожидание прежние.
+    find: '    if (monthParam !== undefined && !ФОРМА_МЕСЯЦА.test(monthParam)) {',
+    replace: '    if (error instanceof Error) {',
     tests: '__tests__/auth/guarded-paths.test.tsx',
   },
   {
