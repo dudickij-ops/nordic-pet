@@ -751,8 +751,8 @@ export const BREAKS: Break[] = [
     claim: "не подключить кнопку к экрану",
     mustRedden: "экран содержит кнопку и оборачивает ею отчёт",
     file: "app/page.tsx",
-    find: "  return (\n    <RefreshPanel>\n      <Dashboard report={report} />\n    </RefreshPanel>\n  )",
-    replace: "  return <Dashboard report={report} />",
+    find: "  return (\n    <>\n      <LogoutButton />\n      {/*\n        Пометка холодного открытия — задача 5 куска S8. Человек, открывший страницу заново,\n        прежде видел устаревшие числа без всякого предупреждения: пометка приходила только от\n        неудачного нажатия кнопки, то есть только тому, кто нажимал. Это разные механизмы, и\n        оба нужны.\n      */}\n      {report.устарели === true && (\n        <p role=\"status\">\n          Числа отстали от источников: сырьё менялось после последнего разбора. Нажмите\n          «Обновить данные».\n        </p>\n      )}\n      <RefreshPanel>\n        <Dashboard report={report} />\n      </RefreshPanel>\n    </>\n  )",
+    replace: "  return (\n    <>\n      <LogoutButton />\n      {report.устарели === true && (\n        <p role=\"status\">\n          Числа отстали от источников: сырьё менялось после последнего разбора. Нажмите\n          «Обновить данные».\n        </p>\n      )}\n      <Dashboard report={report} />\n    </>\n  )",
     tests: "__tests__/metrics/refresh.test.tsx",
   },
   {
