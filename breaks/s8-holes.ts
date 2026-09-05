@@ -488,7 +488,10 @@ export const BREAKS: Break[] = [
     claim: 'не закрывать соединение замка',
     mustRedden: 'отказ отпускания не подменяет исход и не оставляет соединения',
     file: 'lib/metrics/refresh.ts',
-    find: '        await клиент.release().catch(() => {})',
+    find:
+      '        await клиент.release().catch((отказ: unknown) => {\n' +
+      "          console.error('соединение замка не закрылось:', отказ)\n" +
+      '        })',
     replace: '        await Promise.resolve()',
     tests: '__tests__/metrics/refresh-lock.test.ts',
   },
