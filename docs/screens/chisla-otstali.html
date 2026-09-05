@@ -209,6 +209,15 @@ td {
 th:not(:first-child),
 td:not(:first-child) {
   text-align: right;
+}
+
+/*
+ * Не рвётся только значение. Заголовкам колонок перенос разрешён нарочно: с запретом
+ * «Продано за вычетом возвратов» держало таблицу шириной в 621 пиксель, и в полосе примерно
+ * 641…661 пикселя за край уезжала вся страница, а не таблица. Замерено: при 645 пикселях
+ * ширина страницы была 662.
+ */
+td {
   white-space: nowrap;
 }
 
@@ -217,6 +226,14 @@ thead th {
   font-weight: 600;
   color: var(--text-dim);
   border-bottom: 1px solid var(--line-strong);
+  /*
+   * Шапка держится при прокрутке: на двенадцати строках товаров человек, прокрутивший
+   * страницу, иначе читает числа без подписей колонок. Фон обязателен — без него строки
+   * просвечивают сквозь прилипшую шапку.
+   */
+  position: sticky;
+  top: 0;
+  background: var(--surface);
 }
 
 tbody tr:last-child td {
@@ -255,7 +272,15 @@ button:disabled {
  * Пометка — смысловой цвет. Отказ — красный, и красный больше нигде: цвет, потраченный на
  * украшение, перестаёт означать «сломалось».
  */
+/*
+ * `clear` обязателен: кнопка выхода — плавающая, а обычный блок под плавающим не отступает, и
+ * пометка «числа отстали» накрывала кнопку своей коробкой — «Выйти» читалось как часть плашки.
+ * Замерено на узком экране: коробка пометки 14…376, форма выхода 310…376, то есть целиком
+ * внутри. Найдено проверкой кода. Цена решения названа: на экране холодного открытия кнопка
+ * обновления уходит на свою строку, и это правильнее наложения.
+ */
 [role='status'] {
+  clear: right;
   margin: 0 0 var(--gap);
   padding: 0.7rem 1rem;
   background: var(--accent-soft);
@@ -292,12 +317,17 @@ button:disabled {
   margin: 0 0 0.75rem 1rem;
 }
 
+/*
+ * Рамка видна всегда. На странице отказа «данные не читаются» эта кнопка — единственный орган
+ * управления на экране, а с прозрачной рамкой она до наведения читалась словом, а не кнопкой.
+ * Найдено проверкой кода.
+ */
 .logout button {
   padding: 0.25rem 0.7rem;
   font-size: 0.85rem;
   color: var(--text-dim);
   background: transparent;
-  border-color: transparent;
+  border-color: var(--line);
 }
 
 .logout button:hover {
@@ -369,9 +399,13 @@ button.primary:hover:not(:disabled) {
   font-weight: 550;
 }
 
-/* Месяц без заказов виден, но не зовёт: он в списке потому, что есть реклама или расходы. */
+/*
+ * Месяц без заказов виден, но не зовёт: он в списке потому, что есть реклама или расходы.
+ * Приглушается пунктиром рамки, а не прозрачностью: это орган управления, и читаться он обязан
+ * не хуже соседей. Прозрачность 0,6 давала около 2,7 : 1.
+ */
 .months a[data-empty='true'] {
-  opacity: 0.6;
+  border-style: dashed;
 }
 
 /* ——— Главные числа ——— */
@@ -415,6 +449,17 @@ button.primary:hover:not(:disabled) {
 }
 
 .share-fill {
+  /*
+   * `clamp` здесь — сторож, а не украшение. Значение приходит величиной `--share` из разметки;
+   * если оно окажется отрицательным или больше ста, длина всё равно останется в пределах
+   * дорожки. Прежде значение подставлялось прямо в `width`, и отрицательная доля делала
+   * объявление негодным: браузер брал ширину по умолчанию и рисовал полосу во всю дорожку —
+   * то есть «посчитано всё» там, где текст рядом говорил «минус двенадцать процентов».
+   *
+   * Доли вне 0…100 в настоящих данных не встречались ни разу; арифметически они возможны,
+   * потому что чистая выручка строки уходит в минус при крупном возврате.
+   */
+  width: clamp(0%, var(--share, 0%), 100%);
   height: 100%;
   background: var(--accent);
   border-radius: 999px;
@@ -425,8 +470,13 @@ button.primary:hover:not(:disabled) {
   font-weight: 600;
 }
 
+/*
+ * Нулевая дыра видна, но не кричит. Приглушение — цветом, а не прозрачностью: прозрачность
+ * 0,65 поверх приглушённого текста давала контраст около 2,8 : 1 при норме 4,5 : 1, то есть
+ * строку, которую местами не прочитать. Найдено проверкой кода.
+ */
 .gaps li[data-zero='true'] {
-  opacity: 0.65;
+  color: var(--text-dim);
 }
 
 .gaps li:not([data-zero='true']) {
@@ -434,7 +484,12 @@ button.primary:hover:not(:disabled) {
   font-weight: 550;
 }
 
-.honesty p:last-of-type {
+/*
+ * Именно **второй** абзац, а не последний: когда товаров без цены нет, второго абзаца не
+ * существует вовсе, и `last-of-type` попадал в подпись доли — она гасла и мельчала. Найдено
+ * проверкой кода.
+ */
+.honesty p + p {
   margin-bottom: 0;
   color: var(--text-dim);
   font-size: 0.9rem;
@@ -456,10 +511,14 @@ button.primary:hover:not(:disabled) {
   gap: 0 1.5rem;
 }
 
+/*
+ * Раскладки в две колонки здесь нет, и это решение, а не упущение. Содержимое строки — один
+ * сплошной кусок текста «вид: число»: разделить его на подпись и значение можно было бы только
+ * вложенными тегами, а принятая проверка прошлого куска утверждает, что «скидки: 0» стоит на
+ * экране одной неразрывной строкой. Прежде здесь стоял флексбокс с раскладкой по краям — он не
+ * делал ничего вовсе: распределять между краями было нечего. Найдено проверкой кода.
+ */
 .gaps li {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
   padding: 0.35rem 0;
   border-bottom: 1px solid var(--line);
   font-size: 0.9rem;
@@ -528,6 +587,21 @@ button.primary:hover:not(:disabled) {
 
 /* ——— Узкий экран ——— */
 
+/*
+ * Прокрутка таблицы — своим условием и раньше общего узкого вида. Общее условие стоит на
+ * 40 rem, а таблице тесно уже примерно с 41 rem, и в этой полосе за край уезжала вся страница.
+ *
+ * Цена приёма названа: `display: block` снимает с таблицы табличную семантику в части читалок
+ * экрана, и числа теряют связь с заголовками колонок. Обёртка в разметке была бы лучше, но она
+ * сдвинула бы отступы строк, которые цитируют сломы прежних кусков.
+ */
+@media (max-width: 48rem) {
+  .items table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
 @media (max-width: 40rem) {
   body {
     padding: 1rem 0.85rem 3rem;
@@ -567,16 +641,6 @@ button.primary:hover:not(:disabled) {
     font-size: 1.35rem;
   }
 
-  /*
-   * Таблица товаров прокручивается сама, а не рвёт страницу. Прокрутка вешается на саму
-   * таблицу, а не на обёртку: обёртка в разметке сдвинула бы отступы строк, которые цитируют
-   * сломы прежних кусков.
-   */
-  .items table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
 }
 :root{
   /* Светлая тема. Тёмная — ниже, тем же набором имён. */
@@ -606,4 +670,4 @@ button.primary:hover:not(:disabled) {
   --page: 72rem;
 
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif;}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script><p role="status">Числа отстали от источников: сырьё менялось после последнего разбора. Нажмите «Обновить данные».</p><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><div data-stale="false" class="numbers"><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01">2026-01</a></li><li><a href="/?m=2026-02">2026-02</a></li><li><a href="/?m=2026-03" aria-current="page">2026-03</a></li></ul></nav></header><section class="block"><h2>Выручка</h2><dl><dt>Оборот</dt><dd>18 764,00 €</dd><dt>Скидки</dt><dd>427,50 €</dd><dt>Возвраты</dt><dd>1 059,46 €</dd><dt>Чистая выручка</dt><dd>17 277,04 €</dd></dl></section><section class="block"><h2>Затраты</h2><dl><dt>Себестоимость проданного</dt><dd>6 028,11 €</dd><dt>Реклама</dt><dd>4 431,37 €</dd><dt>Комиссии платёжных систем</dt><dd>526,12 €</dd><dt>Постоянные расходы</dt><dd>4 552,90 €</dd></dl></section><section class="block bottom-line"><h2>Итог</h2><dl><dt>Прибыль</dt><dd>1 738,53 €</dd><dt>Маржа</dt><dd>10,1 %</dd><dt>окупаемость рекламы (по обороту)</dt><dd>4,23 ×</dd></dl></section><section class="block items"><h2>Товары</h2><table><thead><tr><th>Артикул</th><th>Продано за вычетом возвратов</th><th>Чистая выручка</th><th>Себестоимость</th><th>Прибыль</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €</td><td>1 251,90 €</td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td></tr><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €</td><td>793,44 €</td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td></tr></tbody></table></section><section class="block honesty"><h2>Честность данных</h2><p>Посчитано по настоящей цене поставщика (доля от чистой выручки): <strong class="share-value">80,3 %</strong></p><div class="share" aria-hidden="true"><div class="share-fill" style="width:80.3%"></div></div><p>Без цены поставщика (запасные 40%): NP-011, NP-012</p></section><section class="block gaps"><h2>Неполнота данных</h2><p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p><ul><li data-zero="true">скидки: 0</li><li data-zero="true">оборот: 0</li><li data-zero="true">возвраты без суммы: 0</li><li data-zero="true">возвраты, не попавшие в счёт: 0</li><li data-zero="true">возвращено больше, чем куплено: 0</li><li>строки продаж без цены поставщика: 77 (NP-011, NP-012)</li><li data-zero="true">ставки без процента или без фиксированной части: 0</li><li data-zero="true">заказы с разными способами оплаты: 0</li><li data-zero="true">постоянные расходы без суммы: 0</li><li data-zero="true">реклама без суммы: 0</li><li data-zero="true">дни рекламы без курса: 0</li></ul></section></main></div></div></body></html>
+    'Noto Sans', sans-serif;}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script><p role="status">Числа отстали от источников: сырьё менялось после последнего разбора. Нажмите «Обновить данные».</p><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><div data-stale="false" class="numbers"><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01">2026-01</a></li><li><a href="/?m=2026-02">2026-02</a></li><li><a href="/?m=2026-03" aria-current="page">2026-03</a></li></ul></nav></header><section class="block"><h2>Выручка</h2><dl><dt>Оборот</dt><dd>18 764,00 €</dd><dt>Скидки</dt><dd>427,50 €</dd><dt>Возвраты</dt><dd>1 059,46 €</dd><dt>Чистая выручка</dt><dd>17 277,04 €</dd></dl></section><section class="block"><h2>Затраты</h2><dl><dt>Себестоимость проданного</dt><dd>6 028,11 €</dd><dt>Реклама</dt><dd>4 431,37 €</dd><dt>Комиссии платёжных систем</dt><dd>526,12 €</dd><dt>Постоянные расходы</dt><dd>4 552,90 €</dd></dl></section><section class="block bottom-line"><h2>Итог</h2><dl><dt>Прибыль</dt><dd>1 738,53 €</dd><dt>Маржа</dt><dd>10,1 %</dd><dt>окупаемость рекламы (по обороту)</dt><dd>4,23 ×</dd></dl></section><section class="block items"><h2>Товары</h2><table><thead><tr><th>Артикул</th><th>Продано за вычетом возвратов</th><th>Чистая выручка</th><th>Себестоимость</th><th>Прибыль</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €</td><td>1 251,90 €</td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td></tr><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €</td><td>793,44 €</td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td></tr></tbody></table></section><section class="block honesty"><h2>Честность данных</h2><p>Посчитано по настоящей цене поставщика (доля от чистой выручки): <strong class="share-value">80,3 %</strong></p><div class="share" aria-hidden="true"><div class="share-fill" style="--share:80.3%"></div></div><p>Без цены поставщика (запасные 40%): NP-011, NP-012</p></section><section class="block gaps"><h2>Неполнота данных</h2><p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p><ul><li data-zero="true">скидки: 0</li><li data-zero="true">оборот: 0</li><li data-zero="true">возвраты без суммы: 0</li><li data-zero="true">возвраты, не попавшие в счёт: 0</li><li data-zero="true">возвращено больше, чем куплено: 0</li><li>строки продаж без цены поставщика: 77 (NP-011, NP-012)</li><li data-zero="true">ставки без процента или без фиксированной части: 0</li><li data-zero="true">заказы с разными способами оплаты: 0</li><li data-zero="true">постоянные расходы без суммы: 0</li><li data-zero="true">реклама без суммы: 0</li><li data-zero="true">дни рекламы без курса: 0</li></ul></section></main></div></div></body></html>

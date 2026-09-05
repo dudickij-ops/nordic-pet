@@ -6,9 +6,14 @@ import type { Break } from './types.ts'
  * Кусок меняет только то, **как** показано, и ничего из того, **что** показано. Поэтому сломы
  * здесь не про новые механизмы, а про сеть безопасности, которая ловит порчу показанного.
  *
- * Семь сломов: три на сеть безопасности (задача 2), три на полосу доли честности
- * (задача 7), один на признак устаревания чисел (задача 8). Разбивка сходится с
- * итогом: 3+3+1.
+ * Девять сломов: четыре на сеть безопасности, три на полосу доли честности, два на
+ * устаревание чисел. Разбивка сходится с итогом: 4+3+2.
+ *
+ * **Слом `labels-swapped` появился после проверки кода и стоит отдельного слова.** Первая
+ * редакция переписи снимала с экрана только числа. Рецензент показал дыру, и она подтвердилась
+ * наблюдением: перестановка подписей «Скидки» и «Возвраты» местами — при значениях, оставшихся
+ * на местах, — проходила **все 741 проверку** зелёной, хотя экран начинал показывать скидки под
+ * словом «Возвраты». Перепись переписана на весь видимый текст, и этот слом её сторожит.
  *
  * Ссылаемся по имени, а не по номеру: вставка нового слома сдвигает номера, и текст,
  * написанный номерами, начинает врать молча.
@@ -29,7 +34,7 @@ export const BREAKS: Break[] = [
   {
     id: 'census-blind-to-swap',
     claim: 'переставить местами два денежных значения на экране',
-    mustRedden: 'перепись: все числа экрана, в порядке появления и без единого лишнего',
+    mustRedden: 'перепись экрана: весь видимый текст, по порядку и без единой потери',
     file: 'app/page.tsx',
     find:
       '          <dt>Скидки</dt>\n' +
@@ -44,9 +49,26 @@ export const BREAKS: Break[] = [
     tests: 'все',
   },
   {
+    id: 'labels-swapped',
+    claim: 'переставить местами две подписи, оставив значения на местах',
+    mustRedden: 'перепись экрана: весь видимый текст, по порядку и без единой потери',
+    file: 'app/page.tsx',
+    find:
+      '          <dt>Скидки</dt>\n' +
+      '          <dd>{money(report.revenue.discounts)}</dd>\n' +
+      '          <dt>Возвраты</dt>\n' +
+      '          <dd>{money(report.revenue.refunds)}</dd>',
+    replace:
+      '          <dt>Возвраты</dt>\n' +
+      '          <dd>{money(report.revenue.discounts)}</dd>\n' +
+      '          <dt>Скидки</dt>\n' +
+      '          <dd>{money(report.revenue.refunds)}</dd>',
+    tests: 'все',
+  },
+  {
     id: 'items-order-reversed',
     claim: 'перевернуть порядок товаров в разметке',
-    mustRedden: 'перепись: все числа экрана, в порядке появления и без единого лишнего',
+    mustRedden: 'перепись экрана: весь видимый текст, по порядку и без единой потери',
     alsoRedden: [
       {
         name: 'таблица товаров идёт в порядке отчёта',
@@ -67,7 +89,7 @@ export const BREAKS: Break[] = [
     mustRedden: 'на экране все одиннадцать видов неполноты, каждый со своим числом',
     alsoRedden: [
       {
-        name: 'перепись: все числа экрана',
+        name: 'перепись экрана: весь видимый текст',
         why:
           'вместе с восемью видами со страницы уходят и их числа. Проверка одиннадцати ' +
           'называет виды, перепись считает числа — разные утверждения об одном дефекте',
@@ -85,8 +107,8 @@ export const BREAKS: Break[] = [
     claim: 'задать полосе доли постоянную ширину',
     mustRedden: 'полоса берёт ту же величину, что и напечатанное рядом число',
     file: 'app/page.tsx',
-    find: '<div className="share-fill" style={{ width: `${доля}%` }} />',
-    replace: '<div className="share-fill" style={{ width: \'100%\' }} />',
+    find: "<div className=\"share-fill\" style={{ '--share': `${доля}%` } as CSSProperties} />",
+    replace: "<div className=\"share-fill\" style={{ '--share': '100%' } as CSSProperties} />",
     tests: 'все',
   },
   {
@@ -94,8 +116,9 @@ export const BREAKS: Break[] = [
     claim: 'взять ширину полосы не из доли, а из соседнего числа отчёта',
     mustRedden: 'полоса берёт ту же величину, что и напечатанное рядом число',
     file: 'app/page.tsx',
-    find: '<div className="share-fill" style={{ width: `${доля}%` }} />',
-    replace: '<div className="share-fill" style={{ width: `${report.bottom.marginPct}%` }} />',
+    find: "<div className=\"share-fill\" style={{ '--share': `${доля}%` } as CSSProperties} />",
+    replace:
+      "<div className=\"share-fill\" style={{ '--share': `${report.bottom.marginPct}%` } as CSSProperties} />",
     tests: 'все',
   },
   {
@@ -130,6 +153,15 @@ export const BREAKS: Break[] = [
     file: 'app/refresh-panel.tsx',
     find: "      <div data-stale={stale ? 'true' : 'false'} className={stale ? 'numbers stale' : 'numbers'}>",
     replace: "      <div className={stale ? 'numbers stale' : 'numbers'}>",
+    tests: 'все',
+  },
+  {
+    id: 'stale-class-dropped',
+    claim: 'не менять класс обёртки, когда числа устарели',
+    mustRedden: 'устаревшие числа получают свой класс, свежие — не получают',
+    file: 'app/refresh-panel.tsx',
+    find: "className={stale ? 'numbers stale' : 'numbers'}",
+    replace: "className=\"numbers\"",
     tests: 'все',
   },
 ]
