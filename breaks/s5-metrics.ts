@@ -382,8 +382,8 @@ export const BREAKS: Break[] = [
     claim: "убрать подпись «по обороту»",
     mustRedden: "окупаемость подписана словом «по обороту»",
     file: "app/page.tsx",
-    find: "<dt>окупаемость рекламы (по обороту)</dt>",
-    replace: "<dt>окупаемость рекламы</dt>",
+    find: "<dt>Окупаемость рекламы (по обороту)</dt>",
+    replace: "<dt>Окупаемость рекламы</dt>",
     tests: "__tests__/metrics/screen.test.tsx",
   },
   {

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { redirect } from 'next/navigation'
 
 import { проверитьДоступ } from '@/lib/auth/guard'
@@ -22,23 +23,37 @@ export const dynamic = 'force-dynamic'
  * (`__tests__/metrics/screen.test.tsx`) без базы: подставляется выдуманный `MonthReport`.
  */
 export function Dashboard({ report }: { report: MonthReport }) {
+  // Доля честности читается **один раз, в одну величину**, и дальше её берут оба показа:
+  // напечатанное число и длина полосы. Это условие владельца, а не удобство: пока значение
+  // одно, полоса не может разойтись с числом. Второе чтение того же поля рядом с первым
+  // было бы вторым источником правды, и однажды они разъехались бы молча.
+  const доля = report.honesty.sharePct
+
   return (
-    <main>
-      <h1>Nordic Pet — прибыль{report.month === null ? '' : ` за ${report.month}`}</h1>
+    <main className="report">
+      <header className="report-head">
+        <h1>Nordic Pet — прибыль{report.month === null ? '' : ` за ${report.month}`}</h1>
 
-      {report.months.length > 0 && (
-        <nav>
-          <ul>
-            {report.months.map((m) => (
-              <li key={m.month}>
-                <a href={`/?m=${m.month}`}>{m.month}</a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
+        {report.months.length > 0 && (
+          <nav className="months">
+            <ul>
+              {report.months.map((m) => (
+                <li key={m.month}>
+                  <a
+                    href={`/?m=${m.month}`}
+                    aria-current={m.month === report.month ? 'page' : undefined}
+                    data-empty={m.hasOrders ? undefined : 'true'}
+                  >
+                    {m.month}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+      </header>
 
-      <section>
+      <section className="block">
         <h2>Выручка</h2>
         <dl>
           <dt>Оборот</dt>
@@ -52,7 +67,7 @@ export function Dashboard({ report }: { report: MonthReport }) {
         </dl>
       </section>
 
-      <section>
+      <section className="block">
         <h2>Затраты</h2>
         <dl>
           <dt>Себестоимость проданного</dt>
@@ -66,19 +81,19 @@ export function Dashboard({ report }: { report: MonthReport }) {
         </dl>
       </section>
 
-      <section>
+      <section className="block bottom-line">
         <h2>Итог</h2>
         <dl>
           <dt>Прибыль</dt>
           <dd>{money(report.bottom.profit)}</dd>
           <dt>Маржа</dt>
           <dd>{percent(report.bottom.marginPct)}</dd>
-          <dt>окупаемость рекламы (по обороту)</dt>
+          <dt>Окупаемость рекламы (по обороту)</dt>
           <dd>{ratio(report.bottom.roasByGross)}</dd>
         </dl>
       </section>
 
-      <section>
+      <section className="block items">
         <h2>Товары</h2>
         <table>
           <thead>
@@ -104,23 +119,40 @@ export function Dashboard({ report }: { report: MonthReport }) {
         </table>
       </section>
 
-      <section>
+      <section className="block honesty">
         <h2>Честность данных</h2>
         <p>
           Посчитано по настоящей цене поставщика (доля от чистой выручки):{' '}
-          {percent(report.honesty.sharePct)}
+          <strong className="share-value">{percent(доля)}</strong>
         </p>
+        {доля !== null && (
+          <div className="share" aria-hidden="true">
+            {/*
+              Значение уходит в таблицу стилей величиной, а длину из неё делает `clamp` — и это
+              не украшение, а починка настоящей лжи. Прежде значение подставлялось прямо в
+              ширину, и при отрицательной доле объявление становилось негодным: браузер
+              откатывался к ширине по умолчанию и рисовал полосу **во всю дорожку**. Замерено:
+              при доле −12,3 % заполнение занимало 328,8 из 328,8 пикселей, то есть полоса
+              говорила «посчитано всё» там, где текст рядом говорил «минус двенадцать».
+              Найдено проверкой кода, подтверждено замером.
+
+              Разметка при этом по-прежнему ничего не считает: она отдаёт то же самое значение,
+              что печатает текстом, и не делает над ним ни одного действия.
+            */}
+            <div className="share-fill" style={{ '--share': `${доля}%` } as CSSProperties} />
+          </div>
+        )}
         {report.honesty.skusWithoutPrice.length > 0 && (
           <p>Без цены поставщика (запасные 40%): {report.honesty.skusWithoutPrice.join(', ')}</p>
         )}
       </section>
 
-      <section>
+      <section className="block gaps">
         <h2>Неполнота данных</h2>
         <p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p>
         <ul>
           {report.gaps.map((gap) => (
-            <li key={gap.kind}>
+            <li key={gap.kind} data-zero={gap.count === 0 ? 'true' : undefined}>
               {gap.kind}: {count(String(gap.count))}
               {gap.at.length > 0 ? ` (${gap.at.join(', ')})` : ''}
             </li>
