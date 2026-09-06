@@ -227,9 +227,19 @@ thead th {
   color: var(--text-dim);
   border-bottom: 1px solid var(--line-strong);
   /*
-   * Шапка держится при прокрутке: на двенадцати строках товаров человек, прокрутивший
-   * страницу, иначе читает числа без подписей колонок. Фон обязателен — без него строки
-   * просвечивают сквозь прилипшую шапку.
+   * Шапка держится при прокрутке — **шире 48 rem, и только там**. Фон обязателен: без него
+   * строки просвечивают сквозь прилипшую шапку.
+   *
+   * Ограничение названо, потому что оно неустранимо в этой разметке, а не потому, что руки не
+   * дошли. Уже 48 rem таблица становится собственным контейнером прокрутки (`overflow-x`), а по
+   * правилу CSS вторая ось при этом тоже перестаёт быть `visible` — и `sticky` начинает
+   * считаться от прокрутки таблицы, которой по вертикали нет. Замерено: при 760 пикселях
+   * верх шапки уезжает на −200 при прокрутке на 200, при 1200 — остаётся нулём.
+   *
+   * Развести это можно было бы обёрткой в разметке, но обёртка сдвинула бы отступы строк,
+   * которые цитируют сломы прежних кусков. Прокрутка таблицы на узком экране важнее липкой
+   * шапки: без неё за край уезжает вся страница. Отступление названо в README и в теле
+   * pull request.
    */
   position: sticky;
   top: 0;
@@ -408,6 +418,14 @@ button.primary:hover:not(:disabled) {
   border-style: dashed;
 }
 
+/*
+ * Выбранный месяц без заказов. Без этой строки пунктир шёл рамкой в цвет заливки и не читался
+ * вовсе: выбранный пустой месяц был неотличим от выбранного обычного. Найдено проверкой кода.
+ */
+.months a[data-empty='true'][aria-current='page'] {
+  border-color: var(--on-accent);
+}
+
 /* ——— Главные числа ——— */
 
 /*
@@ -471,25 +489,28 @@ button.primary:hover:not(:disabled) {
 }
 
 /*
- * Нулевая дыра видна, но не кричит. Приглушение — цветом, а не прозрачностью: прозрачность
- * 0,65 поверх приглушённого текста давала контраст около 2,8 : 1 при норме 4,5 : 1, то есть
- * строку, которую местами не прочитать. Найдено проверкой кода.
+ * Нулевая дыра видна, но не кричит — она идёт базовым приглушённым цветом строки, и своего
+ * правила ей не нужно. Отдельное правило здесь стояло и не делало ничего: цвет в нём совпадал
+ * с базовым. Найдено проверкой кода.
+ *
+ * Заметной делается ненулевая. Приглушение прозрачностью убрано на круг раньше: 0,65 поверх
+ * приглушённого текста давало контраст около 2,8 : 1 при норме 4,5 : 1.
  */
-.gaps li[data-zero='true'] {
-  color: var(--text-dim);
-}
-
 .gaps li:not([data-zero='true']) {
   color: var(--text);
   font-weight: 550;
 }
 
 /*
- * Именно **второй** абзац, а не последний: когда товаров без цены нет, второго абзаца не
- * существует вовсе, и `last-of-type` попадал в подпись доли — она гасла и мельчала. Найдено
- * проверкой кода.
+ * Второй абзац блока — оговорка про товары без цены поставщика.
+ *
+ * Здесь дважды промахнулись мимо цели, и оба промаха названы. Сначала стоял `p:last-of-type`:
+ * когда товаров без цены нет, второго абзаца не существует, и правило гасило подпись доли.
+ * Потом — `p + p`: между абзацами стоит полоса, соседями они не являются, и правило не
+ * совпадало **ни с чем**. Замерено: ноль совпадений, оба абзаца одного размера и цвета.
+ * Второй промах нашла проверка кода, первый — она же кругом раньше.
  */
-.honesty p + p {
+.honesty > p:nth-of-type(2) {
   margin-bottom: 0;
   color: var(--text-dim);
   font-size: 0.9rem;
@@ -676,4 +697,4 @@ button.primary:hover:not(:disabled) {
   --page: 72rem;
 
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif;}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><p role="alert">Шаг «папка»: папка ads-exports не прочиталась: ключ не подошёл</p><div data-stale="true" class="numbers numbers-stale"><p class="stale-mark">Числа ниже устарели</p><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01">2026-01</a></li><li><a href="/?m=2026-02">2026-02</a></li><li><a href="/?m=2026-03" aria-current="page">2026-03</a></li></ul></nav></header><section class="block"><h2>Выручка</h2><dl><dt>Оборот</dt><dd>18 764,00 €</dd><dt>Скидки</dt><dd>427,50 €</dd><dt>Возвраты</dt><dd>1 059,46 €</dd><dt>Чистая выручка</dt><dd>17 277,04 €</dd></dl></section><section class="block"><h2>Затраты</h2><dl><dt>Себестоимость проданного</dt><dd>6 028,11 €</dd><dt>Реклама</dt><dd>4 431,37 €</dd><dt>Комиссии платёжных систем</dt><dd>526,12 €</dd><dt>Постоянные расходы</dt><dd>4 552,90 €</dd></dl></section><section class="block bottom-line"><h2>Итог</h2><dl><dt>Прибыль</dt><dd>1 738,53 €</dd><dt>Маржа</dt><dd>10,1 %</dd><dt>окупаемость рекламы (по обороту)</dt><dd>4,23 ×</dd></dl></section><section class="block items"><h2>Товары</h2><table><thead><tr><th>Артикул</th><th>Продано за вычетом возвратов</th><th>Чистая выручка</th><th>Себестоимость</th><th>Прибыль</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €</td><td>1 251,90 €</td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td></tr><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €</td><td>793,44 €</td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td></tr></tbody></table></section><section class="block honesty"><h2>Честность данных</h2><p>Посчитано по настоящей цене поставщика (доля от чистой выручки): <strong class="share-value">80,3 %</strong></p><div class="share" aria-hidden="true"><div class="share-fill" style="--share:80.3%"></div></div><p>Без цены поставщика (запасные 40%): NP-011, NP-012</p></section><section class="block gaps"><h2>Неполнота данных</h2><p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p><ul><li data-zero="true">скидки: 0</li><li data-zero="true">оборот: 0</li><li data-zero="true">возвраты без суммы: 0</li><li data-zero="true">возвраты, не попавшие в счёт: 0</li><li data-zero="true">возвращено больше, чем куплено: 0</li><li>строки продаж без цены поставщика: 77 (NP-011, NP-012)</li><li data-zero="true">ставки без процента или без фиксированной части: 0</li><li data-zero="true">заказы с разными способами оплаты: 0</li><li data-zero="true">постоянные расходы без суммы: 0</li><li data-zero="true">реклама без суммы: 0</li><li data-zero="true">дни рекламы без курса: 0</li></ul></section></main></div></div></body></html>
+    'Noto Sans', sans-serif;}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><p role="alert">Шаг «папка»: папка ads-exports не прочиталась: ключ не подошёл</p><div data-stale="true" class="numbers numbers-stale"><p class="stale-mark">Числа ниже устарели</p><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01" data-empty="true">2026-01</a></li><li><a href="/?m=2026-02">2026-02</a></li><li><a href="/?m=2026-03" aria-current="page">2026-03</a></li></ul></nav></header><section class="block"><h2>Выручка</h2><dl><dt>Оборот</dt><dd>18 764,00 €</dd><dt>Скидки</dt><dd>427,50 €</dd><dt>Возвраты</dt><dd>1 059,46 €</dd><dt>Чистая выручка</dt><dd>17 277,04 €</dd></dl></section><section class="block"><h2>Затраты</h2><dl><dt>Себестоимость проданного</dt><dd>6 028,11 €</dd><dt>Реклама</dt><dd>4 431,37 €</dd><dt>Комиссии платёжных систем</dt><dd>526,12 €</dd><dt>Постоянные расходы</dt><dd>4 552,90 €</dd></dl></section><section class="block bottom-line"><h2>Итог</h2><dl><dt>Прибыль</dt><dd>1 738,53 €</dd><dt>Маржа</dt><dd>10,1 %</dd><dt>окупаемость рекламы (по обороту)</dt><dd>4,23 ×</dd></dl></section><section class="block items"><h2>Товары</h2><table><thead><tr><th>Артикул</th><th>Продано за вычетом возвратов</th><th>Чистая выручка</th><th>Себестоимость</th><th>Прибыль</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €</td><td>1 251,90 €</td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td></tr><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €</td><td>793,44 €</td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td></tr></tbody></table></section><section class="block honesty"><h2>Честность данных</h2><p>Посчитано по настоящей цене поставщика (доля от чистой выручки): <strong class="share-value">80,3 %</strong></p><div class="share" aria-hidden="true"><div class="share-fill" style="--share:80.3%"></div></div><p>Без цены поставщика (запасные 40%): NP-011, NP-012</p></section><section class="block gaps"><h2>Неполнота данных</h2><p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p><ul><li data-zero="true">скидки: 0</li><li data-zero="true">оборот: 0</li><li data-zero="true">возвраты без суммы: 0</li><li data-zero="true">возвраты, не попавшие в счёт: 0</li><li data-zero="true">возвращено больше, чем куплено: 0</li><li>строки продаж без цены поставщика: 77 (NP-011, NP-012)</li><li data-zero="true">ставки без процента или без фиксированной части: 0</li><li data-zero="true">заказы с разными способами оплаты: 0</li><li data-zero="true">постоянные расходы без суммы: 0</li><li data-zero="true">реклама без суммы: 0</li><li data-zero="true">дни рекламы без курса: 0</li></ul></section></main></div></div></body></html>
