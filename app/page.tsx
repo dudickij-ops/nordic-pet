@@ -88,7 +88,7 @@ export function Dashboard({ report }: { report: MonthReport }) {
           <dd>{money(report.bottom.profit)}</dd>
           <dt>Маржа</dt>
           <dd>{percent(report.bottom.marginPct)}</dd>
-          <dt>окупаемость рекламы (по обороту)</dt>
+          <dt>Окупаемость рекламы (по обороту)</dt>
           <dd>{ratio(report.bottom.roasByGross)}</dd>
         </dl>
       </section>
