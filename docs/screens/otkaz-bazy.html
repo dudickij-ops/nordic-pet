@@ -115,7 +115,6 @@
   --borderRadiusCircular: 10000px;
   --strokeWidthThin: 1px;
   --strokeWidthThick: 2px;
-  --spacingHorizontalXS: 4px;
   --spacingHorizontalS: 8px;
   --spacingHorizontalM: 12px;
   --spacingHorizontalL: 16px;
@@ -254,10 +253,15 @@ body {
 
 /*
  * Шкала шрифта — задача 4 куска S10. Каждый размер взят из шкалы Fluent для веба и стоит
- * величиной, а не числом: своих размеров у экрана больше нет.
+ * величиной, а не числом.
  *
- * Заголовок отчёта — Title 3 (24 / 32, 600). Межбуквенное расстояние снято: своего числа у него
- * не было ни у Fluent, ни у нас — оно было подобрано на глаз.
+ * **Что чем является.** Сами ступени — размер и интерлиньяж в паре — выписаны из
+ * `global/fonts.ts` и `global/typographyStyles.ts`. А вот **какая ступень какой роли на этом
+ * экране достаётся — наш вывод**: справочник даёт шкалу и семантические имена, но про подпись
+ * показателя в приборной панели магазина не говорит ничего.
+ *
+ * Заголовок отчёта — Title 3 (24 / 32, 600), **наш вывод**. Межбуквенное расстояние снято:
+ * своего числа у него не было ни у Fluent, ни у нас — оно было подобрано на глаз.
  */
 h1 {
   margin: 0;
@@ -267,14 +271,18 @@ h1 {
 }
 
 /*
- * Заголовок блока — Body 1 Strong (14 / 20, 600). Так набирает заголовок плитки и сам сайт
- * fluent2.microsoft.design: `font-size:14px; line-height:20px; font-weight:600;
- * color: var(--colorNeutralForeground2)`.
+ * Заголовок блока — Body 1 Strong (14 / 20, 600), цвет `colorNeutralForeground2`.
+ *
+ * **Показанный пример, дословно.** Сайт fluent2.microsoft.design набирает заголовок плитки так:
+ * `.tile .tile-header .header-title{font-size:14px;line-height:20px;font-weight:600;
+ * color:var(--colorNeutralForeground2)}`. **Наш вывод:** заголовку блока на этом экране
+ * достаётся та же ступень.
  *
  * **Капитель снята.** Справочник, дословно (fluent2.microsoft.design/typography, «Styling text»,
- * «Casing»): «Use sentence case when writing, it fits most contexts. Don't use all caps to get a
- * user's attention because it's difficult to read.» Буквы в разметке при этом не двинулись ни на
- * символ: капитель делалась показом, а не текстом.
+ * подраздел «Casing»): «Use sentence case when writing, it fits most contexts. Don’t use all caps
+ * to get a user’s attention because it’s difficult to read. See the content design guidance for
+ * more information.» Буквы в разметке при этом не двинулись ни на символ: капитель делалась
+ * показом, а не текстом.
  */
 h2 {
   margin: 0 0 var(--spacingVerticalM);
@@ -378,9 +386,14 @@ td {
 }
 
 /*
- * Заголовок колонки — Caption 1 обычной насыщенности. У Fluent заголовок ячейки таблицы набран
- * `fontWeightRegular` (`react-table/…/useTableHeaderCellStyles.styles.ts`), и это не описка:
- * колонку называет положение, а не жир.
+ * Заголовок колонки — Caption 1 (12 / 16) обычной насыщенности.
+ *
+ * **Что взято у Fluent, а что решено нами.** У Fluent задана только насыщенность:
+ * `react-table/…/useTableHeaderCellStyles.styles.ts` ставит `fontWeight: tokens.fontWeightRegular`
+ * и размера не задаёт вовсе — значит у него заголовок колонки идёт размером таблицы, то есть
+ * Body 1 (14). **Наш вывод и наше отступление:** здесь заголовок колонки взял Caption 1 (12),
+ * потому что колонок пять и они соперничают за ширину с числами, а называет колонку положение,
+ * а не размер. Насыщенность оставлена той, что у Fluent.
  */
 thead th {
   font-size: var(--fontSizeBase200);
@@ -496,7 +509,8 @@ button:disabled {
  */
 .logout button {
   padding: 0.25rem 0.7rem;
-  font-size: 0.85rem;
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
   color: var(--text-dim);
   background: transparent;
   border-color: var(--line);
@@ -555,7 +569,8 @@ button.primary:hover:not(:disabled) {
   background: var(--surface);
   color: var(--text-dim);
   text-decoration: none;
-  font-size: 0.85rem;
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
 }
 
 .months a:hover {
@@ -670,19 +685,23 @@ button.primary:hover:not(:disabled) {
  * совпадало **ни с чем**. Замерено: ноль совпадений, оба абзаца одного размера и цвета.
  * Второй промах нашла проверка кода, первый — она же кругом раньше.
  */
+/*
+ * Проза остаётся прозой: Body 1, приглушённым цветом. Caption 1 у Fluent — подпись, а не абзац,
+ * и загонять в неё связный текст значило бы взять ступень не по роли.
+ */
 .honesty > p:nth-of-type(2) {
   margin-bottom: 0;
   color: var(--text-dim);
-  font-size: var(--fontSizeBase200);
-  line-height: var(--lineHeightBase200);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
 }
 
 /* ——— Неполнота ——— */
 
 .gaps > p {
   color: var(--text-dim);
-  font-size: var(--fontSizeBase200);
-  line-height: var(--lineHeightBase200);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
 }
 
 .gaps ul {
@@ -893,7 +912,6 @@ button.primary:hover:not(:disabled) {
   --borderRadiusCircular: 10000px;
   --strokeWidthThin: 1px;
   --strokeWidthThick: 2px;
-  --spacingHorizontalXS: 4px;
   --spacingHorizontalS: 8px;
   --spacingHorizontalM: 12px;
   --spacingHorizontalL: 16px;
