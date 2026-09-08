@@ -52,6 +52,8 @@
   --colorNeutralForeground2: #424242;
   --colorNeutralForeground3: #616161;
   --colorNeutralForegroundDisabled: #bdbdbd;
+  --colorNeutralBackgroundDisabled: #f0f0f0;
+  --colorNeutralStrokeDisabled: #e0e0e0;
   --colorNeutralForegroundOnBrand: #ffffff;
   --colorNeutralStroke1: #d1d1d1;
   --colorNeutralStroke2: #e0e0e0;
@@ -125,6 +127,15 @@
   --spacingVerticalL: 16px;
   --spacingVerticalXXL: 24px;
   --spacingVerticalXXXL: 32px;
+  /*
+   * Собственные величины кнопки Fluent: в реализации они стоят числами рядом с правилами
+   * (`react-button/…/useButtonStyles.styles.ts`), а не в шкале отступов. Имена наши, значения его.
+   */
+  --buttonSpacingSmall: 3px;
+  --buttonSpacingMedium: 5px;
+  --buttonMinWidthSmall: 64px;
+  --buttonMinWidthMedium: 96px;
+
   --durationFaster: 100ms;
   --curveEasyEase: cubic-bezier(0.33, 0, 0.67, 1);
 
@@ -147,6 +158,19 @@
   --surface: var(--colorNeutralBackground1);
   --text: var(--colorNeutralForeground1);
   --text-dim: var(--colorNeutralForeground3);
+  /*
+   * Рамка карточки. **Расхождение тем, и у него довод.** В светлой теме она берёт
+   * `colorNeutralBackground1Pressed`, как в показанном примере Microsoft. В тёмной — другой
+   * токен, `colorNeutralStroke2`: владелец посмотрел пару на одном снимке
+   * (`docs/screens/vybor-ramki-tyomnoy-temy.png`) и увидел то, чего не видно в числах — при
+   * `#1f1f1f` карточку отделяет одна тень, а рамка просто занимает место. Раз мы сознательно
+   * пошли против условия справочника и оставили рамку вместе с тенью, рамка обязана хоть что-то
+   * делать.
+   *
+   * **Честная строка, та же самая:** наш замер к холсту — 1,13 : 1 у прежней и 1,86 : 1 у новой;
+   * 1,86 не дотягивает до 3 : 1. Это улучшение, а не починка: разделение карточек в тёмной теме
+   * держится на тени и на глазе.
+   */
   --line: var(--colorNeutralBackground1Pressed);
   --line-strong: var(--colorNeutralStroke1);
   --accent: var(--colorBrandBackground);
@@ -188,6 +212,8 @@
     --colorNeutralForeground2: #d6d6d6;
     --colorNeutralForeground3: #adadad;
     --colorNeutralForegroundDisabled: #5c5c5c;
+    --colorNeutralBackgroundDisabled: #141414;
+    --colorNeutralStrokeDisabled: #424242;
     --colorNeutralForegroundOnBrand: #ffffff;
     --colorNeutralStroke1: #666666;
     --colorNeutralStroke2: #525252;
@@ -210,6 +236,9 @@
 
     /* Тень в тёмной теме гуще: пара цветов своя. `alias/darkColor.ts`. */
     --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
+
+    /* Рамка карточки в тёмной теме — другой токен. Довод и замер стоят у светлого объявления. */
+    --line: var(--colorNeutralStroke2);
   }
 }
 
@@ -279,15 +308,11 @@ h1 {
  * color:var(--colorNeutralForeground2)}`. **Наш вывод:** заголовку блока на этом экране
  * достаётся та же ступень.
  *
- * **Иерархия заголовка — замер и решение владельца, записанное вперёд.** Заголовок отличается от
- * основного текста только насыщенностью: размер тот же, цвет светлее. Наш замер обеих пар:
- * заголовок против основного текста — **1,54 : 1 в светлой теме и 1,45 : 1 в тёмной**. Решение
- * принимается по тёмной паре: она слабее, а пара, по которой принимают решение, не должна быть
- * той, которая выглядит лучше.
- *
- * Если на снимках заголовки потеряются, поднимать их **ступенью шкалы** — Subtitle 2, — и ничем
- * иным: ни возвратом капители, ни своим размером между ступенями, ни межбуквенным расстоянием на
- * глаз. Разницу делает размер, у которого есть имя в документации.
+ * **Иерархия заголовка — замер и закрытый вопрос.** Заголовок отличается от основного текста
+ * только насыщенностью: размер тот же, цвет светлее. Наш замер обеих пар: заголовок против
+ * основного текста — **1,54 : 1 в светлой теме и 1,45 : 1 в тёмной**; смотреть надо на тёмную,
+ * она слабее. Владелец посмотрел экран после задачи 5 и вопрос закрыл: заголовок держит сама
+ * карточка, поднимать ступень не нужно.
  *
  * **Капитель снята.** Справочник, дословно (fluent2.microsoft.design/typography, «Styling text»,
  * подраздел «Casing»): «Use sentence case when writing, it fits most contexts. Don’t use all caps
@@ -458,24 +483,81 @@ a {
   color: var(--accent-text);
 }
 
+/*
+ * Кнопка — задача 6 куска S10, средний размер Fluent.
+ *
+ * Из реализации (`react-button/…/useButtonStyles.styles.ts`): отступы 5 / 12, наименьшая ширина
+ * 96, скругление `borderRadiusMedium`, шрифт 14 / 20 насыщенностью 600, рамка в толщину
+ * `strokeWidthThin` цветом `colorNeutralStroke1`, наведение — `colorNeutralBackground1Hover`,
+ * нажатие — `colorNeutralBackground1Pressed`, переход 100 ms кривой `curveEasyEase`.
+ */
 button {
-  font: inherit;
+  font-family: var(--font);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
+  font-weight: var(--fontWeightSemibold);
   color: var(--text);
   background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  padding: 0.4rem 0.9rem;
+  border: var(--strokeWidthThin) solid var(--line-strong);
+  border-radius: var(--borderRadiusMedium);
+  padding: var(--buttonSpacingMedium) var(--spacingHorizontalM);
+  min-width: var(--buttonMinWidthMedium);
   cursor: pointer;
+  transition: background var(--durationFaster) var(--curveEasyEase),
+    border-color var(--durationFaster) var(--curveEasyEase),
+    color var(--durationFaster) var(--curveEasyEase);
 }
 
 button:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent-text);
+  background: var(--colorNeutralBackground1Hover);
 }
 
+button:active:not(:disabled) {
+  background: var(--colorNeutralBackground1Pressed);
+}
+
+/*
+ * Отключённая кнопка берёт **свой цвет**, а не прозрачность.
+ *
+ * Прозрачность делает получившийся контраст зависимым от того, что лежит под элементом, то есть
+ * непредсказуемым на любом фоне. Цвета — из реализации Fluent: `colorNeutralBackgroundDisabled`,
+ * `colorNeutralForegroundDisabled`, `colorNeutralStrokeDisabled`.
+ *
+ * **Наш замер, и он не в пользу перемены по числу:** прежняя прозрачность 0,55 давала 2,21 : 1 в
+ * светлой теме, цвета Fluent дают 1,65 : 1; в тёмной было 3,24 : 1, стало 2,76 : 1. Ни одно из
+ * четырёх не дотягивает до 4,5 : 1. Перемена решает названную владельцем беду —
+ * непредсказуемость, — и не решает числа. Названо ему находкой, а не строкой в отложенном.
+ */
 button:disabled {
-  opacity: 0.55;
-  cursor: default;
+  color: var(--colorNeutralForegroundDisabled);
+  background: var(--colorNeutralBackgroundDisabled);
+  border-color: var(--colorNeutralStrokeDisabled);
+  cursor: not-allowed;
+}
+
+/*
+ * Движение уважает настройку человека: `prefers-reduced-motion: reduce` сводит переход к
+ * мгновенному, как это делает сам Fluent (`@media screen and (prefers-reduced-motion: reduce)` в
+ * его же файле кнопки).
+ */
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition-duration: 0.01ms;
+  }
+}
+
+/*
+ * Обводка фокуса — единственный новый механизм куска: прежде на экране не было ни одного правила
+ * фокуса вовсе. Форма взята у Fluent (`react-table/…/useTableRowStyles.styles.ts` и прочие):
+ * `outline: 2px solid colorStrokeFocus2`. Токен чёрный в светлой теме и белый в тёмной, поэтому
+ * обводка видна на любом фоне.
+ *
+ * **Слома у этого правила нет, и это названо** — в списке сломов, в плане, в теле pull request и
+ * в отчёте. Доказательство ему только снимок и глаз.
+ */
+:focus-visible {
+  outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+  outline-offset: var(--strokeWidthThin);
 }
 
 /* ——— Пометки и отказы ——— */
@@ -535,37 +617,52 @@ button:disabled {
  * Найдено проверкой кода.
  */
 .logout button {
-  padding: 0.25rem 0.7rem;
+  padding: var(--buttonSpacingSmall) var(--spacingHorizontalS);
+  min-width: var(--buttonMinWidthSmall);
   font-size: var(--fontSizeBase200);
   line-height: var(--lineHeightBase200);
-  color: var(--text-dim);
-  background: transparent;
-  border-color: var(--line);
-}
-
-.logout button:hover {
-  border-color: var(--line-strong);
+  font-weight: var(--fontWeightRegular);
   color: var(--text);
+  background: var(--surface);
+  border-color: var(--line-strong);
 }
 
+/*
+ * Полоса действия — задача 6 куска S10, и приём в ней стоит объяснения.
+ *
+ * **Была беда:** кнопка обновления стояла над строкой названия, месяцы — на самой строке, и
+ * получались две полосы управления вместо одной, а главное действие экрана висело выше названия
+ * отчёта, ни к чему не привязанное. Найдено владельцем на снимке.
+ *
+ * **Почему стилями, а не разметкой.** Кнопка обновления и название отчёта лежат в разных ветвях
+ * разметки и на разной глубине: собрать их в один ряд общим родителем нельзя, а разметку этот
+ * кусок не открывает вовсе. Плавающая полоса выводится из потока, и шапка отчёта — контейнер
+ * флексбокса, то есть собственный контекст форматирования — не наезжает на плавающее, а встаёт
+ * рядом. Так название, месяцы и обе кнопки оказываются на одной полосе без единой правки тегов.
+ */
 .actions {
+  float: right;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  min-height: 2.1rem;
-  margin: 0 0 var(--gap);
+  min-height: var(--lineHeightBase600);
+  margin: 0 0 var(--gap) var(--spacingHorizontalS);
 }
 
 button.primary {
   color: var(--on-accent);
   background: var(--accent);
-  border-color: var(--accent);
-  font-weight: 550;
+  border-color: transparent;
 }
 
 button.primary:hover:not(:disabled) {
   color: var(--on-accent);
-  filter: brightness(1.08);
+  background: var(--colorBrandBackgroundHover);
+}
+
+button.primary:active:not(:disabled) {
+  color: var(--on-accent);
+  background: var(--colorBrandBackgroundPressed);
 }
 
 /* ——— Заголовок отчёта и месяцы ——— */
@@ -590,27 +687,26 @@ button.primary:hover:not(:disabled) {
 
 .months a {
   display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  padding: var(--buttonSpacingSmall) var(--spacingHorizontalS);
+  border: var(--strokeWidthThin) solid var(--line-strong);
+  border-radius: var(--borderRadiusMedium);
   background: var(--surface);
-  color: var(--text-dim);
+  color: var(--text);
   text-decoration: none;
   font-size: var(--fontSizeBase200);
   line-height: var(--lineHeightBase200);
 }
 
 .months a:hover {
-  border-color: var(--accent);
-  color: var(--accent-text);
+  background: var(--colorNeutralBackground1Hover);
 }
 
 /* Выбранный месяц назван и разметкой (`aria-current`), и видом — не только цветом. */
 .months a[aria-current='page'] {
   background: var(--accent);
-  border-color: var(--accent);
+  border-color: transparent;
   color: var(--on-accent);
-  font-weight: 550;
+  font-weight: var(--fontWeightSemibold);
 }
 
 /*
@@ -882,6 +978,18 @@ button.primary:hover:not(:disabled) {
     line-height: var(--lineHeightBase600);
   }
 
+  /*
+   * На узком экране полоса действия перестаёт быть плавающей.
+   *
+   * На широком она плавает нарочно — так кнопка обновления, кнопка выхода, название отчёта и
+   * месяцы становятся одной полосой управления вместо двух. На узком места на это нет: название
+   * зажималось в треть ширины и ломалось на три строки. Здесь кнопки уходят своей строкой, а
+   * название получает всю ширину.
+   */
+  .actions {
+    float: none;
+    margin-left: 0;
+  }
 }
 
 :root{--colorNeutralBackground1: #292929;
@@ -892,6 +1000,8 @@ button.primary:hover:not(:disabled) {
     --colorNeutralForeground2: #d6d6d6;
     --colorNeutralForeground3: #adadad;
     --colorNeutralForegroundDisabled: #5c5c5c;
+    --colorNeutralBackgroundDisabled: #141414;
+    --colorNeutralStrokeDisabled: #424242;
     --colorNeutralForegroundOnBrand: #ffffff;
     --colorNeutralStroke1: #666666;
     --colorNeutralStroke2: #525252;
@@ -913,4 +1023,7 @@ button.primary:hover:not(:disabled) {
     --colorPaletteRedForeground1: #e37d80;
 
                                                                           
-    --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);}</style></head><body><main><h1>Nordic Pet — прибыль</h1><p role="alert">Данные сейчас не читаются: база не ответила. Числа не показаны нарочно — показывать старые как свежие хуже, чем не показать никаких. Обновите страницу через минуту; если повторится, скажите разработчику.</p><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form></main><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>
+    --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
+
+                                                                                                 
+    --line: var(--colorNeutralStroke2);}</style></head><body><main><h1>Nordic Pet — прибыль</h1><p role="alert">Данные сейчас не читаются: база не ответила. Числа не показаны нарочно — показывать старые как свежие хуже, чем не показать никаких. Обновите страницу через минуту; если повторится, скажите разработчику.</p><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form></main><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>

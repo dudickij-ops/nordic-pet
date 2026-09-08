@@ -29,7 +29,9 @@ import { expect, test } from 'vitest'
  * **Откуда взяты числа.** Имена и значения — из официальной реализации токенов Fluent 2
  * (`microsoft/fluentui`, пакет `packages/tokens/src`): `global/fonts.ts`, `global/spacings.ts`,
  * `global/borderRadius.ts`, `global/strokeWidths.ts`, `global/curves.ts`, `global/durations.ts`,
- * `alias/lightColor.ts`, `alias/darkColor.ts`, `utils/shadows.ts`, красный — через
+ * `alias/lightColor.ts`, `alias/darkColor.ts`, `utils/shadows.ts`, величины кнопки —
+ * `react-components/react-button/…/useButtonStyles.styles.ts` (там они стоят числами рядом с
+ * правилами, а не в шкале), красный — через
  * `alias/*ColorPalette.ts` и `global/colors.ts`. Значения перенесены без изменения смысла;
  * пробелы в записи (`rgba(0, 0, 0, 0.12)` вместо `rgba(0,0,0,0.12)`) наши, и проверка зашивает
  * нашу запись, а не строку источника.
@@ -51,6 +53,8 @@ const ЦВЕТА: Record<string, [string, string]> = {
   colorNeutralForeground2: ['#424242', '#d6d6d6'],
   colorNeutralForeground3: ['#616161', '#adadad'],
   colorNeutralForegroundDisabled: ['#bdbdbd', '#5c5c5c'],
+  colorNeutralBackgroundDisabled: ['#f0f0f0', '#141414'],
+  colorNeutralStrokeDisabled: ['#e0e0e0', '#424242'],
   colorNeutralForegroundOnBrand: ['#ffffff', '#ffffff'],
   colorNeutralStroke1: ['#d1d1d1', '#666666'],
   colorNeutralStroke2: ['#e0e0e0', '#525252'],
@@ -102,6 +106,10 @@ const ШКАЛЫ: Record<string, string> = {
   spacingVerticalL: '16px',
   spacingVerticalXXL: '24px',
   spacingVerticalXXXL: '32px',
+  buttonSpacingSmall: '3px',
+  buttonSpacingMedium: '5px',
+  buttonMinWidthSmall: '64px',
+  buttonMinWidthMedium: '96px',
   durationFaster: '100ms',
   curveEasyEase: 'cubic-bezier(0.33, 0, 0.67, 1)',
 }
