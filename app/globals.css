@@ -113,10 +113,12 @@
   --borderRadiusCircular: 10000px;
   --strokeWidthThin: 1px;
   --strokeWidthThick: 2px;
+  --spacingHorizontalXS: 4px;
   --spacingHorizontalS: 8px;
   --spacingHorizontalM: 12px;
   --spacingHorizontalL: 16px;
   --spacingHorizontalXXL: 24px;
+  --spacingVerticalXS: 4px;
   --spacingVerticalS: 8px;
   --spacingVerticalM: 12px;
   --spacingVerticalL: 16px;
@@ -227,8 +229,8 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
   /*
    * Ширина ограничена здесь, а не на `main`: разметка страницы отчёта — это несколько соседей
    * в корне (кнопка выхода, пометка устаревания, панель кнопки), и ограничивать надо их все
@@ -248,20 +250,36 @@ body {
   font-feature-settings: 'tnum' 1;
 }
 
+/*
+ * Шкала шрифта — задача 4 куска S10. Каждый размер взят из шкалы Fluent для веба и стоит
+ * величиной, а не числом: своих размеров у экрана больше нет.
+ *
+ * Заголовок отчёта — Title 3 (24 / 32, 600). Межбуквенное расстояние снято: своего числа у него
+ * не было ни у Fluent, ни у нас — оно было подобрано на глаз.
+ */
 h1 {
   margin: 0;
-  font-size: 1.35rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  font-size: var(--fontSizeBase600);
+  line-height: var(--lineHeightBase600);
+  font-weight: var(--fontWeightSemibold);
 }
 
+/*
+ * Заголовок блока — Body 1 Strong (14 / 20, 600). Так набирает заголовок плитки и сам сайт
+ * fluent2.microsoft.design: `font-size:14px; line-height:20px; font-weight:600;
+ * color: var(--colorNeutralForeground2)`.
+ *
+ * **Капитель снята.** Справочник, дословно (fluent2.microsoft.design/typography, «Styling text»,
+ * «Casing»): «Use sentence case when writing, it fits most contexts. Don't use all caps to get a
+ * user's attention because it's difficult to read.» Буквы в разметке при этом не двинулись ни на
+ * символ: капитель делалась показом, а не текстом.
+ */
 h2 {
-  margin: 0 0 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-dim);
+  margin: 0 0 var(--spacingVerticalM);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
+  font-weight: var(--fontWeightSemibold);
+  color: var(--colorNeutralForeground2);
 }
 
 p {
@@ -302,17 +320,21 @@ dl {
   margin: 0;
 }
 
+/* Подпись показателя — Caption 1 (12 / 16, 400). */
 dt {
   grid-row: 1;
-  font-size: 0.8rem;
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
   color: var(--text-dim);
 }
 
+/* Обычное значение — Subtitle 2 (16 / 22, 600). Крупных чисел на экране трое, и они ниже. */
 dd {
   grid-row: 2;
   margin: 0;
-  font-size: 1.15rem;
-  font-weight: 550;
+  font-size: var(--fontSizeBase400);
+  line-height: var(--lineHeightBase400);
+  font-weight: var(--fontWeightSemibold);
   /*
    * Значение не рвётся между числом и знаком. Этим закрыта отложенная задача прежнего куска:
    * `money` и `percent` ставят перед знаком обычный пробел, и без запрета знак евро мог уехать
@@ -326,7 +348,8 @@ dd {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
 }
 
 th,
@@ -352,9 +375,15 @@ td {
   white-space: nowrap;
 }
 
+/*
+ * Заголовок колонки — Caption 1 обычной насыщенности. У Fluent заголовок ячейки таблицы набран
+ * `fontWeightRegular` (`react-table/…/useTableHeaderCellStyles.styles.ts`), и это не описка:
+ * колонку называет положение, а не жир.
+ */
 thead th {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  font-weight: var(--fontWeightRegular);
   color: var(--text-dim);
   border-bottom: 1px solid var(--line-strong);
   /*
@@ -567,14 +596,11 @@ button.primary:hover:not(:disabled) {
   border-color: var(--line-strong);
 }
 
+/* Три крупных числа — Title 2 (28 / 36, 600). Их ровно три, и больше на экране крупного нет. */
 .bottom-line dd {
-  font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.bottom-line dt {
-  font-size: 0.85rem;
+  font-size: var(--fontSizeHero700);
+  line-height: var(--lineHeightHero700);
+  font-weight: var(--fontWeightSemibold);
 }
 
 /* ——— Полоса доли честности ——— */
@@ -615,8 +641,9 @@ button.primary:hover:not(:disabled) {
 }
 
 .share-value {
-  font-size: 1.15rem;
-  font-weight: 600;
+  font-size: var(--fontSizeBase400);
+  line-height: var(--lineHeightBase400);
+  font-weight: var(--fontWeightSemibold);
 }
 
 /*
@@ -644,14 +671,16 @@ button.primary:hover:not(:disabled) {
 .honesty > p:nth-of-type(2) {
   margin-bottom: 0;
   color: var(--text-dim);
-  font-size: 0.9rem;
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
 }
 
 /* ——— Неполнота ——— */
 
 .gaps > p {
   color: var(--text-dim);
-  font-size: 0.9rem;
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
 }
 
 .gaps ul {
@@ -673,7 +702,8 @@ button.primary:hover:not(:disabled) {
 .gaps li {
   padding: 0.35rem 0;
   border-bottom: 1px solid var(--line);
-  font-size: 0.9rem;
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
   color: var(--text-dim);
 }
 
@@ -712,14 +742,16 @@ button.primary:hover:not(:disabled) {
 }
 
 .login h1 {
-  margin: 0 0 1.25rem;
-  font-size: 1.15rem;
+  margin: 0 0 var(--spacingVerticalXXL);
+  font-size: var(--fontSizeBase400);
+  line-height: var(--lineHeightBase400);
 }
 
 .login label {
   display: block;
-  margin: 0 0 0.3rem;
-  font-size: 0.8rem;
+  margin: 0 0 var(--spacingVerticalXS);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
   color: var(--text-dim);
 }
 
@@ -792,11 +824,13 @@ button.primary:hover:not(:disabled) {
   dd {
     grid-column: 2;
     text-align: right;
-    font-size: 1.05rem;
+    font-size: var(--fontSizeBase300);
+    line-height: var(--lineHeightBase300);
   }
 
   .bottom-line dd {
-    font-size: 1.35rem;
+    font-size: var(--fontSizeBase600);
+    line-height: var(--lineHeightBase600);
   }
 
 }
