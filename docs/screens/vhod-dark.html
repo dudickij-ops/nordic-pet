@@ -33,11 +33,11 @@
   /*
    * Величины Fluent 2 — задача 3 куска S10.
    *
-   * Имена и значения перенесены из официальной реализации токенов Fluent 2
-   * (`microsoft/fluentui`, пакет `packages/tokens/src`) как есть. Ни одно число здесь не
-   * посчитано нами и ни одно не подобрано на глаз; что они те самые, сторожит проверка
-   * `__tests__/styles/fluent-tokens.test.ts` — вместе с закрывающим утверждением, что
-   * посторонних величин в файле нет.
+   * Имена и значения взяты из официальной реализации токенов Fluent 2 (`microsoft/fluentui`,
+   * пакет `packages/tokens/src`). Ни одно число здесь не посчитано нами и ни одно не подобрано на
+   * глаз; переносом изменена только запись — пробелы после запятых, — а не значения. Что числа
+   * те самые, сторожит проверка `__tests__/styles/fluent-tokens.test.ts` вместе с закрывающим
+   * утверждением, что посторонних величин и цветов в файле нет.
    *
    * Тёмная тема — ниже, тем же набором имён и полным составом: у Fluent тёмная тема объявляет
    * все цвета заново, а не правит часть.
@@ -58,7 +58,13 @@
   --colorNeutralStrokeAccessible: #616161;
   --colorSubtleBackgroundHover: #f5f5f5;
 
-  /* Смысловой цвет. Справочник Fluent: не брать его на большие поверхности. */
+  /*
+   * Смысловой цвет. Справочник, дословно (fluent2.microsoft.design/color):
+   * «Apply brand colors to different areas of an interface not only to create visual prominence,
+   * but also to anchor people in a specific product experience. Avoid overusing brand colors or
+   * using them on large surfaces as they can dilute a hierarchy and make an experience difficult
+   * to navigate.»
+   */
   --colorBrandBackground: #0078d4;
   --colorBrandBackgroundHover: #106ebe;
   --colorBrandBackgroundPressed: #004578;
@@ -66,12 +72,22 @@
   --colorBrandForeground1: #0078d4;
   --colorBrandStroke1: #0078d4;
 
-  /* Обводка фокуса: чёрная в светлой теме, белая в тёмной — видна на любом фоне. */
+  /*
+   * Обводка фокуса: чёрная в светлой теме, белая в тёмной. **Наш вывод:** такая пара видна на
+   * любом фоне; справочник про это не говорит, значения взяты из реализации.
+   */
   --colorStrokeFocus2: #000000;
 
-  /* Красный — только отказы. У Fluent это «семантический» цвет, и он обязан нести смысл. */
+  /*
+   * Красный — только отказы. Справочник, дословно (fluent2.microsoft.design/color):
+   * «Select colors in the shared palette are specifically used to communicate feedback, status,
+   * or urgency. These are known as semantic colors and they should always convey important
+   * information.»
+   * **Наш вывод:** значит красный не берут на украшение — иначе он перестаёт означать «сломалось».
+   */
   --colorPaletteRedBackground1: #fdf6f6;
   --colorPaletteRedBorder1: #f1bbbc;
+  --colorPaletteRedBorder2: #d13438;
   --colorPaletteRedForeground1: #bc2f32;
 
   /* Тень. `utils/shadows.ts` плюс пара цветов тени из `alias/lightColor.ts`. */
@@ -114,8 +130,16 @@
    * Наши имена поверх токенов. Правила экрана ходят пока через них; задачи 4–9 переводят
    * правила на токены напрямую, и слой имён тает вместе с ними.
    *
-   * Холст и карточка — одного цвета: так делает и корень приложения Fluent, и вёрстка самого
-   * сайта Fluent 2. Разделяют их рамка, скругление и тень.
+   * Холст и карточка — одного цвета. Основание — два показанных Microsoft примера: корень
+   * приложения Fluent ставит `colorNeutralBackground1` и на холст, и на карточку
+   * (`react-provider/…/useFluentProviderStyles.styles.ts`), а вёрстка сайта fluent2.microsoft.design
+   * рисует плитку как `background-color: var(--colorNeutralBackground1); border: 1px solid
+   * var(--colorNeutralBackground1Pressed); border-radius: 8px` с тенью `shadow4`. **Наш вывод:**
+   * значит разделять их должны рамка, скругление и тень.
+   *
+   * **Сегодня из трёх работает одна рамка.** Тень объявлена величиной и ни одним правилом ещё не
+   * взята: карточки, тени и скругления — задача 5. До неё карточка отделяется от холста только
+   * рамкой, и это меньше, чем сказано выше.
    */
   --bg: var(--colorNeutralBackground1);
   --surface: var(--colorNeutralBackground1);
@@ -129,7 +153,12 @@
   --accent-soft: var(--colorBrandBackground2);
   --on-accent: var(--colorNeutralForegroundOnBrand);
   --danger: var(--colorPaletteRedForeground1);
-  --danger-line: var(--colorPaletteRedBorder1);
+  /*
+   * Рамка плашки отказа берёт `Border2`, а не `Border1`. Найдено проверкой кода и замерено:
+   * `Border1` (#f1bbbc) даёт к холсту 1,67 : 1, и коробка отказа перестаёт читаться коробкой —
+   * остаётся один красный текст. `Border2` — это `red.primary`, 4,2 : 1 к белому.
+   */
+  --danger-line: var(--colorPaletteRedBorder2);
   --danger-soft: var(--colorPaletteRedBackground1);
 
   --radius: var(--borderRadiusXLarge);
@@ -172,6 +201,7 @@
 
     --colorPaletteRedBackground1: #3f1011;
     --colorPaletteRedBorder1: #d13438;
+    --colorPaletteRedBorder2: #e37d80;
     --colorPaletteRedForeground1: #e37d80;
 
     /* Тень в тёмной теме гуще: пара цветов своя. `alias/darkColor.ts`. */
@@ -796,6 +826,7 @@ button.primary:hover:not(:disabled) {
 
     --colorPaletteRedBackground1: #3f1011;
     --colorPaletteRedBorder1: #d13438;
+    --colorPaletteRedBorder2: #e37d80;
     --colorPaletteRedForeground1: #e37d80;
 
                                                                           
