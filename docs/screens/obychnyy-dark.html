@@ -30,51 +30,152 @@
 /* ——— Величины ——— */
 
 :root {
-  /* Светлая тема. Тёмная — ниже, тем же набором имён. */
-  --bg: #f4f6f8;
-  --surface: #ffffff;
-  --text: #16191d;
-  --text-dim: #5c6670;
-  --line: #dfe4e9;
-  --line-strong: #c6ced6;
-
-  /* Единственный смысловой цвет. Всё остальное — оттенки фона и текста. */
-  --accent: #1c6b86;
-  --accent-soft: #e8f1f5;
   /*
-   * Цвет текста НА смысловом цвете. Отдельная величина, а не белый впаянный в правило: в
-   * тёмной теме смысловой цвет светлый, и белым по нему не прочитать ни кнопку, ни выбранный
-   * месяц. Найдено глазом на тёмной теме, а не рассуждением.
+   * Величины Fluent 2 — задача 3 куска S10.
+   *
+   * Имена и значения перенесены из официальной реализации токенов Fluent 2
+   * (`microsoft/fluentui`, пакет `packages/tokens/src`) как есть. Ни одно число здесь не
+   * посчитано нами и ни одно не подобрано на глаз; что они те самые, сторожит проверка
+   * `__tests__/styles/fluent-tokens.test.ts` — вместе с закрывающим утверждением, что
+   * посторонних величин в файле нет.
+   *
+   * Тёмная тема — ниже, тем же набором имён и полным составом: у Fluent тёмная тема объявляет
+   * все цвета заново, а не правит часть.
    */
-  --on-accent: #ffffff;
 
-  /* Красный — только отказы. Пометки, выделения и украшения его не берут. */
-  --danger: #a3221b;
-  --danger-soft: #fbeceb;
+  /* Нейтральные: фон, текст, линии. `alias/lightColor.ts`. */
+  --colorNeutralBackground1: #ffffff;
+  --colorNeutralBackground1Hover: #f5f5f5;
+  --colorNeutralBackground1Pressed: #e0e0e0;
+  --colorNeutralBackground2: #fafafa;
+  --colorNeutralForeground1: #242424;
+  --colorNeutralForeground2: #424242;
+  --colorNeutralForeground3: #616161;
+  --colorNeutralForegroundDisabled: #bdbdbd;
+  --colorNeutralForegroundOnBrand: #ffffff;
+  --colorNeutralStroke1: #d1d1d1;
+  --colorNeutralStroke2: #e0e0e0;
+  --colorNeutralStrokeAccessible: #616161;
+  --colorSubtleBackgroundHover: #f5f5f5;
 
-  --radius: 10px;
-  --gap: 1.25rem;
+  /* Смысловой цвет. Справочник Fluent: не брать его на большие поверхности. */
+  --colorBrandBackground: #0078d4;
+  --colorBrandBackgroundHover: #106ebe;
+  --colorBrandBackgroundPressed: #004578;
+  --colorBrandBackground2: #eff6fc;
+  --colorBrandForeground1: #0078d4;
+  --colorBrandStroke1: #0078d4;
+
+  /* Обводка фокуса: чёрная в светлой теме, белая в тёмной — видна на любом фоне. */
+  --colorStrokeFocus2: #000000;
+
+  /* Красный — только отказы. У Fluent это «семантический» цвет, и он обязан нести смысл. */
+  --colorPaletteRedBackground1: #fdf6f6;
+  --colorPaletteRedBorder1: #f1bbbc;
+  --colorPaletteRedForeground1: #bc2f32;
+
+  /* Тень. `utils/shadows.ts` плюс пара цветов тени из `alias/lightColor.ts`. */
+  --shadow4: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
+
+  /* Шкала шрифта для веба. `global/fonts.ts`. */
+  --fontFamilyBase: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system,
+    BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  --fontSizeBase200: 12px;
+  --fontSizeBase300: 14px;
+  --fontSizeBase400: 16px;
+  --fontSizeBase600: 24px;
+  --fontSizeHero700: 28px;
+  --lineHeightBase200: 16px;
+  --lineHeightBase300: 20px;
+  --lineHeightBase400: 22px;
+  --lineHeightBase600: 32px;
+  --lineHeightHero700: 36px;
+  --fontWeightRegular: 400;
+  --fontWeightSemibold: 600;
+
+  /* Скругления, толщины, отступы, движение. */
+  --borderRadiusMedium: 4px;
+  --borderRadiusXLarge: 8px;
+  --borderRadiusCircular: 10000px;
+  --strokeWidthThin: 1px;
+  --strokeWidthThick: 2px;
+  --spacingHorizontalS: 8px;
+  --spacingHorizontalM: 12px;
+  --spacingHorizontalL: 16px;
+  --spacingHorizontalXXL: 24px;
+  --spacingVerticalS: 8px;
+  --spacingVerticalM: 12px;
+  --spacingVerticalL: 16px;
+  --spacingVerticalXXL: 24px;
+  --durationFaster: 100ms;
+  --curveEasyEase: cubic-bezier(0.33, 0, 0.67, 1);
+
+  /*
+   * Наши имена поверх токенов. Правила экрана ходят пока через них; задачи 4–9 переводят
+   * правила на токены напрямую, и слой имён тает вместе с ними.
+   *
+   * Холст и карточка — одного цвета: так делает и корень приложения Fluent, и вёрстка самого
+   * сайта Fluent 2. Разделяют их рамка, скругление и тень.
+   */
+  --bg: var(--colorNeutralBackground1);
+  --surface: var(--colorNeutralBackground1);
+  --text: var(--colorNeutralForeground1);
+  --text-dim: var(--colorNeutralForeground3);
+  --line: var(--colorNeutralBackground1Pressed);
+  --line-strong: var(--colorNeutralStroke1);
+  --accent: var(--colorBrandBackground);
+  --accent-text: var(--colorBrandForeground1);
+  --accent-line: var(--colorBrandStroke1);
+  --accent-soft: var(--colorBrandBackground2);
+  --on-accent: var(--colorNeutralForegroundOnBrand);
+  --danger: var(--colorPaletteRedForeground1);
+  --danger-line: var(--colorPaletteRedBorder1);
+  --danger-soft: var(--colorPaletteRedBackground1);
+
+  --radius: var(--borderRadiusXLarge);
+  --gap: var(--spacingVerticalL);
+  --font: var(--fontFamilyBase);
+
+  /*
+   * Предельная ширина содержимого — допущение, а не число Fluent: раздел «Grid» справочника
+   * говорит про колонки, поля и жёлобы, но ни одного пикселя не называет. Названо допущением в
+   * контракте и в списке исключений проверки величин.
+   */
   --page: 72rem;
-
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14171a;
-    --surface: #1b1f23;
-    --text: #e7eaed;
-    --text-dim: #97a1aa;
-    --line: #282e34;
-    --line-strong: #39424a;
+    /* Тёмная тема Fluent объявляет цвета заново, полным составом. `alias/darkColor.ts`. */
+    --colorNeutralBackground1: #292929;
+    --colorNeutralBackground1Hover: #3d3d3d;
+    --colorNeutralBackground1Pressed: #1f1f1f;
+    --colorNeutralBackground2: #1f1f1f;
+    --colorNeutralForeground1: #ffffff;
+    --colorNeutralForeground2: #d6d6d6;
+    --colorNeutralForeground3: #adadad;
+    --colorNeutralForegroundDisabled: #5c5c5c;
+    --colorNeutralForegroundOnBrand: #ffffff;
+    --colorNeutralStroke1: #666666;
+    --colorNeutralStroke2: #525252;
+    --colorNeutralStrokeAccessible: #adadad;
+    --colorSubtleBackgroundHover: #383838;
 
-    --accent: #6cb2cc;
-    --accent-soft: #16303b;
-    --on-accent: #0d1a20;
+    --colorBrandBackground: #106ebe;
+    --colorBrandBackgroundHover: #0078d4;
+    --colorBrandBackgroundPressed: #004578;
+    --colorBrandBackground2: #002848;
+    --colorBrandForeground1: #2899f5;
+    --colorBrandStroke1: #2899f5;
 
-    --danger: #f0b3ae;
-    --danger-soft: #381917;
+    --colorStrokeFocus2: #ffffff;
+
+    --colorPaletteRedBackground1: #3f1011;
+    --colorPaletteRedBorder1: #d13438;
+    --colorPaletteRedForeground1: #e37d80;
+
+    /* Тень в тёмной теме гуще: пара цветов своя. `alias/darkColor.ts`. */
+    --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
   }
 }
 
@@ -253,7 +354,7 @@ tbody tr:last-child td {
 /* ——— Ссылки и кнопки ——— */
 
 a {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 button {
@@ -268,7 +369,7 @@ button {
 
 button:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 button:disabled {
@@ -295,7 +396,7 @@ button:disabled {
   padding: 0.7rem 1rem;
   background: var(--accent-soft);
   color: var(--text);
-  border: 1px solid var(--accent);
+  border: 1px solid var(--accent-line);
   border-radius: var(--radius);
 }
 
@@ -304,7 +405,7 @@ button:disabled {
   padding: 0.7rem 1rem;
   background: var(--danger-soft);
   color: var(--danger);
-  border: 1px solid var(--danger);
+  border: 1px solid var(--danger-line);
   border-radius: var(--radius);
 }
 
@@ -398,7 +499,7 @@ button.primary:hover:not(:disabled) {
 
 .months a:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* Выбранный месяц назван и разметкой (`aria-current`), и видом — не только цветом. */
@@ -670,16 +771,32 @@ button.primary:hover:not(:disabled) {
 
 }
 
-:root{--bg: #14171a;
-    --surface: #1b1f23;
-    --text: #e7eaed;
-    --text-dim: #97a1aa;
-    --line: #282e34;
-    --line-strong: #39424a;
+:root{--colorNeutralBackground1: #292929;
+    --colorNeutralBackground1Hover: #3d3d3d;
+    --colorNeutralBackground1Pressed: #1f1f1f;
+    --colorNeutralBackground2: #1f1f1f;
+    --colorNeutralForeground1: #ffffff;
+    --colorNeutralForeground2: #d6d6d6;
+    --colorNeutralForeground3: #adadad;
+    --colorNeutralForegroundDisabled: #5c5c5c;
+    --colorNeutralForegroundOnBrand: #ffffff;
+    --colorNeutralStroke1: #666666;
+    --colorNeutralStroke2: #525252;
+    --colorNeutralStrokeAccessible: #adadad;
+    --colorSubtleBackgroundHover: #383838;
 
-    --accent: #6cb2cc;
-    --accent-soft: #16303b;
-    --on-accent: #0d1a20;
+    --colorBrandBackground: #106ebe;
+    --colorBrandBackgroundHover: #0078d4;
+    --colorBrandBackgroundPressed: #004578;
+    --colorBrandBackground2: #002848;
+    --colorBrandForeground1: #2899f5;
+    --colorBrandStroke1: #2899f5;
 
-    --danger: #f0b3ae;
-    --danger-soft: #381917;}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><div data-stale="false" class="numbers"><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01" data-empty="true">2026-01</a></li><li><a href="/?m=2026-02">2026-02</a></li><li><a href="/?m=2026-03" aria-current="page">2026-03</a></li></ul></nav></header><section class="block"><h2>Выручка</h2><dl><dt>Оборот</dt><dd>18 764,00 €</dd><dt>Скидки</dt><dd>427,50 €</dd><dt>Возвраты</dt><dd>1 059,46 €</dd><dt>Чистая выручка</dt><dd>17 277,04 €</dd></dl></section><section class="block"><h2>Затраты</h2><dl><dt>Себестоимость проданного</dt><dd>6 028,11 €</dd><dt>Реклама</dt><dd>4 431,37 €</dd><dt>Комиссии платёжных систем</dt><dd>526,12 €</dd><dt>Постоянные расходы</dt><dd>4 552,90 €</dd></dl></section><section class="block bottom-line"><h2>Итог</h2><dl><dt>Прибыль</dt><dd>1 738,53 €</dd><dt>Маржа</dt><dd>10,1 %</dd><dt>Окупаемость рекламы (по обороту)</dt><dd>4,23 ×</dd></dl></section><section class="block items"><h2>Товары</h2><table><thead><tr><th>Артикул</th><th>Продано за вычетом возвратов</th><th>Чистая выручка</th><th>Себестоимость</th><th>Прибыль</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €</td><td>1 251,90 €</td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td></tr><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €</td><td>793,44 €</td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td></tr></tbody></table></section><section class="block honesty"><h2>Честность данных</h2><p>Посчитано по настоящей цене поставщика (доля от чистой выручки): <strong class="share-value">80,3 %</strong></p><div class="share" aria-hidden="true"><div class="share-fill" style="--share:80.3%"></div></div><p>Без цены поставщика (запасные 40%): NP-011, NP-012</p></section><section class="block gaps"><h2>Неполнота данных</h2><p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p><ul><li data-zero="true">скидки: 0</li><li data-zero="true">оборот: 0</li><li data-zero="true">возвраты без суммы: 0</li><li data-zero="true">возвраты, не попавшие в счёт: 0</li><li data-zero="true">возвращено больше, чем куплено: 0</li><li>строки продаж без цены поставщика: 77 (NP-011, NP-012)</li><li data-zero="true">ставки без процента или без фиксированной части: 0</li><li data-zero="true">заказы с разными способами оплаты: 0</li><li data-zero="true">постоянные расходы без суммы: 0</li><li data-zero="true">реклама без суммы: 0</li><li data-zero="true">дни рекламы без курса: 0</li></ul></section></main></div></div><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>
+    --colorStrokeFocus2: #ffffff;
+
+    --colorPaletteRedBackground1: #3f1011;
+    --colorPaletteRedBorder1: #d13438;
+    --colorPaletteRedForeground1: #e37d80;
+
+                                                                          
+    --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><div data-stale="false" class="numbers"><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01" data-empty="true">2026-01</a></li><li><a href="/?m=2026-02">2026-02</a></li><li><a href="/?m=2026-03" aria-current="page">2026-03</a></li></ul></nav></header><section class="block"><h2>Выручка</h2><dl><dt>Оборот</dt><dd>18 764,00 €</dd><dt>Скидки</dt><dd>427,50 €</dd><dt>Возвраты</dt><dd>1 059,46 €</dd><dt>Чистая выручка</dt><dd>17 277,04 €</dd></dl></section><section class="block"><h2>Затраты</h2><dl><dt>Себестоимость проданного</dt><dd>6 028,11 €</dd><dt>Реклама</dt><dd>4 431,37 €</dd><dt>Комиссии платёжных систем</dt><dd>526,12 €</dd><dt>Постоянные расходы</dt><dd>4 552,90 €</dd></dl></section><section class="block bottom-line"><h2>Итог</h2><dl><dt>Прибыль</dt><dd>1 738,53 €</dd><dt>Маржа</dt><dd>10,1 %</dd><dt>Окупаемость рекламы (по обороту)</dt><dd>4,23 ×</dd></dl></section><section class="block items"><h2>Товары</h2><table><thead><tr><th>Артикул</th><th>Продано за вычетом возвратов</th><th>Чистая выручка</th><th>Себестоимость</th><th>Прибыль</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €</td><td>1 251,90 €</td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td></tr><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €</td><td>793,44 €</td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td></tr></tbody></table></section><section class="block honesty"><h2>Честность данных</h2><p>Посчитано по настоящей цене поставщика (доля от чистой выручки): <strong class="share-value">80,3 %</strong></p><div class="share" aria-hidden="true"><div class="share-fill" style="--share:80.3%"></div></div><p>Без цены поставщика (запасные 40%): NP-011, NP-012</p></section><section class="block gaps"><h2>Неполнота данных</h2><p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p><ul><li data-zero="true">скидки: 0</li><li data-zero="true">оборот: 0</li><li data-zero="true">возвраты без суммы: 0</li><li data-zero="true">возвраты, не попавшие в счёт: 0</li><li data-zero="true">возвращено больше, чем куплено: 0</li><li>строки продаж без цены поставщика: 77 (NP-011, NP-012)</li><li data-zero="true">ставки без процента или без фиксированной части: 0</li><li data-zero="true">заказы с разными способами оплаты: 0</li><li data-zero="true">постоянные расходы без суммы: 0</li><li data-zero="true">реклама без суммы: 0</li><li data-zero="true">дни рекламы без курса: 0</li></ul></section></main></div></div><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>
