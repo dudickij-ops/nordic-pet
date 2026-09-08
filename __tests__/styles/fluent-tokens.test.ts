@@ -101,6 +101,7 @@ const ШКАЛЫ: Record<string, string> = {
   spacingVerticalM: '12px',
   spacingVerticalL: '16px',
   spacingVerticalXXL: '24px',
+  spacingVerticalXXXL: '32px',
   durationFaster: '100ms',
   curveEasyEase: 'cubic-bezier(0.33, 0, 0.67, 1)',
 }

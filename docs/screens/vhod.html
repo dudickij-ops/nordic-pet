@@ -124,6 +124,7 @@
   --spacingVerticalM: 12px;
   --spacingVerticalL: 16px;
   --spacingVerticalXXL: 24px;
+  --spacingVerticalXXXL: 32px;
   --durationFaster: 100ms;
   --curveEasyEase: cubic-bezier(0.33, 0, 0.67, 1);
 
@@ -226,7 +227,7 @@ html {
 
 body {
   margin: 0;
-  padding: 1.5rem 1.25rem 4rem;
+  padding: var(--spacingVerticalXXL) var(--spacingHorizontalXXL) var(--spacingVerticalXXXL);
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
@@ -278,6 +279,16 @@ h1 {
  * color:var(--colorNeutralForeground2)}`. **Наш вывод:** заголовку блока на этом экране
  * достаётся та же ступень.
  *
+ * **Иерархия заголовка — замер и решение владельца, записанное вперёд.** Заголовок отличается от
+ * основного текста только насыщенностью: размер тот же, цвет светлее. Наш замер обеих пар:
+ * заголовок против основного текста — **1,54 : 1 в светлой теме и 1,45 : 1 в тёмной**. Решение
+ * принимается по тёмной паре: она слабее, а пара, по которой принимают решение, не должна быть
+ * той, которая выглядит лучше.
+ *
+ * Если на снимках заголовки потеряются, поднимать их **ступенью шкалы** — Subtitle 2, — и ничем
+ * иным: ни возвратом капители, ни своим размером между ступенями, ни межбуквенным расстоянием на
+ * глаз. Разницу делает размер, у которого есть имя в документации.
+ *
  * **Капитель снята.** Справочник, дословно (fluent2.microsoft.design/typography, «Styling text»,
  * подраздел «Casing»): «Use sentence case when writing, it fits most contexts. Don’t use all caps
  * to get a user’s attention because it’s difficult to read. See the content design guidance for
@@ -298,12 +309,28 @@ p {
 
 /* ——— Блоки ——— */
 
+/*
+ * Карточка — задача 5 куска S10.
+ *
+ * **Показанный пример, дословно.** Сайт fluent2.microsoft.design рисует плитку так:
+ * `.tile{background-color:var(--colorNeutralBackground1);border:1px solid
+ * var(--colorNeutralBackground1Pressed);border-radius:8px;box-shadow:0 2px 4px #00000024,0 0 2px
+ * #0000001f}`. Последнее — это ровно `shadow4` (#24 = 0,141; #1f = 0,122). Холст у приложения
+ * Fluent того же цвета: `react-provider/…/useFluentProviderStyles.styles.ts` ставит на корень
+ * `backgroundColor: tokens.colorNeutralBackground1`.
+ *
+ * **Отступление, названное вслух.** Справочник (fluent2.microsoft.design/elevation, таблица «Low
+ * elevation ramp») называет `shadow4` в светлой теме для «Cards without an edge» — то есть для
+ * карточек **без рамки**. Показанный пример ставит рамку и тень одновременно. Мы пошли за
+ * примером против буквы условия; названо здесь, в описи снимков и в теле pull request.
+ */
 section {
   margin: 0 0 var(--gap);
-  padding: 1.15rem 1.25rem;
+  padding: var(--spacingVerticalL) var(--spacingHorizontalL);
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: var(--strokeWidthThin) solid var(--line);
   border-radius: var(--radius);
+  box-shadow: var(--shadow4);
 }
 
 /* ——— Пары «подпись — значение» ——— */
@@ -326,7 +353,7 @@ dl {
    * Четыре — потому что больше четырёх показателей в блоке нет ни в одном из трёх блоков.
    */
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem 1.5rem;
+  gap: var(--spacingVerticalL) var(--spacingHorizontalXXL);
   margin: 0;
 }
 
@@ -467,7 +494,7 @@ button:disabled {
 [role='status'] {
   clear: right;
   margin: 0 0 var(--gap);
-  padding: 0.7rem 1rem;
+  padding: var(--spacingVerticalM) var(--spacingHorizontalL);
   background: var(--accent-soft);
   color: var(--text);
   border: 1px solid var(--accent-line);
@@ -476,7 +503,7 @@ button:disabled {
 
 [role='alert'] {
   margin: 0 0 var(--gap);
-  padding: 0.7rem 1rem;
+  padding: var(--spacingVerticalM) var(--spacingHorizontalL);
   background: var(--danger-soft);
   color: var(--danger);
   border: 1px solid var(--danger-line);
@@ -548,7 +575,7 @@ button.primary:hover:not(:disabled) {
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.75rem 1.5rem;
+  gap: var(--spacingVerticalM) var(--spacingHorizontalXXL);
   margin: 0 0 var(--gap);
 }
 
@@ -756,10 +783,11 @@ button.primary:hover:not(:disabled) {
 .login {
   max-width: 22rem;
   margin: 12vh auto 0;
-  padding: 1.75rem;
+  padding: var(--spacingVerticalXXL) var(--spacingHorizontalXXL);
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: var(--strokeWidthThin) solid var(--line);
   border-radius: var(--radius);
+  box-shadow: var(--shadow4);
 }
 
 .login h1 {
@@ -815,11 +843,11 @@ button.primary:hover:not(:disabled) {
 
 @media (max-width: 40rem) {
   body {
-    padding: 1rem 0.85rem 3rem;
+    padding: var(--spacingVerticalL) var(--spacingHorizontalL) var(--spacingVerticalXXL);
   }
 
   section {
-    padding: 1rem;
+    padding: var(--spacingVerticalM) var(--spacingHorizontalM);
   }
 
   /*
@@ -921,6 +949,7 @@ button.primary:hover:not(:disabled) {
   --spacingVerticalM: 12px;
   --spacingVerticalL: 16px;
   --spacingVerticalXXL: 24px;
+  --spacingVerticalXXXL: 32px;
   --durationFaster: 100ms;
   --curveEasyEase: cubic-bezier(0.33, 0, 0.67, 1);
 
