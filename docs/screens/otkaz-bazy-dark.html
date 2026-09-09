@@ -36,8 +36,8 @@
    * Имена и значения взяты из официальной реализации токенов Fluent 2 (`microsoft/fluentui`,
    * пакет `packages/tokens/src`). Ни одно число здесь не посчитано нами и ни одно не подобрано на
    * глаз; переносом изменена только запись — пробелы после запятых, — а не значения. Что числа
-   * те самые, сторожит проверка `__tests__/styles/fluent-tokens.test.ts` вместе с закрывающим
-   * утверждением, что посторонних величин и цветов в файле нет.
+   * те самые, сторожит проверка `__tests__/styles/fluent-tokens.test.ts`; её собственная граница
+   * названа в ней самой.
    *
    * Тёмная тема — ниже, тем же набором имён и полным составом: у Fluent тёмная тема объявляет
    * все цвета заново, а не правит часть.
@@ -47,7 +47,6 @@
   --colorNeutralBackground1: #ffffff;
   --colorNeutralBackground1Hover: #f5f5f5;
   --colorNeutralBackground1Pressed: #e0e0e0;
-  --colorNeutralBackground2: #fafafa;
   --colorNeutralBackground4: #f0f0f0;
   --colorNeutralForeground1: #242424;
   --colorNeutralForeground2: #424242;
@@ -58,7 +57,6 @@
   --colorNeutralForegroundOnBrand: #ffffff;
   --colorNeutralStroke1: #d1d1d1;
   --colorNeutralStroke2: #e0e0e0;
-  --colorNeutralStrokeAccessible: #616161;
   --colorSubtleBackgroundHover: #f5f5f5;
 
   /*
@@ -89,12 +87,10 @@
    * **Наш вывод:** значит красный не берут на украшение — иначе он перестаёт означать «сломалось».
    */
   --colorPaletteRedBackground1: #fdf6f6;
-  --colorPaletteRedBorder1: #f1bbbc;
   --colorPaletteRedBorder2: #d13438;
   --colorPaletteRedForeground1: #bc2f32;
 
   /* Тень. `utils/shadows.ts` плюс пара цветов тени из `alias/lightColor.ts`. */
-  --shadow4: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
   --shadow8: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
 
   /* Шкала шрифта для веба. `global/fonts.ts`. */
@@ -115,11 +111,11 @@
 
   /* Скругления, толщины, отступы, движение. */
   --borderRadiusMedium: 4px;
-  --borderRadiusXLarge: 8px;
   --borderRadius2XLarge: 12px;
   --borderRadiusCircular: 10000px;
   --strokeWidthThin: 1px;
   --strokeWidthThick: 2px;
+  --spacingHorizontalXS: 4px;
   --spacingHorizontalS: 8px;
   --spacingHorizontalM: 12px;
   --spacingHorizontalL: 16px;
@@ -152,16 +148,10 @@
    * Наши имена поверх токенов. Правила экрана ходят пока через них; задачи 4–9 переводят
    * правила на токены напрямую, и слой имён тает вместе с ними.
    *
-   * Холст и карточка — одного цвета. Основание — два показанных Microsoft примера: корень
-   * приложения Fluent ставит `colorNeutralBackground1` и на холст, и на карточку
-   * (`react-provider/…/useFluentProviderStyles.styles.ts`), а вёрстка сайта fluent2.microsoft.design
-   * рисует плитку как `background-color: var(--colorNeutralBackground1); border: 1px solid
-   * var(--colorNeutralBackground1Pressed); border-radius: 8px` с тенью `shadow4`. **Наш вывод:**
-   * значит разделять их должны рамка, скругление и тень.
-   *
-   * **Сегодня из трёх работает одна рамка.** Тень объявлена величиной и ни одним правилом ещё не
-   * взята: карточки, тени и скругления — задача 5. До неё карточка отделяется от холста только
-   * рамкой, и это меньше, чем сказано выше.
+   * Холст и карточка — **разных** цветов: `colorNeutralBackground4` под `colorNeutralBackground1`.
+   * Это отмена решения развилки 1 от 8 сентября, когда холст и карточка были одного цвета по
+   * двум показанным примерам Microsoft; причина отмены названа в плане, задача 7а — заказчик
+   * прислал образец вида. Рамок у карточек нет; отделяют их цвет холста, скругление и тень.
    */
   --bg: var(--colorNeutralBackground4);
   --surface: var(--colorNeutralBackground1);
@@ -186,7 +176,6 @@
   --danger-line: var(--colorPaletteRedBorder2);
   --danger-soft: var(--colorPaletteRedBackground1);
 
-  --radius: var(--borderRadiusXLarge);
   --gap: var(--spacingVerticalL);
   --font: var(--fontFamilyBase);
 
@@ -204,7 +193,6 @@
     --colorNeutralBackground1: #292929;
     --colorNeutralBackground1Hover: #3d3d3d;
     --colorNeutralBackground1Pressed: #1f1f1f;
-    --colorNeutralBackground2: #1f1f1f;
     --colorNeutralBackground4: #0a0a0a;
     --colorNeutralForeground1: #ffffff;
     --colorNeutralForeground2: #d6d6d6;
@@ -215,7 +203,6 @@
     --colorNeutralForegroundOnBrand: #ffffff;
     --colorNeutralStroke1: #666666;
     --colorNeutralStroke2: #525252;
-    --colorNeutralStrokeAccessible: #adadad;
     --colorSubtleBackgroundHover: #383838;
 
     --colorBrandBackground: #106ebe;
@@ -228,12 +215,10 @@
     --colorStrokeFocus2: #ffffff;
 
     --colorPaletteRedBackground1: #3f1011;
-    --colorPaletteRedBorder1: #d13438;
     --colorPaletteRedBorder2: #e37d80;
     --colorPaletteRedForeground1: #e37d80;
 
     /* Тень в тёмной теме гуще: пара цветов своя. `alias/darkColor.ts`. */
-    --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
     --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
 
   }
@@ -326,7 +311,7 @@ h2 {
 }
 
 p {
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--spacingVerticalS);
 }
 
 /* ——— Блоки ——— */
@@ -334,13 +319,16 @@ p {
 /*
  * Карточка — задача 7а куска S10, вид по образцу заказчика.
  *
- * **Здесь отступление не добавилось, а исчезло.** Задача 5 ставила рамку и тень одновременно,
- * следуя показанному примеру, и это было названо отступлением от буквы справочника. Теперь рамки
- * нет, и та же цитата с тем же условием описывает ровно то, что мы делаем:
- * fluent2.microsoft.design/elevation, таблица «Low elevation ramp», строка светлой темы —
- * `shadow4` для «Cards without an edge», карточек **без рамки**; следующая ступень той же
- * таблицы — `shadow8` для «Floating action buttons, raised cards, and raised app bars».
- * **Наш вывод:** карточка отчёта — «raised card», и ей достаётся `shadow8`.
+ * **Что здесь изменилось в отступлении — точно, а не «исчезло».** Задача 5 ставила рамку и тень
+ * одновременно, и это было отступлением: справочник даёт тень карточкам **без** рамки. Рамки
+ * больше нет, и эта половина отступления ушла.
+ *
+ * **По букве цитаты мы всё ещё не в ней.** Справочник (fluent2.microsoft.design/elevation,
+ * таблица «Low elevation ramp») приписывает карточкам без рамки `shadow4`, а мы ставим `shadow8`
+ * — из соседней строки той же таблицы: «Floating action buttons, raised cards, and raised app
+ * bars». **Наш вывод, а не слово справочника:** карточка отчёта — «raised card». Отступление
+ * сменило вид, а не исчезло: было «рамка вместе с тенью», стало «ступень тени выбрана нами по
+ * нашей же классификации». Найдено проверкой кода.
  *
  * Холст при этом отделён от карточки цветом: `colorNeutralBackground4` под
  * `colorNeutralBackground1`. Это отмена решения развилки 1 от 8 сентября, причина названа в
@@ -471,9 +459,9 @@ thead th {
    * строки просвечивают сквозь прилипшую шапку.
    *
    * Ограничение названо, потому что оно неустранимо в этой разметке, а не потому, что руки не
-   * дошли. Уже 48 rem таблица становится собственным контейнером прокрутки (`overflow-x`), а по
-   * правилу CSS вторая ось при этом тоже перестаёт быть `visible` — и `sticky` начинает
-   * считаться от прокрутки таблицы, которой по вертикали нет. Замерено: при 760 пикселях
+   * дошли. Уже 48 rem собственным контейнером прокрутки становится **карточка «Товары»**
+   * (`overflow-x` на `.items`), а по правилу CSS вторая ось при этом тоже перестаёт быть
+   * `visible` — и `sticky` начинает считаться от прокрутки карточки, которой по вертикали нет. Замерено: при 760 пикселях
    * верх шапки уезжает на −200 при прокрутке на 200, при 1200 — остаётся нулём.
    *
    * Развести это можно было бы обёрткой в разметке, но обёртка сдвинула бы отступы строк,
@@ -640,7 +628,7 @@ button:disabled {
    * строке без единой обёртки в разметке.
    */
   float: right;
-  margin: 0 0 0.75rem 1rem;
+  margin: 0 0 var(--spacingVerticalM) var(--spacingHorizontalL);
 }
 
 /*
@@ -654,9 +642,6 @@ button:disabled {
   font-size: var(--fontSizeBase200);
   line-height: var(--lineHeightBase200);
   font-weight: var(--fontWeightRegular);
-  color: var(--text);
-  background: var(--surface);
-  border-color: var(--line-strong);
 }
 
 /*
@@ -688,12 +673,10 @@ button.primary {
 }
 
 button.primary:hover:not(:disabled) {
-  color: var(--on-accent);
   background: var(--colorBrandBackgroundHover);
 }
 
 button.primary:active:not(:disabled) {
-  color: var(--on-accent);
   background: var(--colorBrandBackgroundPressed);
 }
 
@@ -711,7 +694,7 @@ button.primary:active:not(:disabled) {
 .months ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: var(--spacingHorizontalXS);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -802,11 +785,17 @@ button.primary:active:not(:disabled) {
    * Ширина ограничена нарочно. Полоса во всю строку делает 80 % и 100 % почти неразличимыми:
    * глазу нужен видимый остаток, иначе полоса врёт видом, не соврав числом.
    */
+  /*
+   * Две величины без имени в документации, и обе названы исключениями в проверке величин.
+   * `26rem` — предел ширины полосы: во всю строку 80 % и 100 % почти неразличимы, глазу нужен
+   * видимый остаток. `8px` — толщина полосы: у Fluent есть шкала отступов и шкала толщин линий,
+   * но толщины полосы доли в прочитанных нами файлах нет, и это **наше число**, а не выписка.
+   */
   max-width: 26rem;
   height: 8px;
-  margin: 0.6rem 0 0.9rem;
+  margin: var(--spacingVerticalS) 0 var(--spacingVerticalM);
   background: var(--line);
-  border-radius: 999px;
+  border-radius: var(--borderRadiusCircular);
   overflow: hidden;
 }
 
@@ -824,7 +813,7 @@ button.primary:active:not(:disabled) {
   width: clamp(0%, var(--share, 0%), 100%);
   height: 100%;
   background: var(--accent);
-  border-radius: 999px;
+  border-radius: var(--borderRadiusCircular);
 }
 
 .share-value {
@@ -843,7 +832,7 @@ button.primary:active:not(:disabled) {
  */
 .gaps li:not([data-zero='true']) {
   color: var(--text);
-  font-weight: 550;
+  font-weight: var(--fontWeightSemibold);
 }
 
 /*
@@ -879,8 +868,13 @@ button.primary:active:not(:disabled) {
   padding: 0;
   list-style: none;
   display: grid;
+  /*
+   * `19rem` — наименьшая ширина колонки списка неполноты, **наше число**: при ней самая длинная
+   * строка вида «ставки без процента или без фиксированной части: 0» умещается в одну. Названо
+   * исключением в проверке величин.
+   */
   grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
-  gap: 0 1.5rem;
+  gap: 0 var(--spacingHorizontalXXL);
 }
 
 /*
@@ -954,6 +948,7 @@ button.primary:active:not(:disabled) {
  * показанное в том же обесцвеченном слое, а не второй вид пометки.
  */
 .stale-mark {
+  clear: right;
   margin: 0 0 var(--gap);
   padding: var(--spacingVerticalM) var(--spacingHorizontalL);
   background: var(--accent-soft);
@@ -966,6 +961,11 @@ button.primary:active:not(:disabled) {
 /* ——— Страница входа ——— */
 
 .login {
+  /*
+   * `22rem` и `12vh` — ширина карточки входа и её отступ сверху, **наши числа**: форма из двух
+   * полей не должна растягиваться на весь монитор и стоит чуть выше середины. Ни того ни другого
+   * в документации Fluent нет; оба названы исключениями в проверке величин.
+   */
   max-width: 22rem;
   margin: 12vh auto 0;
   padding: var(--spacingVerticalXXL) var(--spacingHorizontalXXL);
@@ -991,13 +991,13 @@ button.primary:active:not(:disabled) {
 .login input {
   display: block;
   width: 100%;
-  margin: 0 0 1rem;
-  padding: 0.5rem 0.65rem;
+  margin: 0 0 var(--spacingVerticalL);
+  padding: var(--spacingVerticalS) var(--spacingHorizontalM);
   font: inherit;
   color: var(--text);
   background: var(--bg);
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border: var(--strokeWidthThin) solid var(--line-strong);
+  border-radius: var(--borderRadiusMedium);
 }
 
 .login button {
@@ -1005,7 +1005,7 @@ button.primary:active:not(:disabled) {
 }
 
 .login [role='alert'] {
-  margin: 1rem 0 0;
+  margin: var(--spacingVerticalL) 0 0;
 }
 
 /* ——— Узкий экран ——— */
@@ -1035,6 +1035,12 @@ button.primary:active:not(:disabled) {
  * **−127** — уехала вместе с таблицей. Вернуть её могла бы обёртка в разметке, но разметку этот
  * кусок не открывает.
  */
+/*
+ * `48rem` и `40rem` — наши пороги ширины, а не числа Fluent: раздел «Grid» справочника говорит про
+ * колонки, поля и жёлобы и ни одного пикселя не называет. Первый — ширина, при которой таблице
+ * товаров становится тесно; второй — при которой пары «подпись — значение» перестают стоять в
+ * четыре колонки. Оба названы исключениями в проверке величин.
+ */
 @media (max-width: 48rem) {
   .items {
     overflow-x: auto;
@@ -1057,7 +1063,7 @@ button.primary:active:not(:disabled) {
    */
   dl {
     grid-template-columns: 1fr auto;
-    gap: 0.55rem 1rem;
+    gap: var(--spacingVerticalS) var(--spacingHorizontalL);
   }
 
   dt,
@@ -1099,7 +1105,6 @@ button.primary:active:not(:disabled) {
 :root{--colorNeutralBackground1: #292929;
     --colorNeutralBackground1Hover: #3d3d3d;
     --colorNeutralBackground1Pressed: #1f1f1f;
-    --colorNeutralBackground2: #1f1f1f;
     --colorNeutralBackground4: #0a0a0a;
     --colorNeutralForeground1: #ffffff;
     --colorNeutralForeground2: #d6d6d6;
@@ -1110,7 +1115,6 @@ button.primary:active:not(:disabled) {
     --colorNeutralForegroundOnBrand: #ffffff;
     --colorNeutralStroke1: #666666;
     --colorNeutralStroke2: #525252;
-    --colorNeutralStrokeAccessible: #adadad;
     --colorSubtleBackgroundHover: #383838;
 
     --colorBrandBackground: #106ebe;
@@ -1123,10 +1127,8 @@ button.primary:active:not(:disabled) {
     --colorStrokeFocus2: #ffffff;
 
     --colorPaletteRedBackground1: #3f1011;
-    --colorPaletteRedBorder1: #d13438;
     --colorPaletteRedBorder2: #e37d80;
     --colorPaletteRedForeground1: #e37d80;
 
                                                                           
-    --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
     --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);}</style></head><body><main><h1>Nordic Pet — прибыль</h1><p role="alert">Данные сейчас не читаются: база не ответила. Числа не показаны нарочно — показывать старые как свежие хуже, чем не показать никаких. Обновите страницу через минуту; если повторится, скажите разработчику.</p><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form></main><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>

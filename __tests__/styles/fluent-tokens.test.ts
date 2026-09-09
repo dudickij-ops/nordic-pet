@@ -24,7 +24,8 @@ import { expect, test } from 'vitest'
  * - каждое объявление в этих блоках имеет либо значение из документации Fluent, либо ссылку на
  *   другую величину, либо стоит в коротком списке названных исключений;
  * - в правилах экрана у **цветовых свойств** значение состоит только из ссылок на величины и
- *   безопасных слов языка. Посторонний цвет не пройдёт независимо от того, как он записан.
+ *   безопасных слов языка. Посторонний цвет не пройдёт независимо от того, как он записан;
+ * - **любая длина в правилах** — из шкал Fluent либо из короткого списка названных исключений.
  *
  * **Откуда взяты числа.** Имена и значения — из официальной реализации токенов Fluent 2
  * (`microsoft/fluentui`, пакет `packages/tokens/src`): `global/fonts.ts`, `global/spacings.ts`,
@@ -48,7 +49,6 @@ const ЦВЕТА: Record<string, [string, string]> = {
   colorNeutralBackground1: ['#ffffff', '#292929'],
   colorNeutralBackground1Hover: ['#f5f5f5', '#3d3d3d'],
   colorNeutralBackground1Pressed: ['#e0e0e0', '#1f1f1f'],
-  colorNeutralBackground2: ['#fafafa', '#1f1f1f'],
   colorNeutralBackground4: ['#f0f0f0', '#0a0a0a'],
   colorNeutralForeground1: ['#242424', '#ffffff'],
   colorNeutralForeground2: ['#424242', '#d6d6d6'],
@@ -59,7 +59,6 @@ const ЦВЕТА: Record<string, [string, string]> = {
   colorNeutralForegroundOnBrand: ['#ffffff', '#ffffff'],
   colorNeutralStroke1: ['#d1d1d1', '#666666'],
   colorNeutralStroke2: ['#e0e0e0', '#525252'],
-  colorNeutralStrokeAccessible: ['#616161', '#adadad'],
   colorSubtleBackgroundHover: ['#f5f5f5', '#383838'],
   colorBrandBackground: ['#0078d4', '#106ebe'],
   colorBrandBackgroundHover: ['#106ebe', '#0078d4'],
@@ -69,13 +68,8 @@ const ЦВЕТА: Record<string, [string, string]> = {
   colorBrandStroke1: ['#0078d4', '#2899f5'],
   colorStrokeFocus2: ['#000000', '#ffffff'],
   colorPaletteRedBackground1: ['#fdf6f6', '#3f1011'],
-  colorPaletteRedBorder1: ['#f1bbbc', '#d13438'],
   colorPaletteRedBorder2: ['#d13438', '#e37d80'],
   colorPaletteRedForeground1: ['#bc2f32', '#e37d80'],
-  shadow4: [
-    '0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14)',
-    '0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28)',
-  ],
   shadow8: [
     '0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14)',
     '0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28)',
@@ -97,11 +91,11 @@ const ШКАЛЫ: Record<string, string> = {
   fontWeightRegular: '400',
   fontWeightSemibold: '600',
   borderRadiusMedium: '4px',
-  borderRadiusXLarge: '8px',
   borderRadius2XLarge: '12px',
   borderRadiusCircular: '10000px',
   strokeWidthThin: '1px',
   strokeWidthThick: '2px',
+  spacingHorizontalXS: '4px',
   spacingHorizontalS: '8px',
   spacingHorizontalM: '12px',
   spacingHorizontalL: '16px',
@@ -143,6 +137,26 @@ const ИСКЛЮЧЕНИЯ: Record<string, { значение: string; дово�
       'предельная ширина содержимого: числа для неё в документации Fluent нет вовсе, названо ' +
       'допущением в контракте',
   },
+}
+
+/**
+ * Длины в правилах экрана, которых нет ни в одной шкале Fluent, — каждая с доводом.
+ *
+ * Их семь, и список закрыт: всё, что не здесь и не в шкалах, красит закрывающее утверждение.
+ * Каждая строка — сознательное решение, а не место, куда сметают неудобное.
+ */
+const ИСКЛЮЧЕНИЯ_ПРАВИЛ: Record<string, string> = {
+  '26rem':
+    'предел ширины полосы доли: во всю строку 80 % и 100 % почти неразличимы, глазу нужен видимый остаток',
+  '8px':
+    'толщина полосы доли: шкалы толщин полосы у Fluent в прочитанных нами файлах нет, число наше',
+  '19rem':
+    'наименьшая ширина колонки списка неполноты: при ней самая длинная строка умещается в одну',
+  '22rem': 'ширина карточки входа: форма из двух полей не должна растягиваться на весь монитор',
+  '12vh': 'отступ карточки входа сверху: она стоит чуть выше середины',
+  '48rem': 'порог, при котором таблице товаров становится тесно; числа для него у Fluent нет',
+  '40rem':
+    'порог, при котором пары «подпись — значение» перестают стоять в четыре колонки; числа для него у Fluent нет',
 }
 
 /** Свойства, у которых значение способно нести цвет. Всё прочее проверка не читает. */
@@ -326,11 +340,21 @@ test('в таблице стилей нет ни одной величины и 
     }
   }
 
+  const шкалы = new Set(Object.values(ШКАЛЫ))
+
   for (const { свойство, значение } of объявленияПравил(правила)) {
     expect(
       свойство.startsWith('--'),
       `величина «${свойство}» объявлена вне блоков величин: величины живут только в двух блоках`,
     ).toBe(false)
+
+    for (const длина of значение.match(/(?<![\w-])-?\d+(?:\.\d+)?(?:px|rem|em|vh|vw)\b/g) ?? []) {
+      expect(
+        шкалы.has(длина) || длина in ИСКЛЮЧЕНИЯ_ПРАВИЛ,
+        `в правиле «${свойство}: ${значение}» стоит длина «${длина}» — она не из шкал Fluent 2 и ` +
+          'не названа исключением',
+      ).toBe(true)
+    }
 
     if (!ЦВЕТОВЫЕ.has(свойство)) continue
 
@@ -349,5 +373,8 @@ test('в таблице стилей нет ни одной величины и 
 test('у каждого исключения есть довод', () => {
   for (const [имя, { довод }] of Object.entries(ИСКЛЮЧЕНИЯ)) {
     expect(довод.trim().length, `исключение --${имя} без довода`).toBeGreaterThan(20)
+  }
+  for (const [длина, довод] of Object.entries(ИСКЛЮЧЕНИЯ_ПРАВИЛ)) {
+    expect(довод.trim().length, `исключение ${длина} без довода`).toBeGreaterThan(20)
   }
 })
