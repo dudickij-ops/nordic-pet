@@ -329,4 +329,16 @@ export const BREAKS: Break[] = [
     replace: ':root {\n  --postoronnij: 1px;\n}\n\n/* ——— Основа ——— */',
     tests: 'все',
   },
+  // ——— Задача 11: отключённый вид обязан доходить до главной кнопки ———
+  {
+    id: 'disabled-loses-to-primary',
+    claim:
+      'вернуть селектору отключённого вида прежнюю запись, при которой он проигрывал по весу ' +
+      'виду главной кнопки',
+    mustRedden: 'отключённый вид назван и для главной кнопки, а не только для кнопки вообще',
+    file: 'app/globals.css',
+    find: 'button:disabled,\nbutton.primary:disabled {',
+    replace: 'button:disabled {',
+    tests: 'все',
+  },
 ]
