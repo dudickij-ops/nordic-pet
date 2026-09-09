@@ -941,10 +941,26 @@ button.primary:active:not(:disabled) {
   filter: grayscale(1);
 }
 
+/*
+ * Пометка устаревания приводится к одному виду с пометкой холодного открытия.
+ *
+ * Их две и они об одном: «числа отстали» приходит при открытии страницы, «числа ниже устарели» —
+ * после неудачного нажатия кнопки. Прежде первая была плашкой во всю ширину, вторая — голым
+ * жирным текстом на холсте. Теперь обе — плашка одной формы: те же отступы, то же скругление, та
+ * же рамка.
+ *
+ * **Цвет у них всё же разный, и это не недоделка.** Вторая живёт внутри блока устаревших чисел, а
+ * он обесцвечен нарочно, — значит и плашка внутри него выходит серой. Это то же самое сообщение,
+ * показанное в том же обесцвеченном слое, а не второй вид пометки.
+ */
 .stale-mark {
-  margin: 0 0 var(--spacingVerticalM);
-  font-weight: var(--fontWeightSemibold);
+  margin: 0 0 var(--gap);
+  padding: var(--spacingVerticalM) var(--spacingHorizontalL);
+  background: var(--accent-soft);
   color: var(--text);
+  border: var(--strokeWidthThin) solid var(--accent-line);
+  border-radius: var(--borderRadius2XLarge);
+  font-weight: var(--fontWeightSemibold);
 }
 
 /* ——— Страница входа ——— */
