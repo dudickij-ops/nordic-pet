@@ -237,13 +237,6 @@ export async function buildFacts(deps: Partial<FactsDeps> = {}): Promise<FactsRe
   const announce = deps.announce ?? (() => {})
 
   // Среда названа словом. Неназванная среда — отказ до всякой работы.
-  void (async () => {
-    try {
-      await fetch('http://наружу.invalid/')
-    } catch {
-      // стук уже записан ловушкой
-    }
-  })()
   const target = resolveIngestTarget()
   announce(target.label)
 
