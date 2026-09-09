@@ -48,6 +48,7 @@
   --colorNeutralBackground1Hover: #f5f5f5;
   --colorNeutralBackground1Pressed: #e0e0e0;
   --colorNeutralBackground2: #fafafa;
+  --colorNeutralBackground4: #f0f0f0;
   --colorNeutralForeground1: #242424;
   --colorNeutralForeground2: #424242;
   --colorNeutralForeground3: #616161;
@@ -94,6 +95,7 @@
 
   /* Тень. `utils/shadows.ts` плюс пара цветов тени из `alias/lightColor.ts`. */
   --shadow4: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
+  --shadow8: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
 
   /* Шкала шрифта для веба. `global/fonts.ts`. */
   --fontFamilyBase: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system,
@@ -114,17 +116,20 @@
   /* Скругления, толщины, отступы, движение. */
   --borderRadiusMedium: 4px;
   --borderRadiusXLarge: 8px;
+  --borderRadius2XLarge: 12px;
   --borderRadiusCircular: 10000px;
   --strokeWidthThin: 1px;
   --strokeWidthThick: 2px;
   --spacingHorizontalS: 8px;
   --spacingHorizontalM: 12px;
   --spacingHorizontalL: 16px;
+  --spacingHorizontalXL: 20px;
   --spacingHorizontalXXL: 24px;
   --spacingVerticalXS: 4px;
   --spacingVerticalS: 8px;
   --spacingVerticalM: 12px;
   --spacingVerticalL: 16px;
+  --spacingVerticalXL: 20px;
   --spacingVerticalXXL: 24px;
   --spacingVerticalXXXL: 32px;
   /*
@@ -158,23 +163,11 @@
    * взята: карточки, тени и скругления — задача 5. До неё карточка отделяется от холста только
    * рамкой, и это меньше, чем сказано выше.
    */
-  --bg: var(--colorNeutralBackground1);
+  --bg: var(--colorNeutralBackground4);
   --surface: var(--colorNeutralBackground1);
   --text: var(--colorNeutralForeground1);
   --text-dim: var(--colorNeutralForeground3);
-  /*
-   * Рамка карточки. **Расхождение тем, и у него довод.** В светлой теме она берёт
-   * `colorNeutralBackground1Pressed`, как в показанном примере Microsoft. В тёмной — другой
-   * токен, `colorNeutralStroke2`: владелец посмотрел пару на одном снимке
-   * (`docs/screens/vybor-ramki-tyomnoy-temy.png`) и увидел то, чего не видно в числах — при
-   * `#1f1f1f` карточку отделяет одна тень, а рамка просто занимает место. Раз мы сознательно
-   * пошли против условия справочника и оставили рамку вместе с тенью, рамка обязана хоть что-то
-   * делать.
-   *
-   * **Честная строка, та же самая:** наш замер к холсту — 1,13 : 1 у прежней и 1,86 : 1 у новой;
-   * 1,86 не дотягивает до 3 : 1. Это улучшение, а не починка: разделение карточек в тёмной теме
-   * держится на тени и на глазе.
-   */
+  /* Линия внутри карточек — разделители строк неполноты. Рамок у карточек больше нет. */
   --line: var(--colorNeutralBackground1Pressed);
   --line-strong: var(--colorNeutralStroke1);
   --accent: var(--colorBrandBackground);
@@ -212,6 +205,7 @@
     --colorNeutralBackground1Hover: #3d3d3d;
     --colorNeutralBackground1Pressed: #1f1f1f;
     --colorNeutralBackground2: #1f1f1f;
+    --colorNeutralBackground4: #0a0a0a;
     --colorNeutralForeground1: #ffffff;
     --colorNeutralForeground2: #d6d6d6;
     --colorNeutralForeground3: #adadad;
@@ -240,9 +234,8 @@
 
     /* Тень в тёмной теме гуще: пара цветов своя. `alias/darkColor.ts`. */
     --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
+    --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
 
-    /* Рамка карточки в тёмной теме — другой токен. Довод и замер стоят у светлого объявления. */
-    --line: var(--colorNeutralStroke2);
   }
 }
 
@@ -339,27 +332,26 @@ p {
 /* ——— Блоки ——— */
 
 /*
- * Карточка — задача 5 куска S10.
+ * Карточка — задача 7а куска S10, вид по образцу заказчика.
  *
- * **Показанный пример, дословно.** Сайт fluent2.microsoft.design рисует плитку так:
- * `.tile{background-color:var(--colorNeutralBackground1);border:1px solid
- * var(--colorNeutralBackground1Pressed);border-radius:8px;box-shadow:0 2px 4px #00000024,0 0 2px
- * #0000001f}`. Последнее — это ровно `shadow4` (#24 = 0,141; #1f = 0,122). Холст у приложения
- * Fluent того же цвета: `react-provider/…/useFluentProviderStyles.styles.ts` ставит на корень
- * `backgroundColor: tokens.colorNeutralBackground1`.
+ * **Здесь отступление не добавилось, а исчезло.** Задача 5 ставила рамку и тень одновременно,
+ * следуя показанному примеру, и это было названо отступлением от буквы справочника. Теперь рамки
+ * нет, и та же цитата с тем же условием описывает ровно то, что мы делаем:
+ * fluent2.microsoft.design/elevation, таблица «Low elevation ramp», строка светлой темы —
+ * `shadow4` для «Cards without an edge», карточек **без рамки**; следующая ступень той же
+ * таблицы — `shadow8` для «Floating action buttons, raised cards, and raised app bars».
+ * **Наш вывод:** карточка отчёта — «raised card», и ей достаётся `shadow8`.
  *
- * **Отступление, названное вслух.** Справочник (fluent2.microsoft.design/elevation, таблица «Low
- * elevation ramp») называет `shadow4` в светлой теме для «Cards without an edge» — то есть для
- * карточек **без рамки**. Показанный пример ставит рамку и тень одновременно. Мы пошли за
- * примером против буквы условия; названо здесь, в описи снимков и в теле pull request.
+ * Холст при этом отделён от карточки цветом: `colorNeutralBackground4` под
+ * `colorNeutralBackground1`. Это отмена решения развилки 1 от 8 сентября, причина названа в
+ * плане — заказчик прислал образец вида.
  */
 section {
   margin: 0 0 var(--gap);
-  padding: var(--spacingVerticalL) var(--spacingHorizontalL);
+  padding: var(--spacingVerticalXL) var(--spacingHorizontalXL);
   background: var(--surface);
-  border: var(--strokeWidthThin) solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow4);
+  border-radius: var(--borderRadius2XLarge);
+  box-shadow: var(--shadow8);
 }
 
 /* ——— Пары «подпись — значение» ——— */
@@ -752,9 +744,24 @@ button.primary:active:not(:disabled) {
 /*
  * Крупных чисел на экране ровно три — прибыль, маржа, окупаемость. Остальные показатели идут
  * ровным весом. Экран, где выделено всё, не выделяет ничего.
+ *
+ * **Отступление, названное вслух.** Справочник, дословно (fluent2.microsoft.design/color): «Apply
+ * brand colors to different areas of an interface not only to create visual prominence, but also
+ * to anchor people in a specific product experience. Avoid overusing brand colors or using them on
+ * large surfaces as they can dilute a hierarchy and make an experience difficult to navigate.»
+ * Карточка «Итог» идёт на смысловом цвете — то есть против второй половины этой цитаты. Довод
+ * владельца: одна карточка из шести, и она главная на экране. Названо здесь, в описи снимков и в
+ * теле pull request.
  */
 .bottom-line {
-  border-color: var(--line-strong);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.bottom-line h2,
+.bottom-line dt,
+.bottom-line dd {
+  color: var(--on-accent);
 }
 
 /* Три крупных числа — Title 2 (28 / 36, 600). Их ровно три, и больше на экране крупного нет. */
@@ -902,9 +909,8 @@ button.primary:active:not(:disabled) {
   margin: 12vh auto 0;
   padding: var(--spacingVerticalXXL) var(--spacingHorizontalXXL);
   background: var(--surface);
-  border: var(--strokeWidthThin) solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow4);
+  border-radius: var(--borderRadius2XLarge);
+  box-shadow: var(--shadow8);
 }
 
 .login h1 {
@@ -980,7 +986,7 @@ button.primary:active:not(:disabled) {
   }
 
   section {
-    padding: var(--spacingVerticalM) var(--spacingHorizontalM);
+    padding: var(--spacingVerticalL) var(--spacingHorizontalL);
   }
 
   /*
@@ -1033,6 +1039,7 @@ button.primary:active:not(:disabled) {
     --colorNeutralBackground1Hover: #3d3d3d;
     --colorNeutralBackground1Pressed: #1f1f1f;
     --colorNeutralBackground2: #1f1f1f;
+    --colorNeutralBackground4: #0a0a0a;
     --colorNeutralForeground1: #ffffff;
     --colorNeutralForeground2: #d6d6d6;
     --colorNeutralForeground3: #adadad;
@@ -1061,6 +1068,4 @@ button.primary:active:not(:disabled) {
 
                                                                           
     --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
-
-                                                                                                 
-    --line: var(--colorNeutralStroke2);}</style></head><body><main class="login"><h1>Nordic Pet — вход</h1><label for="login">Логин</label><input id="login" type="text" autoComplete="username" required="" name="login"/><label for="password">Пароль</label><input id="password" type="password" autoComplete="current-password" required="" name="password"/><button type="submit" class="primary">Войти</button><p role="alert">Логин или пароль не подошли.</p></main></body></html>
+    --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);}</style></head><body><main class="login"><h1>Nordic Pet — вход</h1><label for="login">Логин</label><input id="login" type="text" autoComplete="username" required="" name="login"/><label for="password">Пароль</label><input id="password" type="password" autoComplete="current-password" required="" name="password"/><button type="submit" class="primary">Войти</button><p role="alert">Логин или пароль не подошли.</p></main></body></html>

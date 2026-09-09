@@ -48,6 +48,7 @@
   --colorNeutralBackground1Hover: #f5f5f5;
   --colorNeutralBackground1Pressed: #e0e0e0;
   --colorNeutralBackground2: #fafafa;
+  --colorNeutralBackground4: #f0f0f0;
   --colorNeutralForeground1: #242424;
   --colorNeutralForeground2: #424242;
   --colorNeutralForeground3: #616161;
@@ -94,6 +95,7 @@
 
   /* Тень. `utils/shadows.ts` плюс пара цветов тени из `alias/lightColor.ts`. */
   --shadow4: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
+  --shadow8: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
 
   /* Шкала шрифта для веба. `global/fonts.ts`. */
   --fontFamilyBase: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system,
@@ -114,17 +116,20 @@
   /* Скругления, толщины, отступы, движение. */
   --borderRadiusMedium: 4px;
   --borderRadiusXLarge: 8px;
+  --borderRadius2XLarge: 12px;
   --borderRadiusCircular: 10000px;
   --strokeWidthThin: 1px;
   --strokeWidthThick: 2px;
   --spacingHorizontalS: 8px;
   --spacingHorizontalM: 12px;
   --spacingHorizontalL: 16px;
+  --spacingHorizontalXL: 20px;
   --spacingHorizontalXXL: 24px;
   --spacingVerticalXS: 4px;
   --spacingVerticalS: 8px;
   --spacingVerticalM: 12px;
   --spacingVerticalL: 16px;
+  --spacingVerticalXL: 20px;
   --spacingVerticalXXL: 24px;
   --spacingVerticalXXXL: 32px;
   /*
@@ -158,23 +163,11 @@
    * взята: карточки, тени и скругления — задача 5. До неё карточка отделяется от холста только
    * рамкой, и это меньше, чем сказано выше.
    */
-  --bg: var(--colorNeutralBackground1);
+  --bg: var(--colorNeutralBackground4);
   --surface: var(--colorNeutralBackground1);
   --text: var(--colorNeutralForeground1);
   --text-dim: var(--colorNeutralForeground3);
-  /*
-   * Рамка карточки. **Расхождение тем, и у него довод.** В светлой теме она берёт
-   * `colorNeutralBackground1Pressed`, как в показанном примере Microsoft. В тёмной — другой
-   * токен, `colorNeutralStroke2`: владелец посмотрел пару на одном снимке
-   * (`docs/screens/vybor-ramki-tyomnoy-temy.png`) и увидел то, чего не видно в числах — при
-   * `#1f1f1f` карточку отделяет одна тень, а рамка просто занимает место. Раз мы сознательно
-   * пошли против условия справочника и оставили рамку вместе с тенью, рамка обязана хоть что-то
-   * делать.
-   *
-   * **Честная строка, та же самая:** наш замер к холсту — 1,13 : 1 у прежней и 1,86 : 1 у новой;
-   * 1,86 не дотягивает до 3 : 1. Это улучшение, а не починка: разделение карточек в тёмной теме
-   * держится на тени и на глазе.
-   */
+  /* Линия внутри карточек — разделители строк неполноты. Рамок у карточек больше нет. */
   --line: var(--colorNeutralBackground1Pressed);
   --line-strong: var(--colorNeutralStroke1);
   --accent: var(--colorBrandBackground);
@@ -212,6 +205,7 @@
     --colorNeutralBackground1Hover: #3d3d3d;
     --colorNeutralBackground1Pressed: #1f1f1f;
     --colorNeutralBackground2: #1f1f1f;
+    --colorNeutralBackground4: #0a0a0a;
     --colorNeutralForeground1: #ffffff;
     --colorNeutralForeground2: #d6d6d6;
     --colorNeutralForeground3: #adadad;
@@ -240,9 +234,8 @@
 
     /* Тень в тёмной теме гуще: пара цветов своя. `alias/darkColor.ts`. */
     --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
+    --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
 
-    /* Рамка карточки в тёмной теме — другой токен. Довод и замер стоят у светлого объявления. */
-    --line: var(--colorNeutralStroke2);
   }
 }
 
@@ -339,27 +332,26 @@ p {
 /* ——— Блоки ——— */
 
 /*
- * Карточка — задача 5 куска S10.
+ * Карточка — задача 7а куска S10, вид по образцу заказчика.
  *
- * **Показанный пример, дословно.** Сайт fluent2.microsoft.design рисует плитку так:
- * `.tile{background-color:var(--colorNeutralBackground1);border:1px solid
- * var(--colorNeutralBackground1Pressed);border-radius:8px;box-shadow:0 2px 4px #00000024,0 0 2px
- * #0000001f}`. Последнее — это ровно `shadow4` (#24 = 0,141; #1f = 0,122). Холст у приложения
- * Fluent того же цвета: `react-provider/…/useFluentProviderStyles.styles.ts` ставит на корень
- * `backgroundColor: tokens.colorNeutralBackground1`.
+ * **Здесь отступление не добавилось, а исчезло.** Задача 5 ставила рамку и тень одновременно,
+ * следуя показанному примеру, и это было названо отступлением от буквы справочника. Теперь рамки
+ * нет, и та же цитата с тем же условием описывает ровно то, что мы делаем:
+ * fluent2.microsoft.design/elevation, таблица «Low elevation ramp», строка светлой темы —
+ * `shadow4` для «Cards without an edge», карточек **без рамки**; следующая ступень той же
+ * таблицы — `shadow8` для «Floating action buttons, raised cards, and raised app bars».
+ * **Наш вывод:** карточка отчёта — «raised card», и ей достаётся `shadow8`.
  *
- * **Отступление, названное вслух.** Справочник (fluent2.microsoft.design/elevation, таблица «Low
- * elevation ramp») называет `shadow4` в светлой теме для «Cards without an edge» — то есть для
- * карточек **без рамки**. Показанный пример ставит рамку и тень одновременно. Мы пошли за
- * примером против буквы условия; названо здесь, в описи снимков и в теле pull request.
+ * Холст при этом отделён от карточки цветом: `colorNeutralBackground4` под
+ * `colorNeutralBackground1`. Это отмена решения развилки 1 от 8 сентября, причина названа в
+ * плане — заказчик прислал образец вида.
  */
 section {
   margin: 0 0 var(--gap);
-  padding: var(--spacingVerticalL) var(--spacingHorizontalL);
+  padding: var(--spacingVerticalXL) var(--spacingHorizontalXL);
   background: var(--surface);
-  border: var(--strokeWidthThin) solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow4);
+  border-radius: var(--borderRadius2XLarge);
+  box-shadow: var(--shadow8);
 }
 
 /* ——— Пары «подпись — значение» ——— */
@@ -752,9 +744,24 @@ button.primary:active:not(:disabled) {
 /*
  * Крупных чисел на экране ровно три — прибыль, маржа, окупаемость. Остальные показатели идут
  * ровным весом. Экран, где выделено всё, не выделяет ничего.
+ *
+ * **Отступление, названное вслух.** Справочник, дословно (fluent2.microsoft.design/color): «Apply
+ * brand colors to different areas of an interface not only to create visual prominence, but also
+ * to anchor people in a specific product experience. Avoid overusing brand colors or using them on
+ * large surfaces as they can dilute a hierarchy and make an experience difficult to navigate.»
+ * Карточка «Итог» идёт на смысловом цвете — то есть против второй половины этой цитаты. Довод
+ * владельца: одна карточка из шести, и она главная на экране. Названо здесь, в описи снимков и в
+ * теле pull request.
  */
 .bottom-line {
-  border-color: var(--line-strong);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.bottom-line h2,
+.bottom-line dt,
+.bottom-line dd {
+  color: var(--on-accent);
 }
 
 /* Три крупных числа — Title 2 (28 / 36, 600). Их ровно три, и больше на экране крупного нет. */
@@ -902,9 +909,8 @@ button.primary:active:not(:disabled) {
   margin: 12vh auto 0;
   padding: var(--spacingVerticalXXL) var(--spacingHorizontalXXL);
   background: var(--surface);
-  border: var(--strokeWidthThin) solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow4);
+  border-radius: var(--borderRadius2XLarge);
+  box-shadow: var(--shadow8);
 }
 
 .login h1 {
@@ -980,7 +986,7 @@ button.primary:active:not(:disabled) {
   }
 
   section {
-    padding: var(--spacingVerticalM) var(--spacingHorizontalM);
+    padding: var(--spacingVerticalL) var(--spacingHorizontalL);
   }
 
   /*
@@ -1033,6 +1039,7 @@ button.primary:active:not(:disabled) {
     --colorNeutralBackground1Hover: #3d3d3d;
     --colorNeutralBackground1Pressed: #1f1f1f;
     --colorNeutralBackground2: #1f1f1f;
+    --colorNeutralBackground4: #0a0a0a;
     --colorNeutralForeground1: #ffffff;
     --colorNeutralForeground2: #d6d6d6;
     --colorNeutralForeground3: #adadad;
@@ -1061,6 +1068,4 @@ button.primary:active:not(:disabled) {
 
                                                                           
     --shadow4: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
-
-                                                                                                 
-    --line: var(--colorNeutralStroke2);}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><p role="status">Числа отстали от источников: сырьё менялось после последнего разбора. Нажмите «Обновить данные».</p><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><div data-stale="false" class="numbers"><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01" data-empty="true">2026-01</a></li><li><a href="/?m=2026-02">2026-02</a></li><li><a href="/?m=2026-03" aria-current="page">2026-03</a></li></ul></nav></header><section class="block"><h2>Выручка</h2><dl><dt>Оборот</dt><dd>18 764,00 €</dd><dt>Скидки</dt><dd>427,50 €</dd><dt>Возвраты</dt><dd>1 059,46 €</dd><dt>Чистая выручка</dt><dd>17 277,04 €</dd></dl></section><section class="block"><h2>Затраты</h2><dl><dt>Себестоимость проданного</dt><dd>6 028,11 €</dd><dt>Реклама</dt><dd>4 431,37 €</dd><dt>Комиссии платёжных систем</dt><dd>526,12 €</dd><dt>Постоянные расходы</dt><dd>4 552,90 €</dd></dl></section><section class="block bottom-line"><h2>Итог</h2><dl><dt>Прибыль</dt><dd>1 738,53 €</dd><dt>Маржа</dt><dd>10,1 %</dd><dt>Окупаемость рекламы (по обороту)</dt><dd>4,23 ×</dd></dl></section><section class="block items"><h2>Товары</h2><table><thead><tr><th>Артикул</th><th>Продано за вычетом возвратов</th><th>Чистая выручка</th><th>Себестоимость</th><th>Прибыль</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €</td><td>1 251,90 €</td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td></tr><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €</td><td>793,44 €</td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td></tr></tbody></table></section><section class="block honesty"><h2>Честность данных</h2><p>Посчитано по настоящей цене поставщика (доля от чистой выручки): <strong class="share-value">80,3 %</strong></p><div class="share" aria-hidden="true"><div class="share-fill" style="--share:80.3%"></div></div><p>Без цены поставщика (запасные 40%): NP-011, NP-012</p></section><section class="block gaps"><h2>Неполнота данных</h2><p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p><ul><li data-zero="true">скидки: 0</li><li data-zero="true">оборот: 0</li><li data-zero="true">возвраты без суммы: 0</li><li data-zero="true">возвраты, не попавшие в счёт: 0</li><li data-zero="true">возвращено больше, чем куплено: 0</li><li>строки продаж без цены поставщика: 77 (NP-011, NP-012)</li><li data-zero="true">ставки без процента или без фиксированной части: 0</li><li data-zero="true">заказы с разными способами оплаты: 0</li><li data-zero="true">постоянные расходы без суммы: 0</li><li data-zero="true">реклама без суммы: 0</li><li data-zero="true">дни рекламы без курса: 0</li></ul></section></main></div></div><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>
+    --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><p role="status">Числа отстали от источников: сырьё менялось после последнего разбора. Нажмите «Обновить данные».</p><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><div data-stale="false" class="numbers"><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01" data-empty="true">2026-01</a></li><li><a href="/?m=2026-02">2026-02</a></li><li><a href="/?m=2026-03" aria-current="page">2026-03</a></li></ul></nav></header><section class="block"><h2>Выручка</h2><dl><dt>Оборот</dt><dd>18 764,00 €</dd><dt>Скидки</dt><dd>427,50 €</dd><dt>Возвраты</dt><dd>1 059,46 €</dd><dt>Чистая выручка</dt><dd>17 277,04 €</dd></dl></section><section class="block"><h2>Затраты</h2><dl><dt>Себестоимость проданного</dt><dd>6 028,11 €</dd><dt>Реклама</dt><dd>4 431,37 €</dd><dt>Комиссии платёжных систем</dt><dd>526,12 €</dd><dt>Постоянные расходы</dt><dd>4 552,90 €</dd></dl></section><section class="block bottom-line"><h2>Итог</h2><dl><dt>Прибыль</dt><dd>1 738,53 €</dd><dt>Маржа</dt><dd>10,1 %</dd><dt>Окупаемость рекламы (по обороту)</dt><dd>4,23 ×</dd></dl></section><section class="block items"><h2>Товары</h2><table><thead><tr><th>Артикул</th><th>Продано за вычетом возвратов</th><th>Чистая выручка</th><th>Себестоимость</th><th>Прибыль</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €</td><td>1 251,90 €</td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td></tr><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €</td><td>793,44 €</td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td></tr></tbody></table></section><section class="block honesty"><h2>Честность данных</h2><p>Посчитано по настоящей цене поставщика (доля от чистой выручки): <strong class="share-value">80,3 %</strong></p><div class="share" aria-hidden="true"><div class="share-fill" style="--share:80.3%"></div></div><p>Без цены поставщика (запасные 40%): NP-011, NP-012</p></section><section class="block gaps"><h2>Неполнота данных</h2><p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p><ul><li data-zero="true">скидки: 0</li><li data-zero="true">оборот: 0</li><li data-zero="true">возвраты без суммы: 0</li><li data-zero="true">возвраты, не попавшие в счёт: 0</li><li data-zero="true">возвращено больше, чем куплено: 0</li><li>строки продаж без цены поставщика: 77 (NP-011, NP-012)</li><li data-zero="true">ставки без процента или без фиксированной части: 0</li><li data-zero="true">заказы с разными способами оплаты: 0</li><li data-zero="true">постоянные расходы без суммы: 0</li><li data-zero="true">реклама без суммы: 0</li><li data-zero="true">дни рекламы без курса: 0</li></ul></section></main></div></div><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>
