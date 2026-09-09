@@ -537,7 +537,20 @@ button:active:not(:disabled) {
  * **Наш замер, и он не в пользу перемены по числу:** прежняя прозрачность 0,55 давала 2,21 : 1 в
  * светлой теме, цвета Fluent дают 1,65 : 1; в тёмной было 3,24 : 1, стало 2,76 : 1. Ни одно из
  * четырёх не дотягивает до 4,5 : 1. Перемена решает названную владельцем беду —
- * непредсказуемость, — и не решает числа. Названо ему находкой, а не строкой в отложенном.
+ * непредсказуемость, — и не решает числа.
+ *
+ * **Порог сюда не применяется, и вот дословное основание.** WCAG 2.1, критерий 1.4.3 Contrast
+ * (Minimum), перечень исключений, целиком: «The visual presentation of text and images of text has
+ * a contrast ratio of at least 4.5:1, except for the following: **Large Text** Large-scale text and
+ * images of large-scale text have a contrast ratio of at least 3:1; **Incidental** Text or images
+ * of text that are part of an inactive user interface component, that are pure decoration, that
+ * are not visible to anyone, or that are part of a picture that contains significant other visual
+ * content, have no contrast requirement; **Logotypes** Text that is part of a logo or brand name
+ * has no contrast requirement.» (w3.org/TR/WCAG21/)
+ *
+ * **Наш вывод:** отключённая кнопка — «inactive user interface component», и порога у неё нет.
+ * Это не оправдание числа, а ответ на вопрос, отступление ли это: не отступление. Числа при этом
+ * названы выше, а не спрятаны за исключением.
  */
 button:disabled {
   color: var(--colorNeutralForegroundDisabled);
@@ -590,17 +603,23 @@ button:disabled {
   padding: var(--spacingVerticalM) var(--spacingHorizontalL);
   background: var(--accent-soft);
   color: var(--text);
-  border: 1px solid var(--accent-line);
-  border-radius: var(--radius);
+  border: var(--strokeWidthThin) solid var(--accent-line);
+  border-radius: var(--borderRadius2XLarge);
 }
 
+/*
+ * `clear` у отказа — по той же причине, что у пометки, и найдено на снимке: полоса управления
+ * плавает справа, а коробка блочного элемента заходит под плавающее — текст обтекает, а фон нет.
+ * Плашка отказа уезжала под кнопки, и «Обновить данные» стояла поверх красного поля.
+ */
 [role='alert'] {
+  clear: right;
   margin: 0 0 var(--gap);
   padding: var(--spacingVerticalM) var(--spacingHorizontalL);
   background: var(--danger-soft);
   color: var(--danger);
-  border: 1px solid var(--danger-line);
-  border-radius: var(--radius);
+  border: var(--strokeWidthThin) solid var(--danger-line);
+  border-radius: var(--borderRadius2XLarge);
 }
 
 /* ——— Верхняя полоса и полоса действия ——— */
@@ -869,9 +888,20 @@ button.primary:active:not(:disabled) {
  * экране одной неразрывной строкой. Прежде здесь стоял флексбокс с раскладкой по краям — он не
  * делал ничего вовсе: распределять между краями было нечего. Найдено проверкой кода.
  */
+/*
+ * Строка неполноты. Найдено владельцем на снимке: единственная ненулевая строка переносится на
+ * две, и ряд разделителей вокруг неё выглядит сломанным.
+ *
+ * **Замер показал, что рвутся не разделители, а воздух.** Границы соседей по ряду сходятся до
+ * пикселя: сетка растягивает все три ячейки на высоту самой высокой — 52 против 32. Разъезжается
+ * текст: у однострочных соседей он прижат к верху рослой ячейки, и под ним остаётся дыра. Поэтому
+ * текст ставится по середине ячейки, а не по её верху.
+ */
 .gaps li {
-  padding: 0.35rem 0;
-  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: var(--spacingVerticalXS) 0;
+  border-bottom: var(--strokeWidthThin) solid var(--line);
   font-size: var(--fontSizeBase300);
   line-height: var(--lineHeightBase300);
   color: var(--text-dim);
@@ -889,15 +919,30 @@ button.primary:active:not(:disabled) {
  * пометку вместо обёртки: слом, снимавший класс с обёртки, проходил зелёным. Найдено прогоном
  * сломов, а не глазом.
  */
+/*
+ * Гашение устаревших чисел — **обесцвечиванием, без прозрачности**.
+ *
+ * Прозрачность отсюда убрана по той же причине, по какой она ушла с отключённой кнопки: она
+ * смешивает текст с тем, что под ним, и контраст перестаёт быть предсказуемым. Здесь он ещё и
+ * проваливался: **наш замер** при прежних 0,55 — основной текст на карточке 3,59 : 1 в светлой
+ * теме, подпись показателя 2,38 : 1; чтобы подпись удержала 4,5 : 1, прозрачность пришлось бы
+ * поднять почти до непрозрачной, то есть перестать гасить вовсе.
+ *
+ * Обесцвечивание контраста нейтрального текста не трогает совсем, а самый громкий элемент экрана
+ * — цветная карточка «Итог» — становится серым, и это видно сразу. **Наш замер после перемены:**
+ * белый текст на посеревшем «Итоге» — 5,83 : 1 в светлой теме и 6,29 : 1 в тёмной; основной текст
+ * и подписи остаются при своих 15,52 : 1 и 6,19 : 1.
+ *
+ * Так на экране не осталось ни одного места, где приглушение делается прозрачностью.
+ */
 .numbers-stale {
-  opacity: 0.55;
   filter: grayscale(1);
 }
 
 .stale-mark {
-  margin: 0 0 0.75rem;
-  font-weight: 600;
-  color: var(--text-dim);
+  margin: 0 0 var(--spacingVerticalM);
+  font-weight: var(--fontWeightSemibold);
+  color: var(--text);
 }
 
 /* ——— Страница входа ——— */
