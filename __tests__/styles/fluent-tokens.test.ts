@@ -29,8 +29,8 @@ import { expect, test } from 'vitest'
  * **Откуда взяты числа.** Имена и значения — из официальной реализации токенов Fluent 2
  * (`microsoft/fluentui`, пакет `packages/tokens/src`): `global/fonts.ts`, `global/spacings.ts`,
  * `global/borderRadius.ts`, `global/strokeWidths.ts`, `global/curves.ts`, `global/durations.ts`,
- * `alias/lightColor.ts`, `alias/darkColor.ts`, `utils/shadows.ts`, величины кнопки —
- * `react-components/react-button/…/useButtonStyles.styles.ts` (там они стоят числами рядом с
+ * `alias/lightColor.ts`, `alias/darkColor.ts`, `utils/shadows.ts`, величины кнопки и высота строки
+ * таблицы — `react-components/react-button/…` и `react-components/react-table/…` (там они стоят числами рядом с
  * правилами, а не в шкале), красный — через
  * `alias/*ColorPalette.ts` и `global/colors.ts`. Значения перенесены без изменения смысла;
  * пробелы в записи (`rgba(0, 0, 0, 0.12)` вместо `rgba(0,0,0,0.12)`) наши, и проверка зашивает
@@ -106,6 +106,7 @@ const ШКАЛЫ: Record<string, string> = {
   spacingVerticalL: '16px',
   spacingVerticalXXL: '24px',
   spacingVerticalXXXL: '32px',
+  tableRowHeightSmall: '34px',
   buttonSpacingSmall: '3px',
   buttonSpacingMedium: '5px',
   buttonMinWidthSmall: '64px',

@@ -131,6 +131,10 @@
    * Собственные величины кнопки Fluent: в реализации они стоят числами рядом с правилами
    * (`react-button/…/useButtonStyles.styles.ts`), а не в шкале отступов. Имена наши, значения его.
    */
+  /* Высота строки таблицы — малый размер Fluent (`react-table/…/useTableCellStyles.styles.ts`:
+   * medium 44, small 34, extra-small 24). Из трёх взят малый; довод — у правила. */
+  --tableRowHeightSmall: 34px;
+
   --buttonSpacingSmall: 3px;
   --buttonSpacingMedium: 5px;
   --buttonMinWidthSmall: 64px;
@@ -414,11 +418,28 @@ table {
   line-height: var(--lineHeightBase300);
 }
 
+/*
+ * Таблица товаров — задача 7 куска S10.
+ *
+ * Из реализации Fluent: высота строки малого размера 34, отступы ячейки `0 8px`, нижняя граница
+ * строки в толщину `strokeWidthThin` цветом `colorNeutralStroke2`, наведение на строку —
+ * `colorSubtleBackgroundHover`.
+ *
+ * **Почему малый размер, а не средний.** Fluent называет три высоты и не говорит, какую брать для
+ * приборной панели, — **наш вывод**: двенадцать товаров при среднем размере занимают 528 пикселей
+ * вместо 408, и ориентир владельца «месяц помещается в один-два экрана прокрутки» перестаёт
+ * выполняться.
+ */
 th,
 td {
-  padding: 0.5rem 0.65rem;
-  border-bottom: 1px solid var(--line);
+  height: var(--tableRowHeightSmall);
+  padding: 0 var(--spacingHorizontalS);
+  border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
   text-align: left;
+}
+
+tbody tr:hover {
+  background: var(--colorSubtleBackgroundHover);
 }
 
 /* Числа вправо, подписи влево: первая колонка — артикул, остальные — числа. */
@@ -452,7 +473,7 @@ thead th {
   line-height: var(--lineHeightBase200);
   font-weight: var(--fontWeightRegular);
   color: var(--text-dim);
-  border-bottom: 1px solid var(--line-strong);
+  border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
   /*
    * Шапка держится при прокрутке — **шире 48 rem, и только там**. Фон обязателен: без него
    * строки просвечивают сквозь прилипшую шапку.
@@ -930,9 +951,25 @@ button.primary:active:not(:disabled) {
  * экрана, и числа теряют связь с заголовками колонок. Обёртка в разметке была бы лучше, но она
  * сдвинула бы отступы строк, которые цитируют сломы прежних кусков.
  */
+/*
+ * Прокрутка таблицы переехала с самой таблицы на карточку «Товары» — задача 7.
+ *
+ * **Что этим закрыто.** Прежде на узком экране таблица получала `display: block`, и в части
+ * читалок экрана числа теряли связь с заголовками колонок: табличная семантика снималась. Это
+ * было названной ценой прошлого куска. Теперь таблица остаётся таблицей, а прокручивается блок
+ * вокруг неё.
+ *
+ * **Что этим НЕ закрыто, и это остаётся названным.** Липкая шапка на узком экране не работает и
+ * не заработает: пока карточка — контейнер горизонтальной прокрутки, вторая ось перестаёт быть
+ * `visible`, и `sticky` считается от прокрутки карточки, которой по вертикали нет.
+ *
+ * **Наш замер в настоящем браузере на этой раскладке.** Прокрутка страницы на 900 пикселей:
+ * при ширине 1280 верх шапки идёт с 544 к **0** — шапка прилипла; при ширине 390 идёт с 773 к
+ * **−127** — уехала вместе с таблицей. Вернуть её могла бы обёртка в разметке, но разметку этот
+ * кусок не открывает.
+ */
 @media (max-width: 48rem) {
-  .items table {
-    display: block;
+  .items {
     overflow-x: auto;
   }
 }
@@ -1061,6 +1098,9 @@ button.primary:active:not(:disabled) {
   --spacingVerticalXXL: 24px;
   --spacingVerticalXXXL: 32px;
                                                                                                                                                                                                         
+                                                                                                                                                                                    
+  --tableRowHeightSmall: 34px;
+
   --buttonSpacingSmall: 3px;
   --buttonSpacingMedium: 5px;
   --buttonMinWidthSmall: 64px;
