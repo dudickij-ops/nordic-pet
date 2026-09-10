@@ -285,7 +285,7 @@ export const BREAKS: Break[] = [
     file: 'lib/metrics/sql.ts',
     find: "and s.amount = max(s.amount) filter (where s.kind = 'вычитание') over ())",
     replace:
-      "and s.ord = (array_agg(s.ord order by s.amount desc, s.ord) filter (where s.kind = 'вычитание') over ())[1])",
+      "and s.ord = first_value(s.ord) over (order by (s.kind = 'вычитание') desc, s.amount desc, s.ord))",
     tests: 'все',
   },
   {
@@ -320,6 +320,9 @@ export const BREAKS: Break[] = [
     id: 'largest-without-share',
     claim: 'печатать строку «съедает больше всего» и тогда, когда доли нет',
     mustRedden: СЪЕДАЕТ_БЕЗ_ДОЛИ,
+    alsoRedden: [
+      { name: ВИД_НОЛЬ, why: 'в её раскладке ступень без доли помечена самой большой, и строка с «нет данных оборота» кладёт слово «оборота» на страницу' },
+    ],
     file: 'app/page.tsx',
     find: 'с.largest === true && с.sharePct !== null',
     replace: 'с.largest === true',
