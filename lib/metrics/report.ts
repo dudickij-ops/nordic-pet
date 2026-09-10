@@ -2,7 +2,14 @@ import { Client } from 'pg'
 
 import { clearPostgresEnvironment } from '../db-url.ts'
 import { resolveIngestTarget, type ProductionConnection } from '../ingest/target.ts'
-import { ALL_MONTHS, MONTH_GAPS, MONTH_ITEMS, MONTH_TOTALS, MONTH_WATERFALL } from './sql.ts'
+import {
+  ALL_MONTHS,
+  MONTH_DAILY,
+  MONTH_GAPS,
+  MONTH_ITEMS,
+  MONTH_TOTALS,
+  MONTH_WATERFALL,
+} from './sql.ts'
 
 /**
  * Дверь слоя метрик в базу — один снимок фактов на весь экран.
@@ -181,6 +188,14 @@ export type MonthReport = {
     netGap?: Maybe
     profitGap?: Maybe
   }
+  /**
+   * Чистая выручка по дням — кусок S11, шаг 2: все дни месяца, выручка дня готовой строкой (пусто —
+   * заказов не было), доля столбика и подпись дня — из SQL (`MONTH_DAILY`). Необязательное по той
+   * же причине, что `устарели`.
+   */
+  daily?: {
+    days: Array<{ day: string; label: string; net: Maybe; sharePct: Maybe }>
+  }
 }
 
 /**
@@ -316,6 +331,7 @@ export async function monthlyReport(
     const itemsResult = await client.query(MONTH_ITEMS, [dayParam])
     const gapsResult = await client.query(MONTH_GAPS, [dayParam])
     const waterfallResult = await client.query(MONTH_WATERFALL, [dayParam])
+    const dailyResult = await client.query(MONTH_DAILY, [dayParam])
 
     const totals = totalsResult.rows[0] as Record<string, string | null>
     const items = itemsResult.rows.map((row) => ({
@@ -370,6 +386,14 @@ export async function monthlyReport(
         scaleHighPct: (waterfallResult.rows[0]?.scale_high_pct ?? null) as string | null,
         netGap: (waterfallResult.rows[0]?.net_gap ?? null) as string | null,
         profitGap: (waterfallResult.rows[0]?.profit_gap ?? null) as string | null,
+      },
+      daily: {
+        days: dailyResult.rows.map((row) => ({
+          day: row.day as string,
+          label: row.label as string,
+          net: row.net as string | null,
+          sharePct: row.share_pct as string | null,
+        })),
       },
     }
   }, { ...deps, announce })
