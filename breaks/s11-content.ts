@@ -344,6 +344,9 @@ export const BREAKS: Break[] = [
     id: 'daily-own-expression',
     claim: 'посчитать выручку дня своим выражением вместо цепочки money',
     mustRedden: 'сумма ряда по дням — чистая выручка месяца, из той же цепочки money',
+    alsoRedden: [
+      { name: 'доля дня — от наибольшей по модулю выручки дня, процентами со знаком', why: 'у её строк выручка задана при нулевом обороте; своё выражение даёт нули, и доли меняются' },
+    ],
     file: 'lib/metrics/sql.ts',
     find: '  select m.sold_on as day, sum(m.net) as net\n',
     replace: '  select m.sold_on as day, sum(m.gross - m.discount - m.refund_amount) as net\n',
@@ -376,6 +379,9 @@ export const BREAKS: Break[] = [
     id: 'daily-no-nullif',
     claim: 'снять nullif у делителя доли дня',
     mustRedden: 'наибольшая выручка дня ноль — доли пусты, а выручка дня — честный ноль',
+    alsoRedden: [
+      { name: 'нулевая чистая выручка от реальных строк не роняет отчёт ошибкой деления', why: 'принятая проверка S5: на её раскладке у дня нулевая выручка, и деление на ноль в ряду роняет весь отчёт — ровно то, от чего она сторожит' },
+    ],
     file: 'lib/metrics/sql.ts',
     find: 'nullif(max(abs(bd.net)) over (), 0)',
     replace: 'max(abs(bd.net)) over ()',
@@ -394,6 +400,9 @@ export const BREAKS: Break[] = [
     id: 'daily-raw-date-label',
     claim: 'отдать подпись дня сырой датой, оставив форматирование разметке',
     mustRedden: 'подпись дня приходит готовой строкой',
+    alsoRedden: [
+      { name: 'отчёт несёт ряд из всех дней месяца, прочитанный тем же снимком', why: 'она сличает подпись первого дня отчёта — «1 марта»' },
+    ],
     file: 'lib/metrics/sql.ts',
     find: '       extract(day from d.day)::int || \x27 \x27 ||\n',
     replace: '       to_char(d.day, \x27YYYY-MM-DD\x27) || \x27\x27 ||\n',
