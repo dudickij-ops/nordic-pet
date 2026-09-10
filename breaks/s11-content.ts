@@ -28,6 +28,14 @@ const ВОДОПАД_В_ОТЧЁТЕ = 'отчёт несёт водопад и�
 
 const ДОЛЯ = 'round(s.amount / nullif(b.gross, 0) * 100, 1)::text'
 
+const ВИД_ОДНО_ЗНАЧЕНИЕ = 'столбик ступени берёт ту же долю и тот же край, что напечатаны'
+const ВИД_БАЗА = 'у каждой ступени названа база доли — оборот'
+const ВИД_ПРИЗНАК = 'итог и вычитание различены признаком в разметке, а не только цветом'
+const ВИД_ФОРМА = 'у итога водопада признак формы: полужирные подпись и сумма'
+const ВИД_НОЛЬ = 'оборот ноль — у ступеней слова, столбиков нет'
+const ВИД_ЯЧЕЙКИ = 'подписи ступеней водопада — отдельной ячейкой вне дорожки столбика'
+const ПЕРЕПИСЬ = 'перепись экрана: весь видимый текст, по порядку и без единой потери'
+
 export const BREAKS: Break[] = [
   {
     id: 'waterfall-chain-broken',
@@ -129,6 +137,77 @@ export const BREAKS: Break[] = [
     file: 'lib/metrics/report.ts',
     find: '    const waterfallResult = await client.query(MONTH_WATERFALL, [dayParam])\n',
     replace: '    const waterfallResult = { rows: [] as Array<Record<string, unknown>> }\n',
+    tests: 'все',
+  },
+
+  // Шаг 1, разметка и вид. Слома «блок рисуется и без своего поля» здесь нет, и это решение, а не
+  // пропуск: такая разметка роняет отрисовку каждой принятой проверки, чья раскладка поля не несёт,
+  // — два десятка проверок разом, и строка слома свелась бы к объявлению их всех «заодно».
+  {
+    id: 'waterfall-bar-other-value',
+    claim: 'взять для длины столбика не ту долю, что напечатана текстом',
+    mustRedden: ВИД_ОДНО_ЗНАЧЕНИЕ,
+    file: 'app/page.tsx',
+    find: "'--step-size': ступень.sharePct,",
+    replace: "'--step-size': ступень.basePct,",
+    tests: 'все',
+  },
+  {
+    id: 'waterfall-base-unnamed',
+    claim: 'печатать долю ступени без базы — без слова «оборота»',
+    mustRedden: ВИД_БАЗА,
+    alsoRedden: [
+      { name: ВИД_ОДНО_ЗНАЧЕНИЕ, why: 'она ждёт текст доли вместе с базой: «37,5 % оборота»' },
+      { name: ПЕРЕПИСЬ, why: 'в её списке у каждой ступени стоит «… % оборота»' },
+    ],
+    file: 'app/page.tsx',
+    find: '`${percent(ступень.sharePct)} оборота`',
+    replace: 'percent(ступень.sharePct)',
+    tests: 'все',
+  },
+  {
+    id: 'waterfall-kind-dropped',
+    claim: 'снять со ступени признак итога или вычитания',
+    mustRedden: ВИД_ПРИЗНАК,
+    file: 'app/page.tsx',
+    find: '<li key={ступень.key} data-kind={ступень.kind}>',
+    replace: '<li key={ступень.key}>',
+    tests: 'все',
+  },
+  {
+    id: 'waterfall-total-weight-dropped',
+    claim: 'снять у итога водопада полужирные подпись и сумму — оставить различие одним цветом',
+    mustRedden: ВИД_ФОРМА,
+    file: 'app/globals.css',
+    find:
+      "  font-weight: var(--fontWeightSemibold);\n}\n\n.waterfall-steps li[data-kind='вычитание'] .waterfall-bar {",
+    replace: "}\n\n.waterfall-steps li[data-kind='вычитание'] .waterfall-bar {",
+    tests: 'все',
+  },
+  {
+    id: 'waterfall-zero-bar',
+    claim: 'рисовать столбик ступени и тогда, когда доли нет',
+    mustRedden: ВИД_НОЛЬ,
+    file: 'app/page.tsx',
+    find: '{ступень.sharePct !== null && ступень.basePct !== null && (',
+    replace: '{(',
+    tests: 'все',
+  },
+  {
+    id: 'waterfall-label-in-track',
+    claim: 'положить подпись ступени внутрь дорожки столбика',
+    mustRedden: ВИД_ЯЧЕЙКИ,
+    file: 'app/page.tsx',
+    find:
+      '                <span className="waterfall-label">\n' +
+      '                  {ПОДПИСИ_СТУПЕНЕЙ[ступень.key] ?? ступень.key}\n' +
+      '                </span>\n' +
+      '                <span className="waterfall-track" aria-hidden="true">\n',
+    replace:
+      '                <span className="waterfall-track" aria-hidden="true">\n' +
+      '                <span className="waterfall-label">\n' +
+      '                  {ПОДПИСИ_СТУПЕНЕЙ[ступень.key] ?? ступень.key}\n' +
+      '                </span>\n',
     tests: 'все',
   },
 ]

@@ -45,4 +45,22 @@ export const ПЕРЕПИСЬ: MonthReport = {
   ],
   honesty: { sharePct: '78.9', skusWithoutPrice: ['NP-202'] },
   gaps: ОДИННАДЦАТЬ.map((kind, i) => ({ kind, count: i + 1, at: [] })),
+  // Кусок S11, шаг 1. Суммы ступеней нарочно не совпадают с итогами выше: разметка, напечатавшая
+  // колонку итогов вместо суммы ступени, покраснит перепись. Доли все числами: пустая доля
+  // напечатала бы «нет данных», и эти слова пришли бы проверке полосы честности от водопада.
+  waterfall: {
+    steps: [
+      { key: 'gross', kind: 'итог', amount: '1212.12', sharePct: '91.1', basePct: '0.0' },
+      { key: 'discounts', kind: 'вычитание', amount: '1313.13', sharePct: '12.2', basePct: '78.9' },
+      { key: 'refunds', kind: 'вычитание', amount: '1414.14', sharePct: '13.3', basePct: '65.6' },
+      { key: 'net', kind: 'итог', amount: '1515.15', sharePct: '84.4', basePct: '0.0' },
+      { key: 'cogs', kind: 'вычитание', amount: '1616.16', sharePct: '15.5', basePct: '68.9' },
+      { key: 'ads', kind: 'вычитание', amount: '1717.17', sharePct: '16.6', basePct: '52.3' },
+      { key: 'fees', kind: 'вычитание', amount: '1818.18', sharePct: '17.7', basePct: '34.6' },
+      { key: 'fixed', kind: 'вычитание', amount: '1919.19', sharePct: '18.8', basePct: '15.8' },
+      { key: 'profit', kind: 'итог', amount: '2121.21', sharePct: '19.9', basePct: '0.0' },
+    ],
+    scaleLowPct: '0.0',
+    scaleHighPct: '100.0',
+  },
 }

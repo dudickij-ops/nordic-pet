@@ -14,6 +14,23 @@ import { RefreshPanel } from './refresh-panel'
 export const dynamic = 'force-dynamic'
 
 /**
+ * Подписи ступеней водопада — кусок S11. Те же слова, что у строк блоков «Выручка», «Затраты» и
+ * «Итог», полностью: метрики не переименовываются и не сокращаются. Ради полных подписей водопад
+ * лежит горизонтально — решение владельца по развилке Ж1.
+ */
+const ПОДПИСИ_СТУПЕНЕЙ: Record<string, string> = {
+  gross: 'Оборот',
+  discounts: 'Скидки',
+  refunds: 'Возвраты',
+  net: 'Чистая выручка',
+  cogs: 'Себестоимость проданного',
+  ads: 'Реклама',
+  fees: 'Комиссии платёжных систем',
+  fixed: 'Постоянные расходы',
+  profit: 'Прибыль',
+}
+
+/**
  * Разметка экрана — задача 7. Чистый компонент: получает готовый отчёт и только
  * печатает его поля через `money`/`percent`/`count` из `lib/metrics/format.ts`. Ни
  * сложения, ни деления, ни округления здесь нет — это сделано в SQL (`lib/metrics/sql.ts`)
@@ -52,6 +69,56 @@ export function Dashboard({ report }: { report: MonthReport }) {
           </nav>
         )}
       </header>
+
+      {report.waterfall !== undefined && (
+        <section className="block waterfall">
+          <h2>Куда ушли деньги</h2>
+          {/*
+            Водопад — кусок S11. Разметка ничего не считает: сумма, доля и края столбика приходят
+            готовыми строками из SQL. Доля печатается текстом и **та же строка** уходит величиной
+            в длину столбика, край — в его начало; где стоит столбик на дорожке, решает таблица
+            стилей по пределам шкалы. Подпись, сумма и доля — отдельные ячейки вне дорожки: наехать
+            на столбик им негде по устройству.
+          */}
+          <ol
+            className="waterfall-steps"
+            style={
+              {
+                // Пределов нет только при нулевом обороте — тогда нет и ни одного столбика.
+                '--scale-from': report.waterfall.scaleLowPct ?? undefined,
+                '--scale-to': report.waterfall.scaleHighPct ?? undefined,
+              } as CSSProperties
+            }
+          >
+            {report.waterfall.steps.map((ступень) => (
+              <li key={ступень.key} data-kind={ступень.kind}>
+                <span className="waterfall-label">
+                  {ПОДПИСИ_СТУПЕНЕЙ[ступень.key] ?? ступень.key}
+                </span>
+                <span className="waterfall-track" aria-hidden="true">
+                  {ступень.sharePct !== null && ступень.basePct !== null && (
+                    <span
+                      className="waterfall-bar"
+                      style={
+                        {
+                          '--step-from': ступень.basePct,
+                          '--step-size': ступень.sharePct,
+                        } as CSSProperties
+                      }
+                    />
+                  )}
+                </span>
+                <span className="waterfall-amount">{money(ступень.amount)}</span>
+                <span className="waterfall-share">
+                  {ступень.sharePct === null
+                    ? percent(null)
+                    : `${percent(ступень.sharePct)} оборота`}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       <section className="block">
         <h2>Выручка</h2>

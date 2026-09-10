@@ -923,6 +923,76 @@ button.primary:active:not(:disabled) {
   line-height: var(--lineHeightBase300);
 }
 
+/* ——— Водопад ——— */
+
+/*
+ * Водопад «куда ушли деньги» — кусок S11. Горизонтальный по решению владельца (развилка Ж1):
+ * полные подписи ступеней в вертикальный не помещаются. Строка на ступень — подпись, дорожка со
+ * столбиком, сумма, доля; числа по правому краю, табличными цифрами.
+ *
+ * Где стоит столбик на дорожке, решает эта таблица, а не разметка: край и длина приходят величинами
+ * `--step-from` и `--step-size` — те же строки, что напечатаны текстом, — пределы шкалы —
+ * `--scale-from` и `--scale-to`. Это показ того же значения, как `clamp` у полосы доли, а не новое
+ * число. `max(x, -1 * x)` — длина без знака: отрицательная прибыль идёт от своего края вправо до нуля.
+ *
+ * Итог и вычитание различаются не одним цветом: итог — сплошной столбик от нуля и полужирные
+ * подпись и сумма; вычитание — светлый столбик с обводкой, висящий от остатка. Обводка — внутренней
+ * тенью, а не рамкой: у нулевого вычитания рамка нарисовала бы щепку в два пикселя — будто сумма есть.
+ */
+.waterfall-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.waterfall-steps li {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--spacingHorizontalL);
+  align-items: center;
+  padding: var(--spacingVerticalXS) 0;
+}
+
+.waterfall-amount,
+.waterfall-share {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.waterfall-share {
+  color: var(--colorNeutralForeground3);
+}
+
+.waterfall-track {
+  position: relative;
+  height: var(--spacingVerticalS);
+}
+
+.waterfall-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc((var(--step-from) - var(--scale-from)) / (var(--scale-to) - var(--scale-from)) * 100%);
+  width: calc(
+    max(var(--step-size), -1 * var(--step-size)) / (var(--scale-to) - var(--scale-from)) * 100%
+  );
+  border-radius: var(--borderRadiusCircular);
+}
+
+.waterfall-steps li[data-kind='итог'] .waterfall-bar {
+  background: var(--colorCompoundBrandBackground);
+}
+
+.waterfall-steps li[data-kind='итог'] .waterfall-label,
+.waterfall-steps li[data-kind='итог'] .waterfall-amount {
+  font-weight: var(--fontWeightSemibold);
+}
+
+.waterfall-steps li[data-kind='вычитание'] .waterfall-bar {
+  background: var(--colorBrandBackground2);
+  box-shadow: inset 0 0 0 var(--strokeWidthThin) var(--colorBrandStroke1);
+}
+
 /* ——— Неполнота ——— */
 
 .gaps > p {
@@ -1200,6 +1270,34 @@ button.primary:active:not(:disabled) {
   .bottom-line dd {
     font-size: var(--fontSizeBase600);
     line-height: var(--lineHeightBase600);
+  }
+
+  /*
+   * Водопад на узком экране: четыре колонки не помещают сумму вида «18 764,00 €». Строка ступени
+   * становится двумя — подпись и сумма, под ними дорожка и доля. Вид тот же, направление то же.
+   */
+  .waterfall-steps li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label amount'
+      'track share';
+    row-gap: var(--spacingVerticalXS);
+  }
+
+  .waterfall-label {
+    grid-area: label;
+  }
+
+  .waterfall-amount {
+    grid-area: amount;
+  }
+
+  .waterfall-track {
+    grid-area: track;
+  }
+
+  .waterfall-share {
+    grid-area: share;
   }
 
   /*
