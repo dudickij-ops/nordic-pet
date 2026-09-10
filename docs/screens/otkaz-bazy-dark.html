@@ -82,10 +82,13 @@
   --colorBrandBackground2: #ebf3fc;
   --colorBrandForeground1: #0f6cbd;
   --colorBrandStroke1: #0f6cbd;
+  --colorNeutralBackground6: #e6e6e6;
+  --colorCompoundBrandBackground: #0f6cbd;
 
   /*
-   * Обводка фокуса: чёрная в светлой теме, белая в тёмной. **Наш вывод:** такая пара видна на
-   * любом фоне; справочник про это не говорит, значения взяты из реализации.
+   * Обводка фокуса: чёрная в светлой теме, белая в тёмной. **Наш счёт:** к холсту и к карточке —
+   * от 14,55 до 21,00 : 1 (`docs/сверка/контраст.md`); справочник про это не говорит, значения
+   * взяты из реализации.
    */
   --colorStrokeFocus2: #000000;
 
@@ -169,7 +172,8 @@
   --surface: var(--colorNeutralBackground1);
   --text: var(--colorNeutralForeground1);
   --text-dim: var(--colorNeutralForeground3);
-  /* Линия внутри карточек — разделители строк неполноты. Рамок у карточек больше нет. */
+  /* Линия внутри карточек — разделители строк неполноты: вид по умолчанию разделителя Fluent
+   * (`react-divider/…/useDividerStyles.styles.ts`, строки 96 и 100). Рамок у карточек больше нет. */
   --line: var(--colorNeutralStroke2);
   --line-strong: var(--colorNeutralStroke1);
   --accent: var(--colorBrandBackground);
@@ -183,9 +187,12 @@
    * называл `Border1`. Найдено проверкой кода. **Наш счёт по формуле контраста к нынешнему холсту**
    * (`#f0f0f0` в светлой теме, `#0a0a0a` в тёмной): `Border1` в светлой теме — 1,47 : 1, и
    * коробка отказа перестаёт читаться коробкой, остаётся один красный текст; в тёмной — 4,02 : 1.
-   * `Border2` — 4,33 : 1 и 7,08 : 1. Прежняя редакция этого места называла 1,67, 4,93 и 5,20 — они
-   * были посчитаны к прежнему холсту и после смены холста перестали быть верными. Ни одно из этих
-   * чисел в документации Fluent не названо.
+   * `Border2` — 4,33 : 1 и 7,08 : 1. Это для плашек отказа, стоящих на холсте, — на странице отчёта.
+   * **На странице входа плашка отказа стоит на карточке**, и там верны числа к карточке (`#ffffff`
+   * и `#292929`), тоже наш счёт: `Border1` — 1,67 : 1 и 2,95 : 1, `Border2` — 4,93 : 1 и 5,20 : 1.
+   * Прежняя редакция этого места называла «прежними и более неверными» ровно те числа, что верны на
+   * карточке; неверными они стали только для плашек на холсте. Вывод в пользу `Border2` от этого
+   * не меняется. Эти числа — наш счёт, а не выписка из Fluent.
    */
   --danger-line: var(--colorPaletteRedBorder2);
   --danger-soft: var(--colorPaletteRedBackground1);
@@ -226,6 +233,8 @@
     --colorBrandBackground2: #082338;
     --colorBrandForeground1: #479ef5;
     --colorBrandStroke1: #479ef5;
+    --colorNeutralBackground6: #333333;
+    --colorCompoundBrandBackground: #479ef5;
 
     --colorStrokeFocus2: #ffffff;
 
@@ -536,7 +545,7 @@ button:active:not(:disabled) {
  * Отключённая кнопка берёт **свой цвет**, а не прозрачность.
  *
  * Прозрачность делает получившийся контраст зависимым от того, что лежит под элементом, то есть
- * непредсказуемым на любом фоне. Цвета — из реализации Fluent: `colorNeutralBackgroundDisabled`,
+ * зависимым от фона. Цвета — из реализации Fluent: `colorNeutralBackgroundDisabled`,
  * `colorNeutralForegroundDisabled`, `colorNeutralStrokeDisabled`.
  *
  * **Наш замер, и он не в пользу перемены по числу:** прежняя прозрачность 0,55 давала 2,21 : 1 в
@@ -592,9 +601,16 @@ button.primary:disabled {
 
 /*
  * Обводка фокуса — единственный новый механизм куска: прежде на экране не было ни одного правила
- * фокуса вовсе. Форма взята у Fluent (`react-table/…/useTableRowStyles.styles.ts` и прочие):
- * `outline: 2px solid colorStrokeFocus2`. Токен чёрный в светлой теме и белый в тёмной, поэтому
- * обводка видна на любом фоне.
+ * фокуса вовсе (поиск `focus` и `outline` в таблице стилей `main` — 0 строк). **Толщина и цвет взяты у Fluent**, `react-table/…/useTableRowStyles.styles.ts`,
+ * строка 48: `outline: 2px solid colorStrokeFocus2`. Токен чёрный в светлой теме и белый в тёмной;
+ * к холсту и к карточке обводка даёт от 14,55 до 21,00 : 1, наш счёт. **Отступления от той же
+ * строки:** скругления `borderRadiusMedium` у обводки нет, а отступ `strokeWidthThin` у Fluent не задан — **довода в
+ * коде нет ни для того, ни для другого**. Прежняя редакция писала «форма взята у Fluent» — без
+ * скругления это была не вся форма. **У кнопки Fluent свой рецепт фокуса** —
+ * `react-button/…/useButtonStyles.styles.ts`, строки 105–114: рамка `1px` и внутренняя тень цвета
+ * `colorStrokeFocus2`, кольцо внутри кнопки. У нас одно правило на все органы управления, кольцо
+ * снаружи — **отступление, довода в коде нет**. Сверка — `docs/сверка/рецепты-fluent.md`,
+ * разделы 1 и 4.
  *
  * **Слома у этого правила нет, и это названо** — в списке сломов, в плане, в теле pull request и
  * в отчёте. Доказательство ему только снимок и глаз.
@@ -730,6 +746,11 @@ button.primary:active:not(:disabled) {
   list-style: none;
 }
 
+/*
+ * Ссылки месяцев набраны малой кнопкой Fluent (`react-button/…/useButtonStyles.styles.ts`,
+ * строки 291–299). **Отступление:** наименьшей ширины `64px` у них нет — **довода в коде нет**.
+ * Сверка — `docs/сверка/рецепты-fluent.md`, раздел 1.
+ */
 .months a {
   display: inline-block;
   padding: var(--buttonSpacingSmall) var(--spacingHorizontalS);
@@ -746,7 +767,11 @@ button.primary:active:not(:disabled) {
   background: var(--colorNeutralBackground1Hover);
 }
 
-/* Выбранный месяц назван и разметкой (`aria-current`), и видом — не только цветом. */
+/*
+ * Выбранный месяц назван и разметкой (`aria-current`), и видом — не только цветом. **Отступление
+ * от малой кнопки Fluent:** насыщенность `fontWeightSemibold` вместо `fontWeightRegular`; довод —
+ * этот же: вес различает выбранный месяц без помощи цвета.
+ */
 .months a[aria-current='page'] {
   background: var(--accent);
   border-color: transparent;
@@ -816,16 +841,28 @@ button.primary:active:not(:disabled) {
    * глазу нужен видимый остаток, иначе полоса врёт видом, не соврав числом.
    */
   /*
-   * Две величины без имени в документации. `26rem` — предел ширины полосы, и он назван
-   * исключением в проверке величин: во всю строку 80 % и 100 % почти неразличимы, глазу нужен
-   * видимый остаток. `8px` — толщина полосы: число совпадает со ступенью шкалы отступов, поэтому
-   * проверка его пропускает и исключения ему не нужно, но толщиной полосы у Fluent эта ступень не
-   * названа — **роль числа наша**, а не выписка.
+   * **Рецепт — полоса прогресса Fluent, решение владельца по развилке Г1 от 10 сентября 2026
+   * года:** дорожка `colorNeutralBackground6`, заливка `colorCompoundBrandBackground`
+   * (`react-progress/…/useProgressBarStyles.styles.ts`, строки 28 и 82, `microsoft/fluentui`
+   * @ 43665d5fb414). Сверка по свойствам блока, с выводом проверки полноты, —
+   * `docs/сверка/рецепты-fluent.md`, раздел 7.
+   *
+   * **Отступления от рецепта** (где довода нет, так и написано):
+   *   · `26rem` вместо `width: 100%` — довод выше: глазу нужен видимый остаток;
+   *   · толщина `8px` вместо `2px` среднего и `4px` крупного размера Fluent (строки 17–20) —
+   *     **довода в коде нет**. Прежний комментарий здесь утверждал, что толщины полосы у Fluent в
+   *     прочитанных файлах нет вовсе, — это было неверно: она названа в самом рецепте;
+   *   · скругление `borderRadiusCircular` вместо `borderRadiusMedium` — **довода в коде нет**;
+   *   · перехода ширины `0.3s ease` у заливки нет — **довода в коде нет**.
+   *
+   * Прежде дорожка стояла на токене разделителя `colorNeutralStroke2`, и в тёмной теме заливка к
+   * дорожке давала 1,17 : 1, а в погашенном блоке 1,02 : 1 — заполнение было неотличимо от дорожки.
+   * Нашёл рецензент без контекста автора во втором круге.
    */
   max-width: 26rem;
   height: 8px;
   margin: var(--spacingVerticalS) 0 var(--spacingVerticalM);
-  background: var(--line);
+  background: var(--colorNeutralBackground6);
   border-radius: var(--borderRadiusCircular);
   overflow: hidden;
 }
@@ -843,7 +880,7 @@ button.primary:active:not(:disabled) {
    */
   width: clamp(0%, var(--share, 0%), 100%);
   height: 100%;
-  background: var(--accent);
+  background: var(--colorCompoundBrandBackground);
   border-radius: var(--borderRadiusCircular);
 }
 
@@ -861,6 +898,8 @@ button.primary:active:not(:disabled) {
  * Заметной делается ненулевая. Приглушение прозрачностью убрано на круг раньше: 0,65 поверх
  * приглушённого текста давало контраст около 2,8 : 1 при норме 4,5 : 1.
  */
+/* **Отступление от контракта:** контракт называл строки неполноты Body 1; ненулевая набрана
+ * насыщенностью `fontWeightSemibold`, то есть Body 1 Strong. Довод — абзацем выше. */
 .gaps li:not([data-zero='true']) {
   color: var(--text);
   font-weight: var(--fontWeightSemibold);
@@ -1052,10 +1091,20 @@ button.primary:active:not(:disabled) {
  * рамка к карточке 1,53 : 1 в светлой теме и 2,53 : 1 в тёмной, заливка поля к карточке 1,14 и 1,36
  * — всё ниже 3 : 1.
  *
- * **Рецепт взят у Fluent целиком, а не подобран:** поле ввода Fluent рисует рамку
- * `colorNeutralStroke1`, а нижнюю кромку — `colorNeutralStrokeAccessible` (`microsoft/fluentui`
- * @ 43665d5fb414, `packages/react-components/react-input/library/src/components/Input/
- * useInputStyles.styles.ts`, строки 58–59). Токен для того и заведён.
+ * **Рецепт — поле ввода Fluent, вид `outline`, решение владельца по развилке Г2 от 10 сентября
+ * 2026 года.** Строки 57–59 блока обёртки (`microsoft/fluentui` @ 43665d5fb414,
+ * `packages/react-components/react-input/library/src/components/Input/useInputStyles.styles.ts`):
+ * фон `colorNeutralBackground1`, рамка `1px solid colorNeutralStroke1`, нижняя кромка
+ * `colorNeutralStrokeAccessible`. Прежняя редакция этого места цитировала строки 58–59 и
+ * обрывалась ровно перед строкой 57, которая расходилась с нашим тогдашним фоном — цветом холста.
+ * Сверка по свойствам блока, с выводом проверки полноты, — `docs/сверка/рецепты-fluent.md`,
+ * раздел 5.
+ *
+ * **Отступления от рецепта:**
+ *   · линии фокуса `::after` цветом `colorCompoundBrandStroke` (строки 63–112) нет —
+ *     **решение владельца: фокус у нас общий для всех органов управления**, и поле получает ту же
+ *     обводку, что кнопки и ссылки;
+ *   · высота из отступов, а не `minHeight: 32px` — **наш счёт: 38**; довода в коде нет.
  */
 .login input {
   display: block;
@@ -1064,7 +1113,7 @@ button.primary:active:not(:disabled) {
   padding: var(--spacingVerticalS) var(--spacingHorizontalM);
   font: inherit;
   color: var(--text);
-  background: var(--bg);
+  background: var(--colorNeutralBackground1);
   border: var(--strokeWidthThin) solid var(--line-strong);
   border-bottom-color: var(--colorNeutralStrokeAccessible);
   border-radius: var(--borderRadiusMedium);
@@ -1191,6 +1240,8 @@ button.primary:active:not(:disabled) {
     --colorBrandBackground2: #082338;
     --colorBrandForeground1: #479ef5;
     --colorBrandStroke1: #479ef5;
+    --colorNeutralBackground6: #333333;
+    --colorCompoundBrandBackground: #479ef5;
 
     --colorStrokeFocus2: #ffffff;
 

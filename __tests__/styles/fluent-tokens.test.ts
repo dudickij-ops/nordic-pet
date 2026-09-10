@@ -12,7 +12,14 @@ import { expect, test } from 'vitest'
  * 2. Она не доказывает, что правила **применились**: браузера здесь нет вовсе.
  * 3. Она не доказывает, что вид **хорош**. Правильные числа, собранные в уродливый экран, пройдут
  *    её зелёными. Вид принимает глаз владельца по снимкам.
- * 4. **Она не доказывает, что числа — из Fluent 2.** Она доказывает совпадение таблицы стилей с
+ * 4. **Закрывающее утверждение ниже уже своего имени, и границы названы здесь.** Длина сверяется с
+ *    объединением всех шкал **без учёта роли**: `font-size: 34px` пройдёт, потому что 34 есть в
+ *    шкале высот строк таблицы. Числа **без единиц** и проценты не проверяются вовсе:
+ *    `opacity: 0.55` или `font-weight: 700` пройдут. Цвет ловится **только в перечисленных
+ *    свойствах** (`ЦВЕТОВЫЕ` ниже): `border-inline-start` с посторонним цветом пройдёт. **Условия
+ *    медиазапросов** не читаются. У расширения про длины нет своего слома — сломы доказывают
+ *    цвет, размер шрифта и блоки величин.
+ * 5. **Она не доказывает, что числа — из Fluent 2.** Она доказывает совпадение таблицы стилей с
  *    **нашей выпиской** ниже. Совпадение выписки с источником доказывают якорь у каждой величины
  *    и человек, который по нему сходит. Это не оговорка на всякий случай, а след настоящей ошибки:
  *    первая редакция выписки взяла двенадцать значений смыслового цвета из **комментария** в
@@ -123,6 +130,12 @@ const ЦВЕТА: Record<string, [string, string]> = {
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:166 `brand[80]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:166 `brand[100]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:13 brandWeb[100]
   colorBrandStroke1: ['#0f6cbd', '#479ef5'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:87 `grey[90]` → packages/tokens/src/global/colors.ts:51 grey[90]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:87 `grey[20]` → packages/tokens/src/global/colors.ts:16 grey[20]
+  colorNeutralBackground6: ['#e6e6e6', '#333333'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:128 `brand[80]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:128 `brand[100]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:13 brandWeb[100]
+  colorCompoundBrandBackground: ['#0f6cbd', '#479ef5'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:183 `black` → packages/tokens/src/global/colors.ts:126 black
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:183 `white` → packages/tokens/src/global/colors.ts:124 white
   colorStrokeFocus2: ['#000000', '#ffffff'],
