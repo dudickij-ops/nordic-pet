@@ -799,4 +799,34 @@ export const BREAKS: Break[] = [
     replace: '      {(\n        <span className="cost-bar"',
     tests: 'все',
   },
+  // После шага 5, проверка раскладки по замечанию владельца: в раскладке переписи край столбика у всех
+  // дней с заказами один, а пределы ряда совпадают с пределами водопада. Разметка, взявшая чужое
+  // значение, на ней зелена; сломы ниже бьют ровно туда, на раскладке с различными значениями.
+  {
+    id: 'daily-edge-first-day',
+    claim: 'взять для каждого дня край первого дня ряда',
+    mustRedden: 'каждый день берёт свой край, а ряд — свои пределы шкалы',
+    file: 'app/page.tsx',
+    find: "'--day-from': день.basePct",
+    replace: "'--day-from': report.daily.days[0].basePct",
+    tests: 'все',
+  },
+  {
+    id: 'daily-scale-foreign',
+    claim: 'взять для ряда по дням нижний предел шкалы водопада',
+    mustRedden: 'каждый день берёт свой край, а ряд — свои пределы шкалы',
+    file: 'app/page.tsx',
+    find: "'--scale-from': report.daily.scaleLowPct ?? undefined,",
+    replace: "'--scale-from': report.waterfall?.scaleLowPct ?? undefined,",
+    tests: 'все',
+  },
+  {
+    id: 'waterfall-scale-constant',
+    claim: 'поставить водопаду постоянный нижний предел шкалы вместо предела из отчёта',
+    mustRedden: 'водопад передаёт шкале свои пределы — ровно те, что дал отчёт',
+    file: 'app/page.tsx',
+    find: "'--scale-from': report.waterfall.scaleLowPct ?? undefined,",
+    replace: "'--scale-from': '0.0',",
+    tests: 'все',
+  },
 ]

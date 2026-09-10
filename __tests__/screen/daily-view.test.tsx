@@ -86,3 +86,23 @@ test('у дня без заказов линия отсчёта — пункти
   const стили = readFileSync(join(process.cwd(), 'app', 'globals.css'), 'utf8')
   expect(стили).toMatch(/\.daily-bars li\[data-empty='true'\]::after \{\s*border-top-style: dashed;/)
 })
+
+/**
+ * Край столбика и пределы шкалы — у каждого дня и у ряда свои. В раскладке переписи край у всех дней
+ * с заказами один («0.0»), а пределы ряда совпадают с пределами водопада: разметка, взявшая край
+ * соседнего дня или чужие пределы, на ней осталась бы зелёной. Здесь все значения различны.
+ */
+test('каждый день берёт свой край, а ряд — свои пределы шкалы', () => {
+  const разметка = сРядом({
+    ...РЯД,
+    days: [
+      { day: '2026-03-01', label: '1 марта', net: '-5.00', sharePct: '12.5', basePct: '-12.5', tick: '1' },
+      { day: '2026-03-02', label: '2 марта', net: '30.00', sharePct: '75.0', basePct: '-3.0', tick: null },
+    ],
+    scaleLowPct: '-20.0',
+    scaleHighPct: '80.0',
+  })
+  const ряд = блок(разметка).replace(/\s/g, '')
+  expect(ряд.match(/--day-from:[^;"]*/g)).toEqual(['--day-from:-12.5', '--day-from:-3.0'])
+  expect(ряд).toContain('<olclass="daily-bars"style="--scale-from:-20.0;--scale-to:80.0"')
+})
