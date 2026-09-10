@@ -512,6 +512,7 @@ export const BREAKS: Break[] = [
     alsoRedden: [
       { name: 'вклад ноль — порога нет, и сказано словами', why: 'порог от маржи есть и тогда, когда вклад ноль' },
       { name: 'вклад отрицателен — порога нет, а не отрицательный порог', why: 'порог от маржи есть и при отрицательном вкладе' },
+      { name: 'оборот ноль или реклама ноль — пусто, а не ноль', why: 'порог от маржи есть и при нулевом обороте, когда вклада нет' },
     ],
     file: 'lib/metrics/sql.ts',
     find: '(case when p.contribution > 0 then round(100 / p.contribution, 2) end)::text',
@@ -551,7 +552,10 @@ export const BREAKS: Break[] = [
     id: 'payback-threshold-unguarded',
     claim: 'считать порог и при неположительном вкладе',
     mustRedden: 'вклад ноль — порога нет, и сказано словами',
-    alsoRedden: [{ name: 'вклад отрицателен — порога нет, а не отрицательный порог', why: 'при отрицательном вкладе выходит отрицательный порог' }],
+    alsoRedden: [
+      { name: 'вклад отрицателен — порога нет, а не отрицательный порог', why: 'при отрицательном вкладе выходит отрицательный порог' },
+      { name: 'нулевая чистая выручка от реальных строк не роняет отчёт ошибкой деления', why: 'принятая проверка S5: на её раскладке вклад ноль, и деление на него роняет весь отчёт — ровно то, от чего она сторожит' },
+    ],
     file: 'lib/metrics/sql.ts',
     find: '(case when p.contribution > 0 then round(100 / p.contribution, 2) end)::text',
     replace: 'round(100 / p.contribution, 2)::text',
@@ -559,11 +563,11 @@ export const BREAKS: Break[] = [
   },
   {
     id: 'payback-profit-no-nullif',
-    claim: 'снять nullif у делителя окупаемости по прибыли',
+    claim: 'при нулевой рекламе отдать окупаемость по прибыли нулём, а не пустотой',
     mustRedden: 'оборот ноль или реклама ноль — пусто, а не ноль',
     file: 'lib/metrics/sql.ts',
     find: 'round(p.profit / nullif(p.ads, 0), 2)::text',
-    replace: 'round(p.profit / p.ads, 2)::text',
+    replace: 'coalesce(round(p.profit / nullif(p.ads, 0), 2), 0)::text',
     tests: 'все',
   },
   {
