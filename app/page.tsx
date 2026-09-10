@@ -117,6 +117,20 @@ export function Dashboard({ report }: { report: MonthReport }) {
               </li>
             ))}
           </ol>
+          {/*
+            Расхождение цепочки с итогом — центы округления, решение владельца по развилке Ж2.
+            Число готовое из SQL: ровно разница показанных сумм. Строка есть, только когда оно есть.
+          */}
+          {typeof report.waterfall.netGap === 'string' && (
+            <p className="waterfall-gap">
+              {`Суммы ступеней округлены до цента по отдельности; сложенные, они расходятся с чистой выручкой на ${money(report.waterfall.netGap)}.`}
+            </p>
+          )}
+          {typeof report.waterfall.profitGap === 'string' && (
+            <p className="waterfall-gap">
+              {`Суммы ступеней округлены до цента по отдельности; сложенные, они расходятся с прибылью на ${money(report.waterfall.profitGap)}.`}
+            </p>
+          )}
         </section>
       )}
 

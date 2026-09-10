@@ -130,6 +130,9 @@ const ЦВЕТА: Record<string, [string, string]> = {
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:166 `brand[80]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:166 `brand[100]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:13 brandWeb[100]
   colorBrandStroke1: ['#0f6cbd', '#479ef5'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:167 `brand[140]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:17 brandWeb[140]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:167 `brand[50]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:8 brandWeb[50]
+  colorBrandStroke2: ['#b4d6fa', '#0e4775'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:87 `grey[90]` → packages/tokens/src/global/colors.ts:51 grey[90]
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:87 `grey[20]` → packages/tokens/src/global/colors.ts:16 grey[20]
   colorNeutralBackground6: ['#e6e6e6', '#333333'],

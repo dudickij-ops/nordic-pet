@@ -542,8 +542,19 @@ steps as (
                                    t.profit::numeric)
    ) as s(ord, key, kind, amount, edge_from, edge_to)
 ),
+-- Расхождения цепочек — решение владельца по развилке Ж2. Каждая сумма итогов округлена до цента
+-- отдельно, а чистая выручка и прибыль считаются из неокруглённых слагаемых и округляются один раз:
+-- показанные ступени, сложенные глазами, могут разойтись с показанным итогом на центы (на марте
+-- 2026 — 1 738,54 против 1 738,53). Здесь — ровно разница показанных чисел, без порога и без
+-- округления: слагаемые уже в центах. Нет расхождения — пусто, и строки под водопадом нет.
 base as (
-  select t.gross::numeric as gross from totals_row t
+  select t.gross::numeric as gross,
+         nullif(t.gross::numeric - t.discounts::numeric - t.refunds::numeric - t.net::numeric, 0)
+           as net_gap,
+         nullif(t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric
+                  - t.fixed::numeric - t.profit::numeric, 0)
+           as profit_gap
+    from totals_row t
 )
 select s.key,
        s.kind,
@@ -553,7 +564,9 @@ select s.key,
        round(least(0, min(least(s.edge_from, s.edge_to)) over ())
              / nullif(b.gross, 0) * 100, 1)::text                                as scale_low_pct,
        round(greatest(b.gross, max(greatest(s.edge_from, s.edge_to)) over ())
-             / nullif(b.gross, 0) * 100, 1)::text                                as scale_high_pct
+             / nullif(b.gross, 0) * 100, 1)::text                                as scale_high_pct,
+       b.net_gap::text                                                           as net_gap,
+       b.profit_gap::text                                                        as profit_gap
   from steps s
  cross join base b
  order by s.ord

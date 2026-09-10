@@ -62,5 +62,7 @@ export const ПЕРЕПИСЬ: MonthReport = {
     ],
     scaleLowPct: '0.0',
     scaleHighPct: '100.0',
+    netGap: null,
+    profitGap: '0.07',
   },
 }

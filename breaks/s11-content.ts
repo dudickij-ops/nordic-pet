@@ -35,6 +35,10 @@ const ВИД_ФОРМА = 'у итога водопада признак фор�
 const ВИД_НОЛЬ = 'оборот ноль — у ступеней слова, столбиков нет'
 const ВИД_ЯЧЕЙКИ = 'подписи ступеней водопада — отдельной ячейкой вне дорожки столбика'
 const ПЕРЕПИСЬ = 'перепись экрана: весь видимый текст, по порядку и без единой потери'
+const РАСХОЖДЕНИЕ =
+  'напечатанное расхождение равно фактической разнице между суммой показанных ступеней и показанным итогом'
+const РАСХОЖДЕНИЕ_СТРОКА = 'строка о расхождении — только когда оно есть, и с тем числом, что дал отчёт'
+const ХВОСТ_ПРИБЫЛИ = '                  - t.fixed::numeric - t.profit::numeric, 0)'
 
 export const BREAKS: Break[] = [
   {
@@ -179,9 +183,8 @@ export const BREAKS: Break[] = [
     claim: 'снять у итога водопада полужирные подпись и сумму — оставить различие одним цветом',
     mustRedden: ВИД_ФОРМА,
     file: 'app/globals.css',
-    find:
-      "  font-weight: var(--fontWeightSemibold);\n}\n\n.waterfall-steps li[data-kind='вычитание'] .waterfall-bar {",
-    replace: "}\n\n.waterfall-steps li[data-kind='вычитание'] .waterfall-bar {",
+    find: '  font-weight: var(--fontWeightSemibold);\n}\n\n/*\n * Вычитание — светлая заливка',
+    replace: '}\n\n/*\n * Вычитание — светлая заливка',
     tests: 'все',
   },
   {
@@ -208,6 +211,37 @@ export const BREAKS: Break[] = [
       '                <span className="waterfall-label">\n' +
       '                  {ПОДПИСИ_СТУПЕНЕЙ[ступень.key] ?? ступень.key}\n' +
       '                </span>\n',
+    tests: 'все',
+  },
+
+  // Шаг 1, расхождение цепочки с итогом — решение владельца по развилке Ж2. Утверждение без порога:
+  // напечатанное число — ровно разница показанных сумм, и проверка считает её сама, в центах.
+  {
+    id: 'waterfall-gap-not-actual',
+    claim: 'отдать расхождение с прибылью, не равное разнице показанных сумм — без одного слагаемого',
+    mustRedden: РАСХОЖДЕНИЕ,
+    file: 'lib/metrics/sql.ts',
+    find: ХВОСТ_ПРИБЫЛИ,
+    replace: '                  - t.profit::numeric, 0)',
+    tests: 'все',
+  },
+  {
+    id: 'waterfall-gap-zero-given',
+    claim: 'отдать нулевое расхождение нулём, а не пустотой',
+    mustRedden: РАСХОЖДЕНИЕ,
+    file: 'lib/metrics/sql.ts',
+    find: 'nullif(t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric',
+    replace: '(t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric',
+    andThen: { find: ХВОСТ_ПРИБЫЛИ, replace: '                  - t.fixed::numeric - t.profit::numeric)' },
+    tests: 'все',
+  },
+  {
+    id: 'waterfall-gap-line-without-gap',
+    claim: 'печатать строку о расхождении и тогда, когда расхождения нет',
+    mustRedden: РАСХОЖДЕНИЕ_СТРОКА,
+    file: 'app/page.tsx',
+    find: "{typeof report.waterfall.profitGap === 'string' && (",
+    replace: '{report.waterfall.profitGap !== undefined && (',
     tests: 'все',
   },
 ]

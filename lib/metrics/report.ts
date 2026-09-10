@@ -166,6 +166,12 @@ export type MonthReport = {
     steps: Array<{ key: string; kind: string; amount: Money; sharePct: Maybe; basePct: Maybe }>
     scaleLowPct: Maybe
     scaleHighPct: Maybe
+    /**
+     * Разница между показанными ступенями, сложенными глазами, и показанным итогом — центы
+     * округления (решение владельца по развилке Ж2). `null` — расхождения нет, сказать нечего.
+     */
+    netGap?: Maybe
+    profitGap?: Maybe
   }
 }
 
@@ -353,6 +359,8 @@ export async function monthlyReport(
         })),
         scaleLowPct: (waterfallResult.rows[0]?.scale_low_pct ?? null) as string | null,
         scaleHighPct: (waterfallResult.rows[0]?.scale_high_pct ?? null) as string | null,
+        netGap: (waterfallResult.rows[0]?.net_gap ?? null) as string | null,
+        profitGap: (waterfallResult.rows[0]?.profit_gap ?? null) as string | null,
       },
     }
   }, { ...deps, announce })

@@ -80,6 +80,7 @@
   --colorBrandBackground2: #ebf3fc;
   --colorBrandForeground1: #0f6cbd;
   --colorBrandStroke1: #0f6cbd;
+  --colorBrandStroke2: #b4d6fa;
   --colorNeutralBackground6: #e6e6e6;
   --colorCompoundBrandBackground: #0f6cbd;
 
@@ -231,6 +232,7 @@
     --colorBrandBackground2: #082338;
     --colorBrandForeground1: #479ef5;
     --colorBrandStroke1: #479ef5;
+    --colorBrandStroke2: #0e4775;
     --colorNeutralBackground6: #333333;
     --colorCompoundBrandBackground: #479ef5;
 
@@ -935,9 +937,8 @@ button.primary:active:not(:disabled) {
  * `--scale-from` и `--scale-to`. Это показ того же значения, как `clamp` у полосы доли, а не новое
  * число. `max(x, -1 * x)` — длина без знака: отрицательная прибыль идёт от своего края вправо до нуля.
  *
- * Итог и вычитание различаются не одним цветом: итог — сплошной столбик от нуля и полужирные
- * подпись и сумма; вычитание — светлый столбик с обводкой, висящий от остатка. Обводка — внутренней
- * тенью, а не рамкой: у нулевого вычитания рамка нарисовала бы щепку в два пикселя — будто сумма есть.
+ * Итог и вычитание различаются не одним цветом: итог — насыщенный столбик от нуля и полужирные
+ * подпись и сумма; вычитание — светлый столбик обычного начертания, висящий от остатка.
  */
 .waterfall-steps {
   margin: 0;
@@ -988,9 +989,24 @@ button.primary:active:not(:disabled) {
   font-weight: var(--fontWeightSemibold);
 }
 
+/*
+ * Вычитание — светлая заливка, а не обводка: тонкая обводка превращала малую ступень в точку, и
+ * экран не отвечал на «кто съедает больше» (замечание владельца). `colorBrandStroke2` — светлый
+ * оттенок бренда (brandWeb[140] и brandWeb[50]); **отступление от роли, названное:** у Fluent это
+ * токен обводки, а заливочного токена такой светлоты нет — `colorBrandBackground2` к карточке даёт
+ * 1,12 и 1,10 : 1 и не виден. Наш счёт к карточке — 1,51 : 1 в обеих темах, у итога — 5,38 и 5,18.
+ * Столбик числа не несёт в одиночку: сумма и доля напечатаны рядом.
+ */
 .waterfall-steps li[data-kind='вычитание'] .waterfall-bar {
-  background: var(--colorBrandBackground2);
-  box-shadow: inset 0 0 0 var(--strokeWidthThin) var(--colorBrandStroke1);
+  background: var(--colorBrandStroke2);
+}
+
+/* Строка о центах округления — пояснение к числам, а не число: мелко и приглушённо. */
+.waterfall-gap {
+  margin: var(--spacingVerticalS) 0 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
 }
 
 /* ——— Неполнота ——— */
