@@ -7,6 +7,7 @@ import {
   MONTH_DAILY,
   MONTH_GAPS,
   MONTH_ITEMS,
+  MONTH_PAYBACK,
   MONTH_TOTALS,
   MONTH_WATERFALL,
 } from './sql.ts'
@@ -211,6 +212,17 @@ export type MonthReport = {
     /** В месяце были заказы. Нет — вместо графика слова «нет данных за месяц». */
     hasOrders: boolean
   }
+  /**
+   * Окупаемость рекламы — кусок S11, шаг 3: по прибыли, вклад с евро оборота и порог окупаемости,
+   * готовыми строками из SQL (`MONTH_PAYBACK`). Определения наши и так помечены на экране.
+   * `breakevenNote` — слова вместо порога, когда порога нет: вклад не положителен.
+   */
+  payback?: {
+    roasByProfit: Maybe
+    contributionPct: Maybe
+    breakevenRoas: Maybe
+    breakevenNote: string | null
+  }
 }
 
 /**
@@ -347,6 +359,7 @@ export async function monthlyReport(
     const gapsResult = await client.query(MONTH_GAPS, [dayParam])
     const waterfallResult = await client.query(MONTH_WATERFALL, [dayParam])
     const dailyResult = await client.query(MONTH_DAILY, [dayParam])
+    const paybackResult = await client.query(MONTH_PAYBACK, [dayParam])
 
     const totals = totalsResult.rows[0] as Record<string, string | null>
     const items = itemsResult.rows.map((row) => ({
@@ -416,6 +429,12 @@ export async function monthlyReport(
         topNet: (dailyResult.rows[0]?.top_net ?? null) as string | null,
         bottomNet: (dailyResult.rows[0]?.bottom_net ?? null) as string | null,
         hasOrders: dailyResult.rows[0]?.month_has_orders === true,
+      },
+      payback: {
+        roasByProfit: (paybackResult.rows[0]?.roas_by_profit ?? null) as string | null,
+        contributionPct: (paybackResult.rows[0]?.contribution_pct ?? null) as string | null,
+        breakevenRoas: (paybackResult.rows[0]?.breakeven_roas ?? null) as string | null,
+        breakevenNote: (paybackResult.rows[0]?.breakeven_note ?? null) as string | null,
       },
     }
   }, { ...deps, announce })

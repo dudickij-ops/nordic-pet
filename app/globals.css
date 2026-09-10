@@ -1014,6 +1014,16 @@ button.primary:active:not(:disabled) {
   line-height: var(--lineHeightBase200);
 }
 
+/* ——— Окупаемость рекламы ——— */
+
+/* Строка об определениях — пояснение к числам, а не число: мелко и приглушённо, как у водопада. */
+.payback-note {
+  margin: var(--spacingVerticalM) 0 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
 /* ——— Выручка по дням ——— */
 
 /*

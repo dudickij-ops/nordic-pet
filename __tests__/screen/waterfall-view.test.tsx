@@ -68,8 +68,10 @@ test('оборот ноль — у ступеней слова, столбико
     scaleLowPct: null,
     scaleHighPct: null,
   })
-  expect(разметка).not.toContain('waterfall-bar')
-  expect(разметка).not.toContain('оборота')
+  // Только в блоке водопада: слово «оборота» законно стоит в соседних блоках.
+  const водопад = разметка.slice(разметка.indexOf('<section class="block waterfall">'), разметка.indexOf('</section>', разметка.indexOf('<section class="block waterfall">')))
+  expect(водопад).not.toContain('waterfall-bar')
+  expect(водопад).not.toContain('оборота')
   expect(разметка.match(/<span class="waterfall-share">нет данных<\/span>/g)?.length).toBe(9)
 })
 

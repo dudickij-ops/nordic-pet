@@ -253,6 +253,35 @@ export function Dashboard({ report }: { report: MonthReport }) {
         </dl>
       </section>
 
+      {report.payback !== undefined && (
+        <section className="block payback">
+          <h2>Окупаемость рекламы</h2>
+          {/*
+            Кусок S11, шаг 3. Окупаемость по обороту до шага вкладок стоит в «Итоге» выше и переезжает
+            сюда на шаге вкладок — решение владельца по В7. Условия владельца к этому блоку: порог и
+            вклад стоят числами; подпись порога называет его базу — вклад, а не маржу экрана; рядом
+            сказано, что определения наши. Все числа готовые из SQL.
+          */}
+          <dl>
+            <dt>Окупаемость рекламы (по прибыли)</dt>
+            <dd>{ratio(report.payback.roasByProfit)}</dd>
+            <dt>Вклад с евро оборота</dt>
+            <dd>{percent(report.payback.contributionPct)}</dd>
+            <dt>Порог окупаемости — от вклада, а не от маржи</dt>
+            <dd>
+              {report.payback.breakevenNote !== null
+                ? `порога нет: ${report.payback.breakevenNote}`
+                : ratio(report.payback.breakevenRoas)}
+            </dd>
+          </dl>
+          <p className="payback-note">
+            Вклад и порог — наши определения. Вклад — (чистая выручка − себестоимость − комиссии) ÷
+            оборот: сколько с евро оборота остаётся на рекламу и постоянные расходы. Порог — 100 ÷
+            вклад: реклама окупается, когда окупаемость по обороту выше порога.
+          </p>
+        </section>
+      )}
+
       <section className="block items">
         <h2>Товары</h2>
         <table>

@@ -82,4 +82,6 @@ export const ПЕРЕПИСЬ: MonthReport = {
     bottomNet: '0.00',
     hasOrders: true,
   },
+  // Кусок S11, шаг 3. Окупаемость: числа не выводятся из итогов раскладки нарочно.
+  payback: { roasByProfit: '0.31', contributionPct: '43.2', breakevenRoas: '2.31', breakevenNote: null },
 }
