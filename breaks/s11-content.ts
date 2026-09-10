@@ -39,6 +39,14 @@ const РАСХОЖДЕНИЕ =
   'напечатанное расхождение равно фактической разнице между суммой показанных ступеней и показанным итогом'
 const РАСХОЖДЕНИЕ_СТРОКА = 'строка о расхождении — только когда оно есть, и с тем числом, что дал отчёт'
 const ХВОСТ_ПРИБЫЛИ = '                  - t.fixed::numeric - t.profit::numeric, 0)'
+const СЪЕДАЕТ_СРЕДИ = 'самое большое вычитание помечено среди вычитаний, итоги не помечаются'
+const СЪЕДАЕТ_РАВЕНСТВО = 'при равенстве двух вычитаний до цента помечены оба'
+const СЪЕДАЕТ_НОЛЬ = 'все вычитания ноль — не помечено ничего'
+const СЪЕДАЕТ_ДОЛЯ = 'строка «съедает больше всего» называет помеченную ступень и берёт её же долю'
+const СЪЕДАЕТ_ПОРОВНУ = 'при равенстве строка называет обе ступени поровну'
+const СЪЕДАЕТ_БЕЗ_ДОЛИ = 'без доли строки «съедает больше всего» нет'
+const СЪЕДАЕТ_ЦВЕТ = 'у строки «съедает больше всего» нет своего цвета — это подпись, а не тревога'
+const ПРИЗНАК = "(s.kind = 'вычитание'\n        and s.amount > 0\n        and s.amount = max(s.amount) filter (where s.kind = 'вычитание') over ())"
 
 export const BREAKS: Break[] = [
   {
@@ -252,6 +260,78 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: "{typeof report.waterfall.profitGap === 'string' && (",
     replace: '{report.waterfall.profitGap !== undefined && (',
+    tests: 'все',
+  },
+
+  // Шаг 1, строка «съедает больше всего» — решение владельца. Признак ставит запрос водопада; при
+  // равенстве до цента помечены все равные, и строка называет их поровну.
+  {
+    id: 'largest-among-all',
+    claim: 'искать самое большое среди всех ступеней, а не среди вычитаний',
+    mustRedden: СЪЕДАЕТ_СРЕДИ,
+    alsoRedden: [
+      { name: СЪЕДАЕТ_РАВЕНСТВО, why: 'оборот больше любого вычитания и оказывается помеченным и там' },
+      { name: СЪЕДАЕТ_НОЛЬ, why: 'оборот 500 помечается, хотя вычитания все ноль' },
+    ],
+    file: 'lib/metrics/sql.ts',
+    find: ПРИЗНАК,
+    replace: '(s.amount > 0\n        and s.amount = max(s.amount) over ())',
+    tests: 'все',
+  },
+  {
+    id: 'largest-tie-first-only',
+    claim: 'при равенстве двух вычитаний до цента пометить только первое по порядку',
+    mustRedden: СЪЕДАЕТ_РАВЕНСТВО,
+    file: 'lib/metrics/sql.ts',
+    find: "and s.amount = max(s.amount) filter (where s.kind = 'вычитание') over ())",
+    replace:
+      "and s.ord = (array_agg(s.ord order by s.amount desc, s.ord) filter (where s.kind = 'вычитание') over ())[1])",
+    tests: 'все',
+  },
+  {
+    id: 'largest-zero-marked',
+    claim: 'пометить самым большим нулевое вычитание, когда все вычитания ноль',
+    mustRedden: СЪЕДАЕТ_НОЛЬ,
+    file: 'lib/metrics/sql.ts',
+    find: '        and s.amount > 0\n',
+    replace: '',
+    tests: 'все',
+  },
+  {
+    id: 'largest-share-other-step',
+    claim: 'назвать в строке одну ступень, а долю взять у другой',
+    mustRedden: СЪЕДАЕТ_ДОЛЯ,
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: 'в её списке строка несёт долю помеченной ступени, 18,8 %' }],
+    file: 'app/page.tsx',
+    find: '· ${percent(съедает[0].sharePct)} оборота`',
+    replace: '· ${percent(report.waterfall?.steps[0]?.sharePct ?? null)} оборота`',
+    tests: 'все',
+  },
+  {
+    id: 'largest-tie-one-name',
+    claim: 'при равенстве назвать в строке только одну ступень',
+    mustRedden: СЪЕДАЕТ_ПОРОВНУ,
+    file: 'app/page.tsx',
+    find: "${съедает.map(подписьСтроки).join(' и ')}",
+    replace: '${подписьСтроки(съедает[0])}',
+    tests: 'все',
+  },
+  {
+    id: 'largest-without-share',
+    claim: 'печатать строку «съедает больше всего» и тогда, когда доли нет',
+    mustRedden: СЪЕДАЕТ_БЕЗ_ДОЛИ,
+    file: 'app/page.tsx',
+    find: 'с.largest === true && с.sharePct !== null',
+    replace: 'с.largest === true',
+    tests: 'все',
+  },
+  {
+    id: 'largest-signal-colour',
+    claim: 'покрасить строку «съедает больше всего» сигнальным цветом',
+    mustRedden: СЪЕДАЕТ_ЦВЕТ,
+    file: 'app/globals.css',
+    find: '.waterfall-largest {\n  margin: 0 0 var(--spacingVerticalS);\n}',
+    replace: '.waterfall-largest {\n  margin: 0 0 var(--spacingVerticalS);\n  color: var(--colorPaletteRedForeground1);\n}',
     tests: 'все',
   },
 ]

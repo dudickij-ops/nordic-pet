@@ -163,7 +163,15 @@ export type MonthReport = {
    * проверках прошлых кусков, о нём не знают. Нет поля — сказать нечего, блок не рисуется.
    */
   waterfall?: {
-    steps: Array<{ key: string; kind: string; amount: Money; sharePct: Maybe; basePct: Maybe }>
+    steps: Array<{
+      key: string
+      kind: string
+      amount: Money
+      sharePct: Maybe
+      basePct: Maybe
+      /** Самое большое вычитание — признак из того же запроса; при равенстве до цента — у всех равных. */
+      largest?: boolean
+    }>
     scaleLowPct: Maybe
     scaleHighPct: Maybe
     /**
@@ -356,6 +364,7 @@ export async function monthlyReport(
           amount: row.amount as string,
           sharePct: row.share_pct as string | null,
           basePct: row.base_pct as string | null,
+          largest: row.largest === true,
         })),
         scaleLowPct: (waterfallResult.rows[0]?.scale_low_pct ?? null) as string | null,
         scaleHighPct: (waterfallResult.rows[0]?.scale_high_pct ?? null) as string | null,

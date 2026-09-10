@@ -566,7 +566,14 @@ select s.key,
        round(greatest(b.gross, max(greatest(s.edge_from, s.edge_to)) over ())
              / nullif(b.gross, 0) * 100, 1)::text                                as scale_high_pct,
        b.net_gap::text                                                           as net_gap,
-       b.profit_gap::text                                                        as profit_gap
+       b.profit_gap::text                                                        as profit_gap,
+       -- «Съедает больше всего» — решение владельца: самое большое вычитание, признаком в той же
+       -- строке, что и ступень; второго определения «самого большого» разметка не заводит. Равенство
+       -- до цента помечает все равные ступени — строка назовёт их поровну, а не выберет одну наугад.
+       -- Все вычитания ноль — не помечено ничего: «съедает больше всего ничто» — не подпись.
+       (s.kind = 'вычитание'
+        and s.amount > 0
+        and s.amount = max(s.amount) filter (where s.kind = 'вычитание') over ())  as largest
   from steps s
  cross join base b
  order by s.ord

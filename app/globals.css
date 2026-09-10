@@ -1001,6 +1001,11 @@ button.primary:active:not(:disabled) {
   background: var(--colorBrandStroke2);
 }
 
+/* «Съедает больше всего» — подпись, а не тревога: цвет текста обычный, свой не заводится. */
+.waterfall-largest {
+  margin: 0 0 var(--spacingVerticalS);
+}
+
 /* Строка о центах округления — пояснение к числам, а не число: мелко и приглушённо. */
 .waterfall-gap {
   margin: var(--spacingVerticalS) 0 0;

@@ -57,7 +57,7 @@ export const ПЕРЕПИСЬ: MonthReport = {
       { key: 'cogs', kind: 'вычитание', amount: '1616.16', sharePct: '15.5', basePct: '68.9' },
       { key: 'ads', kind: 'вычитание', amount: '1717.17', sharePct: '16.6', basePct: '52.3' },
       { key: 'fees', kind: 'вычитание', amount: '1818.18', sharePct: '17.7', basePct: '34.6' },
-      { key: 'fixed', kind: 'вычитание', amount: '1919.19', sharePct: '18.8', basePct: '15.8' },
+      { key: 'fixed', kind: 'вычитание', amount: '1919.19', sharePct: '18.8', basePct: '15.8', largest: true },
       { key: 'profit', kind: 'итог', amount: '2121.21', sharePct: '19.9', basePct: '0.0' },
     ],
     scaleLowPct: '0.0',

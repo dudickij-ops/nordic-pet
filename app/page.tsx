@@ -46,6 +46,12 @@ export function Dashboard({ report }: { report: MonthReport }) {
   // было бы вторым источником правды, и однажды они разъехались бы молча.
   const доля = report.honesty.sharePct
 
+  // «Съедает больше всего» — ступени, помеченные запросом; своего «самого большого» разметка не
+  // ищет. Без доли (нулевой оборот) строки нет: сказать «… % оборота» не о чем.
+  const съедает = report.waterfall?.steps.filter((с) => с.largest === true && с.sharePct !== null) ?? []
+  const подписьСтроки = (с: { key: string }) =>
+    (ПОДПИСИ_СТУПЕНЕЙ[с.key] ?? с.key).toLocaleLowerCase('ru')
+
   return (
     <main className="report">
       <header className="report-head">
@@ -73,6 +79,20 @@ export function Dashboard({ report }: { report: MonthReport }) {
       {report.waterfall !== undefined && (
         <section className="block waterfall">
           <h2>Куда ушли деньги</h2>
+          {/*
+            Подпись, а не тревога: обычный текст, без сигнального цвета — решение владельца. Второй
+            канал того же смысла, что длина светлых ступеней: словом, а не сравнением полос на глаз.
+          */}
+          {съедает.length === 1 && (
+            <p className="waterfall-largest">
+              {`Съедает больше всего: ${подписьСтроки(съедает[0])} · ${percent(съедает[0].sharePct)} оборота`}
+            </p>
+          )}
+          {съедает.length > 1 && (
+            <p className="waterfall-largest">
+              {`Съедает больше всего поровну: ${съедает.map(подписьСтроки).join(' и ')} · по ${percent(съедает[0].sharePct)} оборота`}
+            </p>
+          )}
           {/*
             Водопад — кусок S11. Разметка ничего не считает: сумма, доля и края столбика приходят
             готовыми строками из SQL. Доля печатается текстом и **та же строка** уходит величиной
