@@ -86,4 +86,6 @@ export const ПЕРЕПИСЬ: MonthReport = {
   // Кусок S11, шаг 4. Строка над таблицей: числа не выводятся из строк раскладки нарочно.
   itemsSummary: { productsProfit: '9090.90', skusTotal: 2, skusFor80: 2, negativeCount: 0 },
   payback: { roasByProfit: '0.31', contributionPct: '43.2', breakevenRoas: '2.31', breakevenNote: null },
+  // Кусок S11, шаг 6. Строка готовая, как из SQL; ни с одним числом раскладки не совпадает.
+  sourcesReadAt: '2026-04-02 07:15 UTC',
 }

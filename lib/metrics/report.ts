@@ -11,6 +11,7 @@ import {
   MONTH_PAYBACK,
   MONTH_TOTALS,
   MONTH_WATERFALL,
+  SOURCES_READ_AT,
 } from './sql.ts'
 
 /**
@@ -226,11 +227,6 @@ export type MonthReport = {
     hasOrders: boolean
   }
   /**
-   * Окупаемость рекламы — кусок S11, шаг 3: по прибыли, вклад с евро оборота и порог окупаемости,
-   * готовыми строками из SQL (`MONTH_PAYBACK`). Определения наши и так помечены на экране.
-   * `breakevenNote` — слова вместо порога, когда порога нет: вклад не положителен.
-   */
-  /**
    * Строка над таблицей товаров — кусок S11, шаг 4: база долей (сумма прибыли строк), сколько
    * артикулов дают 80 % её и сколько в минусе. Готовыми из SQL (`MONTH_ITEMS_EXTRA`).
    */
@@ -241,12 +237,23 @@ export type MonthReport = {
     skusFor80: number | null
     negativeCount: number
   }
+  /**
+   * Окупаемость рекламы — кусок S11, шаг 3: по прибыли, вклад с евро оборота и порог окупаемости,
+   * готовыми строками из SQL (`MONTH_PAYBACK`). Определения наши и так помечены на экране.
+   * `breakevenNote` — слова вместо порога, когда порога нет: вклад не положителен.
+   */
   payback?: {
     roasByProfit: Maybe
     contributionPct: Maybe
     breakevenRoas: Maybe
     breakevenNote: string | null
   }
+  /**
+   * Время чтения источников — кусок S11, шаг 6: готовой строкой `ГГГГ-ММ-ДД ЧЧ:ММ UTC` из SQL
+   * (`SOURCES_READ_AT`). `null` — отметки нет, и на экране слова; поля нет вовсе — строка не
+   * рисуется (прежние раскладки о нём не знают, как и об `устарели`).
+   */
+  sourcesReadAt?: string | null
 }
 
 /**
@@ -368,6 +375,8 @@ export async function monthlyReport(
     // которое показано рядом.
     const { rows: staleRows } = await client.query(STALE)
     const stale = staleRows[0]?.stale === true
+    const { rows: readAtRows } = await client.query(SOURCES_READ_AT)
+    const sourcesReadAt = (readAtRows[0]?.read_at ?? null) as string | null
 
     const { rows: monthRows } = await client.query(ALL_MONTHS)
     const months = monthRows.map((row) => ({
@@ -443,6 +452,7 @@ export async function monthlyReport(
       honesty: { sharePct: totals.honest_pct, skusWithoutPrice },
       gaps,
       устарели: stale,
+      sourcesReadAt,
       waterfall: {
         steps: waterfallResult.rows.map((row) => ({
           key: row.key as string,

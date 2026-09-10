@@ -95,6 +95,19 @@ export function Dashboard({ report }: { report: MonthReport }) {
             </ul>
           </nav>
         )}
+
+        {/*
+          Время чтения источников — кусок S11, шаг 6. Строка готовая из SQL: дата, время и пояс;
+          разметка её не разбирает и не переводит. Стоит последней в шапке и во всю её ширину — под
+          названием и месяцами: название ничем не оборачивается, и порядок чтения совпадает с видом.
+        */}
+        {report.sourcesReadAt !== undefined && (
+          <p className="report-read-at">
+            {report.sourcesReadAt === null
+              ? 'Время чтения источников неизвестно: отметки о чтении нет.'
+              : `Источники прочитаны по состоянию на ${report.sourcesReadAt}`}
+          </p>
+        )}
       </header>
 
       {report.waterfall !== undefined && (

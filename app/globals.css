@@ -759,6 +759,18 @@ button.primary:active:not(:disabled) {
   margin: 0 0 var(--gap);
 }
 
+/*
+ * Время чтения источников (S11, шаг 6) — пояснение к числам, а не число: мелко и приглушённо, как
+ * строки о центах и об определениях. Своей строкой во всю ширину шапки, под названием и месяцами.
+ */
+.report-read-at {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
 .months ul {
   display: flex;
   flex-wrap: wrap;
