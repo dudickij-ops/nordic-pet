@@ -29,7 +29,9 @@
  * ОРИЕНТИРЫ ВЛАДЕЛЬЦА, по которым он этот вид принимает:
  *   · числа вправо, подписи влево, цифры в колонке одной ширины;
  *   · крупных чисел единицы — прибыль, маржа, окупаемость; остальное ровным весом;
- *   · один цвет для смысловых пометок, красный только для отказов, чтобы он не обесценился;
+ *   · один цвет для смысловых пометок; красный — отказы и значения, которые плохи по смыслу, больше
+ *     нигде, чтобы он не обесценился (изменение правила владельцем 10 сентября 2026 года, кусок S11;
+ *     прежде: «красный только для отказов»);
  *   · плотность средняя: месяц целиком помещается в один-два экрана прокрутки;
  *   · ширина ограничена — строка во весь широкий монитор нечитаема.
  */
@@ -92,13 +94,16 @@
   --colorStrokeFocus2: #000000;
 
   /*
-   * Красный — только отказы. Справочник, дословно (fluent2.microsoft.design/color):
+   * Красный — отказы и значения, которые плохи по смыслу; больше нигде. Изменение правила владельцем
+   * 10 сентября 2026 года, кусок S11; прежде здесь стояло: «Красный — только отказы». Справочник,
+   * дословно (fluent2.microsoft.design/color):
    * «Select colors in the shared palette are specifically used to communicate feedback, status,
    * or urgency. These are known as semantic colors and they should always convey important
    * information.»
    * **Наш вывод:** значит красный не берут на украшение — иначе он перестаёт означать «сломалось».
    */
   --colorPaletteRedBackground1: #fdf6f6;
+  --colorPaletteRedBackground2: #f1bbbc;
   --colorPaletteRedBorder2: #d13438;
   --colorPaletteRedForeground1: #bc2f32;
 
@@ -239,6 +244,7 @@
     --colorStrokeFocus2: #ffffff;
 
     --colorPaletteRedBackground1: #3f1011;
+    --colorPaletteRedBackground2: #751d1f;
     --colorPaletteRedBorder2: #e37d80;
     --colorPaletteRedForeground1: #e37d80;
 
@@ -500,6 +506,22 @@ thead th {
 
 tbody tr:last-child td {
   border-bottom: none;
+}
+
+/*
+ * Строка товара в минусе — кусок S11, решение владельца по П6: заливка `colorPaletteRedBackground2`
+ * (red.tint40 в светлой теме, red.shade30 в тёмной). Это вторая роль красного по изменённому правилу —
+ * «значения, которые плохи по смыслу»; токены отказа (`--danger*`) здесь не берутся, чтобы подсветка
+ * не спорила с отказами.
+ *
+ * Все ячейки подсвеченной строки — основным цветом, явно: приглушённый текст на этой заливке в светлой
+ * теме дал бы 3,71 : 1 — ниже нормы (наш счёт по формуле контраста). Основной — 9,29 и 10,76 : 1.
+ * Заливка — на ячейках, а не на строке: наведение красит строку и иначе стёрло бы подсветку.
+ * Цвет не единственный признак: в строке стоит маржа со знаком минус.
+ */
+.items tr[data-loss='true'] td {
+  background: var(--colorPaletteRedBackground2);
+  color: var(--colorNeutralForeground1);
 }
 
 /* ——— Ссылки и кнопки ——— */
@@ -1012,6 +1034,40 @@ button.primary:active:not(:disabled) {
   color: var(--colorNeutralForeground3);
   font-size: var(--fontSizeBase200);
   line-height: var(--lineHeightBase200);
+}
+
+/* ——— Доли статей затрат ——— */
+
+/*
+ * Доля статьи в обороте — под суммой, в той же ячейке: число «… % оборота» и полоска той же длины.
+ * Рецепт — тот же, что у полосы доли честности (полоса прогресса Fluent, решение владельца по Г1 в
+ * S10): дорожка `colorNeutralBackground6`, заливка `colorCompoundBrandBackground`. Светлый оттенок
+ * бренда, как у вычитаний водопада, здесь не годится: к дорожке он дал бы около 1,2 : 1 — наш счёт,
+ * та же беда, что у полосы доли во втором круге S10. `clamp` держит длину в пределах дорожки.
+ */
+.cost-share {
+  display: block;
+  margin-top: var(--spacingVerticalXS);
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  font-weight: var(--fontWeightRegular);
+}
+
+.cost-bar {
+  display: block;
+  height: var(--spacingVerticalXS);
+  margin-top: var(--spacingVerticalXS);
+  background: var(--colorNeutralBackground6);
+  border-radius: var(--borderRadiusCircular);
+  overflow: hidden;
+}
+
+.cost-bar-fill {
+  display: block;
+  width: clamp(0%, calc(var(--cost-share) * 1%), 100%);
+  height: 100%;
+  background: var(--colorCompoundBrandBackground);
 }
 
 /* ——— Окупаемость рекламы ——— */

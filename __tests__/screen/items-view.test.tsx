@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
@@ -70,4 +72,25 @@ test('сумма прибыли товаров не положительна —
     сОтчётом({ itemsSummary: { productsProfit: '-20.00', skusTotal: 2, skusFor80: null, negativeCount: 1 } }),
   )
   expect(разметка).toContain('не положительна: считать 80 % не от чего')
+})
+
+/**
+ * **Две проверки текста таблицы стилей — слабые, и так названы.** Они доказывают наличие правил, а
+ * не то, что браузер их применил; вид подсветки виден на снимках, контраст — замером перед сдачей.
+ */
+function правилоПодсветки(): string {
+  const стили = readFileSync(join(process.cwd(), 'app', 'globals.css'), 'utf8')
+  const правило = стили.match(/\.items tr\[data-loss='true'\] td \{([^}]*)\}/)?.[1]
+  expect(правило, 'правило подсветки строки в минусе есть').toBeDefined()
+  return правило ?? ''
+}
+
+test('подсветка строки в минусе — свой красный, а не токен отказа', () => {
+  const правило = правилоПодсветки()
+  expect(правило).toContain('background: var(--colorPaletteRedBackground2)')
+  expect(правило).not.toMatch(/--danger|colorPaletteRedBackground1|colorPaletteRedForeground1|colorPaletteRedBorder2/)
+})
+
+test('в подсвеченной строке нет приглушённого текста — все ячейки основным цветом', () => {
+  expect(правилоПодсветки()).toContain('color: var(--colorNeutralForeground1)')
 })

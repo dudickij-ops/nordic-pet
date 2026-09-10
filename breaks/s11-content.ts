@@ -733,4 +733,67 @@ export const BREAKS: Break[] = [
     replace: "{true\n",
     tests: "все",
   },
+
+  // П6 — подсветка строки в минусе: свой красный, не токен отказа; в строке нет приглушённого текста.
+  {
+    id: 'loss-row-refusal-token',
+    claim: 'взять для подсветки строки в минусе токен отказа',
+    mustRedden: 'подсветка строки в минусе — свой красный, а не токен отказа',
+    file: 'app/globals.css',
+    find: '  background: var(--colorPaletteRedBackground2);\n',
+    replace: '  background: var(--danger-soft);\n',
+    tests: 'все',
+  },
+  {
+    id: 'loss-row-muted-text',
+    claim: 'оставить в подсвеченной строке приглушённый текст',
+    mustRedden: 'в подсвеченной строке нет приглушённого текста — все ячейки основным цветом',
+    file: 'app/globals.css',
+    find: '  background: var(--colorPaletteRedBackground2);\n  color: var(--colorNeutralForeground1);\n',
+    replace: '  background: var(--colorPaletteRedBackground2);\n  color: var(--colorNeutralForeground3);\n',
+    tests: 'все',
+  },
+
+  // Шаг 5 — доли статей затрат: та же доля, что у ступени водопада; база — оборот, названа у числа.
+  {
+    id: 'cost-share-other-step',
+    claim: 'взять статье долю чужой ступени водопада',
+    mustRedden: 'доля статьи — та же, что у её ступени водопада',
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: 'в её списке у себестоимости доля 15,5 %, а придёт доля рекламы' }],
+    file: 'app/page.tsx',
+    find: '<ДоляСтатьи report={report} ключ="cogs" />',
+    replace: '<ДоляСтатьи report={report} ключ="ads" />',
+    tests: 'все',
+  },
+  {
+    id: 'cost-share-bar-other-value',
+    claim: 'взять для полоски статьи не ту долю, что напечатана',
+    mustRedden: 'полоска статьи берёт ту же долю, что напечатана',
+    file: 'app/page.tsx',
+    find: "style={{ '--cost-share': доля } as CSSProperties}",
+    replace: "style={{ '--cost-share': '100' } as CSSProperties}",
+    tests: 'все',
+  },
+  {
+    id: 'cost-share-no-base',
+    claim: 'печатать долю статьи без базы — без слова «оборота»',
+    mustRedden: 'у каждой статьи затрат доля названа от оборота',
+    alsoRedden: [
+      { name: ПЕРЕПИСЬ, why: 'в её списке доли статей — «… % оборота»' },
+      { name: 'доля статьи — та же, что у её ступени водопада', why: 'она находит доли по слову «оборота»' },
+    ],
+    file: 'app/page.tsx',
+    find: "\x60${percent(доля)} оборота\x60",
+    replace: 'percent(доля)',
+    tests: 'все',
+  },
+  {
+    id: 'cost-share-zero-bar',
+    claim: 'рисовать полоску статьи и тогда, когда доли нет',
+    mustRedden: 'оборот ноль — у статей слова, полосок нет',
+    file: 'app/page.tsx',
+    find: '      {доля !== null && (\n        <span className="cost-bar"',
+    replace: '      {(\n        <span className="cost-bar"',
+    tests: 'все',
+  },
 ]

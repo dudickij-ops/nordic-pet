@@ -145,6 +145,9 @@ const ЦВЕТА: Record<string, [string, string]> = {
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:14 формула Background1 → .tint60 → packages/tokens/src/global/colors.ts:201 red.tint60
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:16 формула Background1 → .shade40 → packages/tokens/src/global/colors.ts:191 red.shade40
   colorPaletteRedBackground1: ['#fdf6f6', '#3f1011'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:15 формула Background2 → .tint40 → packages/tokens/src/global/colors.ts:199 red.tint40
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:17 формула Background2 → .shade30 → packages/tokens/src/global/colors.ts:192 red.shade30
+  colorPaletteRedBackground2: ['#f1bbbc', '#751d1f'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:22 формула Border2 → .primary → packages/tokens/src/global/colors.ts:195 red.primary
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:32 заплатка red.tint30 → packages/tokens/src/global/colors.ts:198 red.tint30
   colorPaletteRedBorder2: ['#d13438', '#e37d80'],

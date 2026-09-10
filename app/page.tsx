@@ -31,6 +31,27 @@ const ПОДПИСИ_СТУПЕНЕЙ: Record<string, string> = {
 }
 
 /**
+ * Доля статьи затрат в обороте — кусок S11, шаг 5. Это та же готовая доля, что у ступени водопада
+ * (решение: одна база — оборот, одно поле): статья берёт её по своему ключу, своего счёта нет. Текст
+ * и длина полоски — одно значение, как у полосы доли честности. Нет водопада в отчёте — нет и доли:
+ * у прежних раскладок блок «Затраты» не меняется ни на байт.
+ */
+function ДоляСтатьи({ report, ключ }: { report: MonthReport; ключ: string }) {
+  if (report.waterfall === undefined) return null
+  const доля = report.waterfall.steps.find((с) => с.key === ключ)?.sharePct ?? null
+  return (
+    <span className="cost-share">
+      <span>{доля === null ? percent(null) : `${percent(доля)} оборота`}</span>
+      {доля !== null && (
+        <span className="cost-bar" aria-hidden="true">
+          <span className="cost-bar-fill" style={{ '--cost-share': доля } as CSSProperties} />
+        </span>
+      )}
+    </span>
+  )
+}
+
+/**
  * Разметка экрана — задача 7. Чистый компонент: получает готовый отчёт и только
  * печатает его поля через `money`/`percent`/`count` из `lib/metrics/format.ts`. Ни
  * сложения, ни деления, ни округления здесь нет — это сделано в SQL (`lib/metrics/sql.ts`)
@@ -231,13 +252,25 @@ export function Dashboard({ report }: { report: MonthReport }) {
         <h2>Затраты</h2>
         <dl>
           <dt>Себестоимость проданного</dt>
-          <dd>{money(report.costs.cogs)}</dd>
+          <dd>
+            {money(report.costs.cogs)}
+            <ДоляСтатьи report={report} ключ="cogs" />
+          </dd>
           <dt>Реклама</dt>
-          <dd>{money(report.costs.ads)}</dd>
+          <dd>
+            {money(report.costs.ads)}
+            <ДоляСтатьи report={report} ключ="ads" />
+          </dd>
           <dt>Комиссии платёжных систем</dt>
-          <dd>{money(report.costs.fees)}</dd>
+          <dd>
+            {money(report.costs.fees)}
+            <ДоляСтатьи report={report} ключ="fees" />
+          </dd>
           <dt>Постоянные расходы</dt>
-          <dd>{money(report.costs.fixed)}</dd>
+          <dd>
+            {money(report.costs.fixed)}
+            <ДоляСтатьи report={report} ключ="fixed" />
+          </dd>
         </dl>
       </section>
 
