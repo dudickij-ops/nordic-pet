@@ -194,7 +194,22 @@ export type MonthReport = {
    * же причине, что `устарели`.
    */
   daily?: {
-    days: Array<{ day: string; label: string; net: Maybe; sharePct: Maybe }>
+    days: Array<{
+      day: string
+      label: string
+      net: Maybe
+      sharePct: Maybe
+      basePct: Maybe
+      /** Видимая подпись дня под осью — у каждого пятого; у остальных пусто. Шаг решает SQL. */
+      tick: string | null
+    }>
+    scaleLowPct: Maybe
+    scaleHighPct: Maybe
+    /** Подписи оси — края шкалы деньгами, готовыми строками. */
+    topNet: Maybe
+    bottomNet: Maybe
+    /** В месяце были заказы. Нет — вместо графика слова «нет данных за месяц». */
+    hasOrders: boolean
   }
 }
 
@@ -393,7 +408,14 @@ export async function monthlyReport(
           label: row.label as string,
           net: row.net as string | null,
           sharePct: row.share_pct as string | null,
+          basePct: row.base_pct as string | null,
+          tick: row.tick as string | null,
         })),
+        scaleLowPct: (dailyResult.rows[0]?.scale_low_pct ?? null) as string | null,
+        scaleHighPct: (dailyResult.rows[0]?.scale_high_pct ?? null) as string | null,
+        topNet: (dailyResult.rows[0]?.top_net ?? null) as string | null,
+        bottomNet: (dailyResult.rows[0]?.bottom_net ?? null) as string | null,
+        hasOrders: dailyResult.rows[0]?.month_has_orders === true,
       },
     }
   }, { ...deps, announce })

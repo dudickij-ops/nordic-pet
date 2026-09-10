@@ -616,6 +616,15 @@ by_day as (
   select m.sold_on as day, sum(m.net) as net
     from money m
    group by m.sold_on
+),
+-- Шкала ряда — один раз на месяц. Делитель долей — наибольшая по модулю выручка дня, под nullif;
+-- края шкалы — не выше нуля и не ниже нуля, с двумя знаками, чтобы подпись оси печаталась деньгами.
+peak as (
+  select nullif(max(abs(net)), 0) as top,
+         least(0.00, min(net))    as low_net,
+         greatest(0.00, max(net)) as high_net,
+         count(net) > 0           as has_orders
+    from by_day
 )
 select to_char(d.day, 'YYYY-MM-DD')                                             as day,
        extract(day from d.day)::int || ' ' ||
@@ -623,9 +632,20 @@ select to_char(d.day, 'YYYY-MM-DD')                                             
                 'сентября', 'октября', 'ноября', 'декабря'])[extract(month from d.day)::int]
                                                                                  as label,
        bd.net::text                                                              as net,
-       round(bd.net / nullif(max(abs(bd.net)) over (), 0) * 100, 1)::text        as share_pct
+       round(bd.net / p.top * 100, 1)::text                                      as share_pct,
+       round(least(0, bd.net) / p.top * 100, 1)::text                            as base_pct,
+       round(p.low_net / p.top * 100, 1)::text                                   as scale_low_pct,
+       round(p.high_net / p.top * 100, 1)::text                                  as scale_high_pct,
+       p.high_net::text                                                          as top_net,
+       p.low_net::text                                                           as bottom_net,
+       -- Видимая подпись — у каждого пятого дня, начиная с первого: 1, 6, 11, 16, 21, 26, 31.
+       -- Тридцать одна подпись в ширину не входит; доступная подпись при этом есть у каждого дня.
+       case when (extract(day from d.day)::int - 1) % 5 = 0
+            then extract(day from d.day)::int::text end                          as tick,
+       p.has_orders                                                              as month_has_orders
   from days d
   left join by_day bd on bd.day = d.day
+ cross join peak p
  order by d.day
 `
 

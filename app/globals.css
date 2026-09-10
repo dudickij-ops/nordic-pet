@@ -1014,6 +1014,93 @@ button.primary:active:not(:disabled) {
   line-height: var(--lineHeightBase200);
 }
 
+/* ——— Выручка по дням ——— */
+
+/*
+ * Ряд чистой выручки по дням — кусок S11, шаг 2. Столбик на день; где он стоит в области, решает эта
+ * таблица по величинам из разметки — `--day-from`, `--day-size` (те же строки, что в данных) и
+ * пределам шкалы `--scale-from`, `--scale-to`. Это показ того же значения, как у водопада.
+ *
+ * Высота области — `8rem`, решение владельца по развилке Ж3: шкалы высот графика у Fluent нет, и
+ * длина названа исключением в проверке чисел таблицы стилей с доводом. Записана один раз — у строки
+ * сетки, — чтобы у неё было одно место и один слом.
+ *
+ * Линия отсчёта рисуется у каждого дня своим отрезком: у дня с заказами — сплошным, у дня без заказов
+ * — пунктиром (развилка Д2′-б). Ноль и разрыв различаются формой, а не цветом.
+ */
+.daily-chart {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: 8rem auto;
+  column-gap: var(--spacingHorizontalS);
+}
+
+.daily-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.daily-bars,
+.daily-ticks {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-column: 2;
+}
+
+.daily-bars li {
+  position: relative;
+  flex: 1 1 0;
+}
+
+.daily-bars li::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc((0 - var(--scale-from)) / (var(--scale-to) - var(--scale-from)) * 100%);
+  border-top: var(--strokeWidthThin) solid var(--colorNeutralStrokeAccessible);
+}
+
+.daily-bars li[data-empty='true']::after {
+  border-top-style: dashed;
+}
+
+.daily-bar {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  bottom: calc((var(--day-from) - var(--scale-from)) / (var(--scale-to) - var(--scale-from)) * 100%);
+  height: calc(
+    max(var(--day-size), -1 * var(--day-size)) / (var(--scale-to) - var(--scale-from)) * 100%
+  );
+  background: var(--colorCompoundBrandBackground);
+}
+
+.daily-ticks {
+  grid-row: 2;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-ticks li {
+  flex: 1 1 0;
+  text-align: center;
+}
+
+.daily-empty {
+  color: var(--colorNeutralForeground3);
+}
+
 /* ——— Неполнота ——— */
 
 .gaps > p {

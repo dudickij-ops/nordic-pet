@@ -20,7 +20,19 @@ const pool = new Pool({ connectionString: projectDatabaseUrl() })
 afterAll(() => pool.end())
 
 type Строка = { день: string; оборот: string; скидка: string; возврат: string; выручка: string }
-type День = { day: string; label: string; net: string | null; share_pct: string | null }
+type День = {
+  day: string
+  label: string
+  net: string | null
+  share_pct: string | null
+  base_pct: string | null
+  scale_low_pct: string | null
+  scale_high_pct: string | null
+  top_net: string
+  bottom_net: string
+  tick: string | null
+  month_has_orders: boolean
+}
 
 /** Ряд по подставленным строкам `money` — тем же запросом, что в бою. */
 async function ряд(месяц: string, строки: Строка[]): Promise<День[]> {
@@ -108,6 +120,39 @@ describe('выручка по дням', () => {
     const март = await ряд('2026-03', [])
     expect(март[0].label).toBe('1 марта')
     expect(март[30].label).toBe('31 марта')
+  })
+})
+
+describe('ось и шкала ряда — готовыми из SQL', () => {
+  test('видимые подписи — у каждого пятого дня, начиная с первого', async () => {
+    const март = await ряд('2026-03', НЕСХОДЯЩИЕСЯ)
+    expect(март.filter((д) => д.tick !== null).map((д) => д.tick)).toEqual([
+      '1', '6', '11', '16', '21', '26', '31',
+    ])
+    expect(март.find((д) => д.day === '2026-03-06')?.tick).toBe('6')
+    expect(март.find((д) => д.day === '2026-03-07')?.tick).toBeNull()
+  })
+
+  test('месяц без заказов назван признаком, а не пустым графиком', async () => {
+    expect((await ряд('2026-03', []))[0].month_has_orders).toBe(false)
+    expect((await ряд('2026-03', НЕСХОДЯЩИЕСЯ))[0].month_has_orders).toBe(true)
+  })
+
+  test('края шкалы и подписи оси — ноль и наибольшая выручка дня; столбик дня — от нуля', async () => {
+    const март = await ряд('2026-03', НЕСХОДЯЩИЕСЯ)
+    expect(март[0].top_net).toBe('133.33')
+    expect(март[0].bottom_net).toBe('0.00')
+    expect(март[0].scale_low_pct).toBe('0.0')
+    expect(март[0].scale_high_pct).toBe('100.0')
+    expect(март.find((д) => д.day === '2026-03-02')?.base_pct).toBe('0.0')
+
+    const сМинусом = await ряд('2026-03', [
+      { день: '2026-03-03', оборот: '0.00', скидка: '0.00', возврат: '0.00', выручка: '-50.00' },
+      { день: '2026-03-04', оборот: '0.00', скидка: '0.00', возврат: '0.00', выручка: '200.00' },
+    ])
+    expect(сМинусом[0].bottom_net).toBe('-50.00')
+    expect(сМинусом[0].scale_low_pct).toBe('-25.0')
+    expect(сМинусом.find((д) => д.day === '2026-03-03')?.base_pct).toBe('-25.0')
   })
 })
 

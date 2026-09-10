@@ -65,4 +65,21 @@ export const ПЕРЕПИСЬ: MonthReport = {
     netGap: null,
     profitGap: '0.07',
   },
+  // Кусок S11, шаг 2. Семь дней, второй — без заказов; видимые подписи — у первого и шестого.
+  daily: {
+    days: [
+      { day: '2026-03-01', label: '1 марта', net: '313.13', sharePct: '41.3', basePct: '0.0', tick: '1' },
+      { day: '2026-03-02', label: '2 марта', net: null, sharePct: null, basePct: null, tick: null },
+      { day: '2026-03-03', label: '3 марта', net: '424.24', sharePct: '56.0', basePct: '0.0', tick: null },
+      { day: '2026-03-04', label: '4 марта', net: '535.35', sharePct: '70.7', basePct: '0.0', tick: null },
+      { day: '2026-03-05', label: '5 марта', net: '646.46', sharePct: '85.3', basePct: '0.0', tick: null },
+      { day: '2026-03-06', label: '6 марта', net: '757.57', sharePct: '100.0', basePct: '0.0', tick: '6' },
+      { day: '2026-03-07', label: '7 марта', net: '868.68', sharePct: '96.2', basePct: '0.0', tick: null },
+    ],
+    scaleLowPct: '0.0',
+    scaleHighPct: '100.0',
+    topNet: '979.79',
+    bottomNet: '0.00',
+    hasOrders: true,
+  },
 }

@@ -154,6 +154,65 @@ export function Dashboard({ report }: { report: MonthReport }) {
         </section>
       )}
 
+      {report.daily !== undefined && !report.daily.hasOrders && (
+        // Решение владельца по Д3: у месяца без заказов блока нет вовсе — на его месте слова, а не
+        // пустая рамка.
+        <p className="daily-empty">Чистая выручка по дням: нет данных за месяц</p>
+      )}
+
+      {report.daily !== undefined && report.daily.hasOrders && (
+        <section className="block daily">
+          <h2>Чистая выручка по дням</h2>
+          {/*
+            Ряд — кусок S11, шаг 2. Блок называется выручкой и только выручкой: прибыль по дням не
+            считается (постоянные расходы лежат помесячно). Разметка ничего не считает: доля и край
+            столбика, подписи оси и шаг видимых подписей дней приходят готовыми из SQL. Доступная
+            подпись есть у каждого дня без исключения — ею ряд читает тот, кто не читает глазом.
+          */}
+          <div className="daily-chart">
+            <div className="daily-axis" aria-hidden="true">
+              {report.daily.topNet !== null && <span>{money(report.daily.topNet)}</span>}
+              {report.daily.bottomNet !== null && <span>{money(report.daily.bottomNet)}</span>}
+            </div>
+            <ol
+              className="daily-bars"
+              style={
+                {
+                  '--scale-from': report.daily.scaleLowPct ?? undefined,
+                  '--scale-to': report.daily.scaleHighPct ?? undefined,
+                } as CSSProperties
+              }
+            >
+              {report.daily.days.map((день) => (
+                <li
+                  key={день.day}
+                  data-empty={день.net === null ? 'true' : undefined}
+                  aria-label={
+                    день.net === null
+                      ? `${день.label}: заказов не было`
+                      : `${день.label}: ${money(день.net)}`
+                  }
+                >
+                  {день.sharePct !== null && день.basePct !== null && (
+                    <span
+                      className="daily-bar"
+                      style={
+                        { '--day-from': день.basePct, '--day-size': день.sharePct } as CSSProperties
+                      }
+                    />
+                  )}
+                </li>
+              ))}
+            </ol>
+            <ol className="daily-ticks" aria-hidden="true">
+              {report.daily.days.map((день) => (
+                <li key={день.day}>{день.tick}</li>
+              ))}
+            </ol>
+          </div>
+        </section>
+      )}
+
       <section className="block">
         <h2>Выручка</h2>
         <dl>
