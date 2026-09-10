@@ -1,7 +1,8 @@
 <!doctype html><html lang="ru" style="color-scheme:light"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>obychnyy</title>
 <style>/*
- * Вид приложения — кусок S9. Единственная таблица стилей на всё приложение.
+ * Вид приложения — кусок S9, оформление по системе Fluent 2 — кусок S10. Единственная таблица
+ * стилей на всё приложение.
  *
  * Подключается ввозом в корневой разметке (`app/layout.tsx`) и больше нигде. Так показывает
  * официальная документация Next: «Create a `app/global.css` file and import it in the root
@@ -11,13 +12,21 @@
  * entry file». Наш вывод из этого — наш, а не документации: одна точка ввоза заодно оставляет
  * проверки экрана без CSS вовсе, а они отрисовывают разметку и о стилях ничего не утверждают.
  *
- * ЧТО ЭТОТ ФАЙЛ НЕ ДЕЛАЕТ. Он не меняет ни одного числа и ни одной подписи: кусок S9 меняет
- * только то, как показано. Ни одна величина здесь не считается — все числа приходят на экран
+ * ЧТО ЭТОТ ФАЙЛ НЕ ДЕЛАЕТ. Он не меняет ни одного числа и ни одной подписи: куски S9 и S10
+ * меняют только то, как показано. Ни одна величина здесь не считается — все числа приходят на экран
  * готовыми строками из слоя метрик.
  *
- * ЧЕМ ЭТОТ ФАЙЛ НЕ СТОРОЖЁН. У таблицы стилей нет слома, и это сказано вслух — в контракте,
- * в README и в теле pull request. Проверка, читающая ввоз в исходном тексте, доказывала бы
- * наличие строки, а не наличие вида. Вид проверяется глазом и снимком.
+ * ЧЕМ ЭТОТ ФАЙЛ СТОРОЖЁН, А ЧЕМ НЕТ — это две разные вещи.
+ *
+ * **Числа сторожатся.** Проверка `__tests__/styles/fluent-tokens.test.ts` сверяет каждую величину
+ * с выпиской из Fluent 2, и пять сломов доказывают, что она краснеет. Но сверяет она **с нашей
+ * выпиской, а не с Fluent 2**: совпадение выписки с источником доказывают якорь у каждой величины
+ * в самой проверке и человек, который по нему сходит. Первая редакция выписки взяла смысловой цвет
+ * из комментария в исходнике, а не из значения, и проверка была зелёной на неверных числах.
+ *
+ * **Вид не сторожится ничем, кроме снимка и глаза.** Правильные числа, собранные в уродливый экран,
+ * пройдут проверку зелёными. Проверка, читающая ввоз в исходном тексте, доказывала бы наличие
+ * строки, а не наличие вида.
  *
  * ОРИЕНТИРЫ ВЛАДЕЛЬЦА, по которым он этот вид принимает:
  *   · числа вправо, подписи влево, цифры в колонке одной ширины;
@@ -57,6 +66,7 @@
   --colorNeutralForegroundOnBrand: #ffffff;
   --colorNeutralStroke1: #d1d1d1;
   --colorNeutralStroke2: #e0e0e0;
+  --colorNeutralStrokeAccessible: #616161;
   --colorSubtleBackgroundHover: #f5f5f5;
 
   /*
@@ -66,12 +76,12 @@
    * using them on large surfaces as they can dilute a hierarchy and make an experience difficult
    * to navigate.»
    */
-  --colorBrandBackground: #0078d4;
-  --colorBrandBackgroundHover: #106ebe;
-  --colorBrandBackgroundPressed: #004578;
-  --colorBrandBackground2: #eff6fc;
-  --colorBrandForeground1: #0078d4;
-  --colorBrandStroke1: #0078d4;
+  --colorBrandBackground: #0f6cbd;
+  --colorBrandBackgroundHover: #115ea3;
+  --colorBrandBackgroundPressed: #0c3b5e;
+  --colorBrandBackground2: #ebf3fc;
+  --colorBrandForeground1: #0f6cbd;
+  --colorBrandStroke1: #0f6cbd;
 
   /*
    * Обводка фокуса: чёрная в светлой теме, белая в тёмной. **Наш вывод:** такая пара видна на
@@ -145,8 +155,10 @@
   --curveEasyEase: cubic-bezier(0.33, 0, 0.67, 1);
 
   /*
-   * Наши имена поверх токенов. Правила экрана ходят пока через них; задачи 4–9 переводят
-   * правила на токены напрямую, и слой имён тает вместе с ними.
+   * Наши имена поверх токенов. Правила экрана ходят через них. Прежде здесь было обещано, что
+   * задачи 4–9 переведут правила на токены напрямую и слой имён растает, — он не растаял, и
+   * обещание снято, а не оставлено висеть. Имена остаются синонимами: каждое ссылается ровно на
+   * один токен Fluent и своего значения не несёт.
    *
    * Холст и карточка — **разных** цветов: `colorNeutralBackground4` под `colorNeutralBackground1`.
    * Это отмена решения развилки 1 от 8 сентября, когда холст и карточка были одного цвета по
@@ -158,7 +170,7 @@
   --text: var(--colorNeutralForeground1);
   --text-dim: var(--colorNeutralForeground3);
   /* Линия внутри карточек — разделители строк неполноты. Рамок у карточек больше нет. */
-  --line: var(--colorNeutralBackground1Pressed);
+  --line: var(--colorNeutralStroke2);
   --line-strong: var(--colorNeutralStroke1);
   --accent: var(--colorBrandBackground);
   --accent-text: var(--colorBrandForeground1);
@@ -167,11 +179,13 @@
   --on-accent: var(--colorNeutralForegroundOnBrand);
   --danger: var(--colorPaletteRedForeground1);
   /*
-   * Рамка плашки отказа берёт `Border2`, а не `Border1`. Найдено проверкой кода. **Наш замер,
-   * все три числа:** `Border1` (#f1bbbc) даёт к холсту 1,67 : 1, и коробка отказа перестаёт
-   * читаться коробкой — остаётся один красный текст; `Border2` даёт 4,93 : 1 в светлой теме и
-   * 5,20 : 1 в тёмной. Ни одно из этих чисел в документации Fluent не названо — это наш счёт по
-   * формуле контраста, а не выписка.
+   * Рамка плашки отказа берёт `Border2`, а не `Border1` — **отступление от контракта**, который
+   * называл `Border1`. Найдено проверкой кода. **Наш счёт по формуле контраста к нынешнему холсту**
+   * (`#f0f0f0` в светлой теме, `#0a0a0a` в тёмной): `Border1` в светлой теме — 1,47 : 1, и
+   * коробка отказа перестаёт читаться коробкой, остаётся один красный текст; в тёмной — 4,02 : 1.
+   * `Border2` — 4,33 : 1 и 7,08 : 1. Прежняя редакция этого места называла 1,67, 4,93 и 5,20 — они
+   * были посчитаны к прежнему холсту и после смены холста перестали быть верными. Ни одно из этих
+   * чисел в документации Fluent не названо.
    */
   --danger-line: var(--colorPaletteRedBorder2);
   --danger-soft: var(--colorPaletteRedBackground1);
@@ -203,14 +217,15 @@
     --colorNeutralForegroundOnBrand: #ffffff;
     --colorNeutralStroke1: #666666;
     --colorNeutralStroke2: #525252;
+    --colorNeutralStrokeAccessible: #adadad;
     --colorSubtleBackgroundHover: #383838;
 
-    --colorBrandBackground: #106ebe;
-    --colorBrandBackgroundHover: #0078d4;
-    --colorBrandBackgroundPressed: #004578;
-    --colorBrandBackground2: #002848;
-    --colorBrandForeground1: #2899f5;
-    --colorBrandStroke1: #2899f5;
+    --colorBrandBackground: #115ea3;
+    --colorBrandBackgroundHover: #0f6cbd;
+    --colorBrandBackgroundPressed: #0c3b5e;
+    --colorBrandBackground2: #082338;
+    --colorBrandForeground1: #479ef5;
+    --colorBrandStroke1: #479ef5;
 
     --colorStrokeFocus2: #ffffff;
 
@@ -801,10 +816,11 @@ button.primary:active:not(:disabled) {
    * глазу нужен видимый остаток, иначе полоса врёт видом, не соврав числом.
    */
   /*
-   * Две величины без имени в документации, и обе названы исключениями в проверке величин.
-   * `26rem` — предел ширины полосы: во всю строку 80 % и 100 % почти неразличимы, глазу нужен
-   * видимый остаток. `8px` — толщина полосы: у Fluent есть шкала отступов и шкала толщин линий,
-   * но толщины полосы доли в прочитанных нами файлах нет, и это **наше число**, а не выписка.
+   * Две величины без имени в документации. `26rem` — предел ширины полосы, и он назван
+   * исключением в проверке величин: во всю строку 80 % и 100 % почти неразличимы, глазу нужен
+   * видимый остаток. `8px` — толщина полосы: число совпадает со ступенью шкалы отступов, поэтому
+   * проверка его пропускает и исключения ему не нужно, но толщиной полосы у Fluent эта ступень не
+   * названа — **роль числа наша**, а не выписка.
    */
   max-width: 26rem;
   height: 8px;
@@ -940,9 +956,11 @@ button.primary:active:not(:disabled) {
  * поднять почти до непрозрачной, то есть перестать гасить вовсе.
  *
  * Обесцвечивание контраста нейтрального текста не трогает совсем, а самый громкий элемент экрана
- * — цветная карточка «Итог» — становится серым, и это видно сразу. **Наш замер после перемены:**
- * белый текст на посеревшем «Итоге» — 5,83 : 1 в светлой теме и 6,29 : 1 в тёмной; основной текст
- * и подписи остаются при своих 15,52 : 1 и 6,19 : 1.
+ * — цветная карточка «Итог» — становится серым, и это видно сразу. **Наш замер после приведения
+ * смыслового цвета к источнику:** тот же фильтр `grayscale(1)` движком браузера делает фон «Итога»
+ * `rgb(94, 94, 94)` в светлой теме и `rgb(83, 83, 83)` в тёмной, и белый текст на нём — 6,48 : 1 и
+ * 7,69 : 1; основной текст и подписи остаются при своих 15,52 : 1 и 6,19 : 1. Прежняя редакция
+ * называла 5,83 и 6,29 — они были сняты на неверном смысловом цвете.
  *
  * Так на экране не осталось ни одного места, где приглушение делается прозрачностью.
  */
@@ -962,14 +980,15 @@ button.primary:active:not(:disabled) {
  * состояния, назвал их «одним и тем же по смыслу, двумя разными видами»; форма к тому времени уже
  * была общей, а разными оставались вес и цвет. Вес приведён к весу пометки холодного открытия:
  * та принята владельцем глазами раньше, и потому двигается эта, а не она. **Наш замер обеих через
- * `getComputedStyle` после перемены:** отступы `12px 16px`, скругление `12px`, рамка
- * `1px solid rgb(0, 120, 212)`, фон `rgb(239, 246, 252)`, насыщенность `400` — совпадают все семь.
+ * `getComputedStyle` на отрисованной странице:** отступы `12px 16px`, скругление `12px`, рамка
+ * `1px solid rgb(15, 108, 189)`, фон `rgb(235, 243, 252)`, насыщенность `400` в светлой теме;
+ * рамка `rgb(71, 158, 245)` и фон `rgb(8, 35, 56)` в тёмной — совпадают все семь у обеих.
  *
  * **Цвет у них всё же разный, и это не недоделка.** Вторая живёт внутри блока устаревших чисел, а
  * он обесцвечен нарочно, — значит и плашка внутри него выходит серой. **Наш замер того же фильтра
- * `grayscale(1)` движком браузера:** фон `rgb(239, 246, 252)` становится `rgb(245, 245, 245)`,
- * рамка `rgb(0, 120, 212)` — `rgb(101, 101, 101)`. Это то же самое сообщение, показанное в том же
- * обесцвеченном слое, а не второй вид пометки.
+ * `grayscale(1)` движком браузера:** в светлой теме фон становится `rgb(242, 242, 242)`, рамка —
+ * `rgb(94, 94, 94)`; в тёмной фон `rgb(31, 31, 31)`, рамка `rgb(146, 146, 146)`. Это то же самое
+ * сообщение, показанное в том же обесцвеченном слое, а не второй вид пометки.
  */
 .stale-mark {
   clear: right;
@@ -1011,6 +1030,33 @@ button.primary:active:not(:disabled) {
   color: var(--text-dim);
 }
 
+/*
+ * Нижняя кромка поля ввода — `colorNeutralStrokeAccessible`, круг правок 1 куска S10.
+ *
+ * **Норматив, дословно, вместе с условием.** WCAG 2.1, критерий 1.4.11 Non-text Contrast (w3.org/
+ * TR/WCAG21/): «The visual presentation of the following have a contrast ratio of at least 3:1
+ * against adjacent color(s): User Interface Components Visual information required to identify user
+ * interface components and states, except for inactive components or where the appearance of the
+ * component is determined by the user agent and not modified by the author; Graphical Objects Parts
+ * of graphics required to understand the content, except when a particular presentation of graphics
+ * is essential to the information being conveyed.»
+ *
+ * **Распространяется ли он на границу поля — отвечает разъяснение к нему, и там условие.** «Having
+ * a visual boundary indicating the hit area is only required when there is no other visual way to
+ * identify the presence of the control – and in those cases, the boundary must have sufficient
+ * non-text contrast in order to pass this success criterion.» (w3.org/WAI/WCAG21/Understanding/
+ * non-text-contrast.html, раздел «Boundaries»)
+ *
+ * **Наш вывод:** подпадаем. Поле пустое, своего содержимого у него нет, подпись стоит снаружи —
+ * узнать поле можно только по границе или заливке. **Наш замер с отрисованной страницы до правки:**
+ * рамка к карточке 1,53 : 1 в светлой теме и 2,53 : 1 в тёмной, заливка поля к карточке 1,14 и 1,36
+ * — всё ниже 3 : 1.
+ *
+ * **Рецепт взят у Fluent целиком, а не подобран:** поле ввода Fluent рисует рамку
+ * `colorNeutralStroke1`, а нижнюю кромку — `colorNeutralStrokeAccessible` (`microsoft/fluentui`
+ * @ 43665d5fb414, `packages/react-components/react-input/library/src/components/Input/
+ * useInputStyles.styles.ts`, строки 58–59). Токен для того и заведён.
+ */
 .login input {
   display: block;
   width: 100%;
@@ -1020,6 +1066,7 @@ button.primary:active:not(:disabled) {
   color: var(--text);
   background: var(--bg);
   border: var(--strokeWidthThin) solid var(--line-strong);
+  border-bottom-color: var(--colorNeutralStrokeAccessible);
   border-radius: var(--borderRadiusMedium);
 }
 
@@ -1036,10 +1083,6 @@ button.primary:active:not(:disabled) {
 /*
  * Прокрутка таблицы — своим условием и раньше общего узкого вида. Общее условие стоит на
  * 40 rem, а таблице тесно уже примерно с 41 rem, и в этой полосе за край уезжала вся страница.
- *
- * Цена приёма названа: `display: block` снимает с таблицы табличную семантику в части читалок
- * экрана, и числа теряют связь с заголовками колонок. Обёртка в разметке была бы лучше, но она
- * сдвинула бы отступы строк, которые цитируют сломы прежних кусков.
  */
 /*
  * Прокрутка таблицы переехала с самой таблицы на карточку «Товары» — задача 7.
@@ -1062,7 +1105,8 @@ button.primary:active:not(:disabled) {
  * `48rem` и `40rem` — наши пороги ширины, а не числа Fluent: раздел «Grid» справочника говорит про
  * колонки, поля и жёлобы и ни одного пикселя не называет. Первый — ширина, при которой таблице
  * товаров становится тесно; второй — при которой пары «подпись — значение» перестают стоять в
- * четыре колонки. Оба названы исключениями в проверке величин.
+ * четыре колонки. Исключениями в проверке величин они больше не названы: условий медиазапросов
+ * проверка не читает вовсе, и эти числа не проверяются ничем. Сказано здесь, а не спрятано.
  */
 @media (max-width: 48rem) {
   .items {
@@ -1138,15 +1182,16 @@ button.primary:active:not(:disabled) {
   --colorNeutralForegroundOnBrand: #ffffff;
   --colorNeutralStroke1: #d1d1d1;
   --colorNeutralStroke2: #e0e0e0;
+  --colorNeutralStrokeAccessible: #616161;
   --colorSubtleBackgroundHover: #f5f5f5;
 
                                                                                                                                                                                                                                                                                                                                                                                                               
-  --colorBrandBackground: #0078d4;
-  --colorBrandBackgroundHover: #106ebe;
-  --colorBrandBackgroundPressed: #004578;
-  --colorBrandBackground2: #eff6fc;
-  --colorBrandForeground1: #0078d4;
-  --colorBrandStroke1: #0078d4;
+  --colorBrandBackground: #0f6cbd;
+  --colorBrandBackgroundHover: #115ea3;
+  --colorBrandBackgroundPressed: #0c3b5e;
+  --colorBrandBackground2: #ebf3fc;
+  --colorBrandForeground1: #0f6cbd;
+  --colorBrandStroke1: #0f6cbd;
 
                                                                                                                                                                                        
   --colorStrokeFocus2: #000000;
@@ -1206,13 +1251,13 @@ button.primary:active:not(:disabled) {
   --durationFaster: 100ms;
   --curveEasyEase: cubic-bezier(0.33, 0, 0.67, 1);
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
   --bg: var(--colorNeutralBackground4);
   --surface: var(--colorNeutralBackground1);
   --text: var(--colorNeutralForeground1);
   --text-dim: var(--colorNeutralForeground3);
                                                                                          
-  --line: var(--colorNeutralBackground1Pressed);
+  --line: var(--colorNeutralStroke2);
   --line-strong: var(--colorNeutralStroke1);
   --accent: var(--colorBrandBackground);
   --accent-text: var(--colorBrandForeground1);
@@ -1220,7 +1265,7 @@ button.primary:active:not(:disabled) {
   --accent-soft: var(--colorBrandBackground2);
   --on-accent: var(--colorNeutralForegroundOnBrand);
   --danger: var(--colorPaletteRedForeground1);
-                                                                                                                                                                                                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
   --danger-line: var(--colorPaletteRedBorder2);
   --danger-soft: var(--colorPaletteRedBackground1);
 

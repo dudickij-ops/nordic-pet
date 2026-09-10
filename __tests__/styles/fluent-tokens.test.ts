@@ -99,6 +99,9 @@ const ЦВЕТА: Record<string, [string, string]> = {
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:154 `grey[88]` → packages/tokens/src/global/colors.ts:50 grey[88]
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:154 `grey[32]` → packages/tokens/src/global/colors.ts:22 grey[32]
   colorNeutralStroke2: ['#e0e0e0', '#525252'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:146 `grey[38]` → packages/tokens/src/global/colors.ts:25 grey[38]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:146 `grey[68]` → packages/tokens/src/global/colors.ts:40 grey[68]
+  colorNeutralStrokeAccessible: ['#616161', '#adadad'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:101 `grey[96]` → packages/tokens/src/global/colors.ts:54 grey[96]
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:101 `grey[22]` → packages/tokens/src/global/colors.ts:17 grey[22]
   colorSubtleBackgroundHover: ['#f5f5f5', '#383838'],
