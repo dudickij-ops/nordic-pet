@@ -2,7 +2,7 @@ import { Client } from 'pg'
 
 import { clearPostgresEnvironment } from '../db-url.ts'
 import { resolveIngestTarget, type ProductionConnection } from '../ingest/target.ts'
-import { ALL_MONTHS, MONTH_GAPS, MONTH_ITEMS, MONTH_TOTALS } from './sql.ts'
+import { ALL_MONTHS, MONTH_GAPS, MONTH_ITEMS, MONTH_TOTALS, MONTH_WATERFALL } from './sql.ts'
 
 /**
  * Дверь слоя метрик в базу — один снимок фактов на весь экран.
@@ -155,6 +155,18 @@ export type MonthReport = {
    * Механизмы разные, и один другого не заменяет.
    */
   устарели?: boolean
+  /**
+   * Водопад «куда ушли деньги» — кусок S11, шаг 1: девять ступеней из строки итогов месяца,
+   * доли от оборота и края столбиков — готовыми строками из SQL (`MONTH_WATERFALL`).
+   *
+   * Необязательное по той же причине, что `устарели`: отчёты, собранные руками в принятых
+   * проверках прошлых кусков, о нём не знают. Нет поля — сказать нечего, блок не рисуется.
+   */
+  waterfall?: {
+    steps: Array<{ key: string; kind: string; amount: Money; sharePct: Maybe; basePct: Maybe }>
+    scaleLowPct: Maybe
+    scaleHighPct: Maybe
+  }
 }
 
 /**
@@ -289,6 +301,7 @@ export async function monthlyReport(
     const totalsResult = await client.query(MONTH_TOTALS, [dayParam])
     const itemsResult = await client.query(MONTH_ITEMS, [dayParam])
     const gapsResult = await client.query(MONTH_GAPS, [dayParam])
+    const waterfallResult = await client.query(MONTH_WATERFALL, [dayParam])
 
     const totals = totalsResult.rows[0] as Record<string, string | null>
     const items = itemsResult.rows.map((row) => ({
@@ -330,6 +343,17 @@ export async function monthlyReport(
       honesty: { sharePct: totals.honest_pct, skusWithoutPrice },
       gaps,
       устарели: stale,
+      waterfall: {
+        steps: waterfallResult.rows.map((row) => ({
+          key: row.key as string,
+          kind: row.kind as string,
+          amount: row.amount as string,
+          sharePct: row.share_pct as string | null,
+          basePct: row.base_pct as string | null,
+        })),
+        scaleLowPct: (waterfallResult.rows[0]?.scale_low_pct ?? null) as string | null,
+        scaleHighPct: (waterfallResult.rows[0]?.scale_high_pct ?? null) as string | null,
+      },
     }
   }, { ...deps, announce })
   }

@@ -486,3 +486,79 @@ select am.month as month,
   from all_months am
  order by am.month desc
 `
+
+/**
+ * Водопад «куда ушли деньги» — кусок S11, шаг 1. Девять ступеней: оборот → скидки → возвраты →
+ * чистая выручка → себестоимость → реклама → комиссии → постоянные → прибыль. Три итога — оборот,
+ * чистая выручка, прибыль — идут от нуля; шесть вычитаний висят от остатка после предыдущих.
+ *
+ * **Своих выражений денег здесь нет ни одного.** Ступени берут готовую строку итогов месяца —
+ * `MONTH_TOTALS` целиком, как подзапрос, — и только раскладывают её колонки по порядку. Прибыль
+ * ступени — буквально колонка `profit` итогов, а не её пересчёт из слагаемых: второе выражение
+ * прибыли однажды разошлось бы с первым молча. Текст `MONTH_TOTALS` не тронут.
+ *
+ * Доли — в процентах **от оборота**, как у всех долей экрана (решение владельца: одна база).
+ * Делитель — под `nullif`: оборот ноль — доли и основания пусты, на экране слова, а не ноль.
+ *
+ * **Наше решение, названное вслух:** доли и основания считаются от денег итогов, уже округлённых
+ * до цента, — то есть от тех самых чисел, что стоят на экране. Округление доли одно — здесь, до
+ * десятой. Остаток после вычитаний считается от ближайшего итога, а не накоплением от оборота:
+ * так нижний край ступени «постоянные» сходится с прибылью, а «возвраты» — с чистой выручкой.
+ *
+ * Геометрия — числами, готовыми: `share_pct` — доля ступени со знаком, та же, что печатается
+ * текстом; `base_pct` — нижний край столбика. Итог от нуля: край — меньшее из нуля и самой доли,
+ * поэтому отрицательная прибыль идёт вниз от нуля. `scale_low_pct` и `scale_high_pct` — пределы
+ * шкалы: не выше нуля и не ниже ста, шире — если ступень выходит за них.
+ *
+ * `WATERFALL_FROM_TOTALS` читает строку итогов из `totals_row` и сам итогов не считает; боевой
+ * запрос — `MONTH_WATERFALL` — подставляет туда `MONTH_TOTALS`. Проверки подставляют выдуманную
+ * строку итогов, чтобы ступени можно было сличить с числами, которые нарочно не сходятся.
+ */
+export const WATERFALL_FROM_TOTALS = `
+steps as (
+  select s.ord, s.key, s.kind, s.amount, s.edge_from, s.edge_to
+    from totals_row t
+   cross join lateral (values
+     (1, 'gross',     'итог',      t.gross::numeric,     0::numeric,
+                                   t.gross::numeric),
+     (2, 'discounts', 'вычитание', t.discounts::numeric, t.gross::numeric,
+                                   t.gross::numeric - t.discounts::numeric),
+     (3, 'refunds',   'вычитание', t.refunds::numeric,   t.gross::numeric - t.discounts::numeric,
+                                   t.gross::numeric - t.discounts::numeric - t.refunds::numeric),
+     (4, 'net',       'итог',      t.net::numeric,       0::numeric,
+                                   t.net::numeric),
+     (5, 'cogs',      'вычитание', t.cogs::numeric,      t.net::numeric,
+                                   t.net::numeric - t.cogs::numeric),
+     (6, 'ads',       'вычитание', t.ads::numeric,       t.net::numeric - t.cogs::numeric,
+                                   t.net::numeric - t.cogs::numeric - t.ads::numeric),
+     (7, 'fees',      'вычитание', t.fees::numeric,
+                                   t.net::numeric - t.cogs::numeric - t.ads::numeric,
+                                   t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric),
+     (8, 'fixed',     'вычитание', t.fixed::numeric,
+                                   t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric,
+                                   t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric
+                                     - t.fixed::numeric),
+     (9, 'profit',    'итог',      t.profit::numeric,    0::numeric,
+                                   t.profit::numeric)
+   ) as s(ord, key, kind, amount, edge_from, edge_to)
+),
+base as (
+  select t.gross::numeric as gross from totals_row t
+)
+select s.key,
+       s.kind,
+       s.amount::text                                                            as amount,
+       round(s.amount / nullif(b.gross, 0) * 100, 1)::text                       as share_pct,
+       round(least(s.edge_from, s.edge_to) / nullif(b.gross, 0) * 100, 1)::text  as base_pct,
+       round(least(0, min(least(s.edge_from, s.edge_to)) over ())
+             / nullif(b.gross, 0) * 100, 1)::text                                as scale_low_pct,
+       round(greatest(b.gross, max(greatest(s.edge_from, s.edge_to)) over ())
+             / nullif(b.gross, 0) * 100, 1)::text                                as scale_high_pct
+  from steps s
+ cross join base b
+ order by s.ord
+`
+
+export const MONTH_WATERFALL = `
+with totals_row as (${MONTH_TOTALS}),
+${WATERFALL_FROM_TOTALS}`
