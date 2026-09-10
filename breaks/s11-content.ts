@@ -836,6 +836,12 @@ export const BREAKS: Break[] = [
     id: 'read-at-local-zone',
     claim: 'печатать время чтения в поясе сеанса вместо UTC',
     mustRedden: 'время чтения печатается по UTC и называет пояс',
+    alsoRedden: [
+      {
+        name: 'отчёт несёт время чтения источников, прочитанное тем же снимком',
+        why: "сеанс местной базы — в поясе Europe/Minsk (снято `current_setting('TimeZone')`), и настоящий путь печатает время на три часа позже",
+      },
+    ],
     file: 'lib/metrics/sql.ts',
     find: "to_char(f.raw_seen_at at time zone 'UTC', ",
     replace: 'to_char(f.raw_seen_at, ',
