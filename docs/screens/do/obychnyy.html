@@ -1,0 +1,695 @@
+<!doctype html><html lang="ru" style="color-scheme:light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>obychnyy</title>
+<style>/*
+ * Вид приложения — кусок S9. Единственная таблица стилей на всё приложение.
+ *
+ * Подключается ввозом в корневой разметке (`app/layout.tsx`) и больше нигде. Так показывает
+ * официальная документация Next: «Create a `app/global.css` file and import it in the root
+ * layout to apply the styles to **every route** in your application»
+ * (nextjs.org/docs/app/getting-started/css, раздел «Global CSS»). Там же, в разделе
+ * «Recommendations», сказано: «Try to contain CSS imports to a single JavaScript or TypeScript
+ * entry file». Наш вывод из этого — наш, а не документации: одна точка ввоза заодно оставляет
+ * проверки экрана без CSS вовсе, а они отрисовывают разметку и о стилях ничего не утверждают.
+ *
+ * ЧТО ЭТОТ ФАЙЛ НЕ ДЕЛАЕТ. Он не меняет ни одного числа и ни одной подписи: кусок S9 меняет
+ * только то, как показано. Ни одна величина здесь не считается — все числа приходят на экран
+ * готовыми строками из слоя метрик.
+ *
+ * ЧЕМ ЭТОТ ФАЙЛ НЕ СТОРОЖЁН. У таблицы стилей нет слома, и это сказано вслух — в контракте,
+ * в README и в теле pull request. Проверка, читающая ввоз в исходном тексте, доказывала бы
+ * наличие строки, а не наличие вида. Вид проверяется глазом и снимком.
+ *
+ * ОРИЕНТИРЫ ВЛАДЕЛЬЦА, по которым он этот вид принимает:
+ *   · числа вправо, подписи влево, цифры в колонке одной ширины;
+ *   · крупных чисел единицы — прибыль, маржа, окупаемость; остальное ровным весом;
+ *   · один цвет для смысловых пометок, красный только для отказов, чтобы он не обесценился;
+ *   · плотность средняя: месяц целиком помещается в один-два экрана прокрутки;
+ *   · ширина ограничена — строка во весь широкий монитор нечитаема.
+ */
+
+/* ——— Величины ——— */
+
+:root {
+  /* Светлая тема. Тёмная — ниже, тем же набором имён. */
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --text: #16191d;
+  --text-dim: #5c6670;
+  --line: #dfe4e9;
+  --line-strong: #c6ced6;
+
+  /* Единственный смысловой цвет. Всё остальное — оттенки фона и текста. */
+  --accent: #1c6b86;
+  --accent-soft: #e8f1f5;
+  /*
+   * Цвет текста НА смысловом цвете. Отдельная величина, а не белый впаянный в правило: в
+   * тёмной теме смысловой цвет светлый, и белым по нему не прочитать ни кнопку, ни выбранный
+   * месяц. Найдено глазом на тёмной теме, а не рассуждением.
+   */
+  --on-accent: #ffffff;
+
+  /* Красный — только отказы. Пометки, выделения и украшения его не берут. */
+  --danger: #a3221b;
+  --danger-soft: #fbeceb;
+
+  --radius: 10px;
+  --gap: 1.25rem;
+  --page: 72rem;
+
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171a;
+    --surface: #1b1f23;
+    --text: #e7eaed;
+    --text-dim: #97a1aa;
+    --line: #282e34;
+    --line-strong: #39424a;
+
+    --accent: #6cb2cc;
+    --accent-soft: #16303b;
+    --on-accent: #0d1a20;
+
+    --danger: #f0b3ae;
+    --danger-soft: #381917;
+  }
+}
+
+/* ——— Основа ——— */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  padding: 1.5rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  /*
+   * Ширина ограничена здесь, а не на `main`: разметка страницы отчёта — это несколько соседей
+   * в корне (кнопка выхода, пометка устаревания, панель кнопки), и ограничивать надо их все
+   * разом, иначе шапка разъедется шире чисел.
+   */
+  max-width: var(--page);
+  margin-inline: auto;
+}
+
+/*
+ * Табличные цифры — всюду, а не только в таблице товаров. В столбце денег разряды обязаны
+ * стоять друг под другом; пропорциональные цифры сдвигают их на доли символа, и глаз перестаёт
+ * читать колонку как колонку.
+ */
+body {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+p {
+  margin: 0 0 0.5rem;
+}
+
+/* ——— Блоки ——— */
+
+section {
+  margin: 0 0 var(--gap);
+  padding: 1.15rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* ——— Пары «подпись — значение» ——— */
+
+/*
+ * Список определений раскладывается колонками: подпись сверху, значение снизу. Так пара
+ * читается как одно целое, а соседние показатели встают в ряд и сравниваются глазом.
+ */
+dl {
+  display: grid;
+  /*
+   * Ровно четыре колонки, и каждая может ужаться до нуля (`minmax(0, 1fr)`).
+   *
+   * Здесь была ошибка, найденная глазом на узком экране: колонки задавались через
+   * `repeat(auto-fit, minmax(11rem, 1fr))`, а строки у подписи и значения закреплены
+   * (`grid-row: 1` и `grid-row: 2`). Закреплённая строка заставляет все пары встать в один ряд:
+   * сетка добавляет неявные колонки сверх заданных, и `auto-fit` их не сворачивает. На экране
+   * шириной 375 пикселей разметка расползалась до 559 и уезжала за край.
+   *
+   * Четыре — потому что больше четырёх показателей в блоке нет ни в одном из трёх блоков.
+   */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+  margin: 0;
+}
+
+dt {
+  grid-row: 1;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+dd {
+  grid-row: 2;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 550;
+  /*
+   * Значение не рвётся между числом и знаком. Этим закрыта отложенная задача прежнего куска:
+   * `money` и `percent` ставят перед знаком обычный пробел, и без запрета знак евро мог уехать
+   * на другую строку. Сам формат при этом не тронут ни на символ.
+   */
+  white-space: nowrap;
+}
+
+/* ——— Таблица ——— */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+th,
+td {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+/* Числа вправо, подписи влево: первая колонка — артикул, остальные — числа. */
+th:not(:first-child),
+td:not(:first-child) {
+  text-align: right;
+}
+
+/*
+ * Не рвётся только значение. Заголовкам колонок перенос разрешён нарочно: с запретом
+ * «Продано за вычетом возвратов» держало таблицу шириной в 621 пиксель, и в полосе примерно
+ * 641…661 пикселя за край уезжала вся страница, а не таблица. Замерено: при 645 пикселях
+ * ширина страницы была 662.
+ */
+td {
+  white-space: nowrap;
+}
+
+thead th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--line-strong);
+  /*
+   * Шапка держится при прокрутке — **шире 48 rem, и только там**. Фон обязателен: без него
+   * строки просвечивают сквозь прилипшую шапку.
+   *
+   * Ограничение названо, потому что оно неустранимо в этой разметке, а не потому, что руки не
+   * дошли. Уже 48 rem таблица становится собственным контейнером прокрутки (`overflow-x`), а по
+   * правилу CSS вторая ось при этом тоже перестаёт быть `visible` — и `sticky` начинает
+   * считаться от прокрутки таблицы, которой по вертикали нет. Замерено: при 760 пикселях
+   * верх шапки уезжает на −200 при прокрутке на 200, при 1200 — остаётся нулём.
+   *
+   * Развести это можно было бы обёрткой в разметке, но обёртка сдвинула бы отступы строк,
+   * которые цитируют сломы прежних кусков. Прокрутка таблицы на узком экране важнее липкой
+   * шапки: без неё за край уезжает вся страница. Отступление названо в README и в теле
+   * pull request.
+   */
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ——— Ссылки и кнопки ——— */
+
+a {
+  color: var(--accent);
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* ——— Пометки и отказы ——— */
+
+/*
+ * Пометка — смысловой цвет. Отказ — красный, и красный больше нигде: цвет, потраченный на
+ * украшение, перестаёт означать «сломалось».
+ */
+/*
+ * `clear` обязателен: кнопка выхода — плавающая, а обычный блок под плавающим не отступает, и
+ * пометка «числа отстали» накрывала кнопку своей коробкой — «Выйти» читалось как часть плашки.
+ * Замерено на узком экране: коробка пометки 14…376, форма выхода 310…376, то есть целиком
+ * внутри. Найдено проверкой кода. Цена решения названа: на экране холодного открытия кнопка
+ * обновления уходит на свою строку, и это правильнее наложения.
+ */
+[role='status'] {
+  clear: right;
+  margin: 0 0 var(--gap);
+  padding: 0.7rem 1rem;
+  background: var(--accent-soft);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+[role='alert'] {
+  margin: 0 0 var(--gap);
+  padding: 0.7rem 1rem;
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+}
+
+/* ——— Верхняя полоса и полоса действия ——— */
+
+/*
+ * Кнопка выхода держит собственную форму: формы в HTML не вкладываются, а отчёт уже завёрнут
+ * в форму кнопки «Обновить данные». Поэтому верхняя полоса собирается здесь, стилями, а не
+ * обёрткой в разметке.
+ */
+.logout {
+  /*
+   * Обтекание, а не флексбокс-строка: кнопка выхода и кнопка обновления живут в разных формах
+   * и разной глубине (формы в HTML не вкладываются), поставить их в один ряд общим родителем
+   * нельзя. Плавающая форма выводится из потока, а полоса действия ниже — контейнер флексбокса,
+   * и потому не наезжает на плавающее, а встаёт рядом. Так обе кнопки оказываются в одной
+   * строке без единой обёртки в разметке.
+   */
+  float: right;
+  margin: 0 0 0.75rem 1rem;
+}
+
+/*
+ * Рамка видна всегда. На странице отказа «данные не читаются» эта кнопка — единственный орган
+ * управления на экране, а с прозрачной рамкой она до наведения читалась словом, а не кнопкой.
+ * Найдено проверкой кода.
+ */
+.logout button {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  background: transparent;
+  border-color: var(--line);
+}
+
+.logout button:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 2.1rem;
+  margin: 0 0 var(--gap);
+}
+
+button.primary {
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 550;
+}
+
+button.primary:hover:not(:disabled) {
+  color: var(--on-accent);
+  filter: brightness(1.08);
+}
+
+/* ——— Заголовок отчёта и месяцы ——— */
+
+.report-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  margin: 0 0 var(--gap);
+}
+
+.months ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.months a {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.months a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Выбранный месяц назван и разметкой (`aria-current`), и видом — не только цветом. */
+.months a[aria-current='page'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 550;
+}
+
+/*
+ * Месяц без заказов виден, но не зовёт: он в списке потому, что есть реклама или расходы.
+ * Приглушается пунктиром рамки, а не прозрачностью: это орган управления, и читаться он обязан
+ * не хуже соседей. Прозрачность 0,6 давала около 2,7 : 1.
+ */
+.months a[data-empty='true'] {
+  border-style: dashed;
+}
+
+/*
+ * Выбранный месяц без заказов. Без этой строки пунктир шёл рамкой в цвет заливки и не читался
+ * вовсе: выбранный пустой месяц был неотличим от выбранного обычного. Найдено проверкой кода.
+ */
+.months a[data-empty='true'][aria-current='page'] {
+  border-color: var(--on-accent);
+}
+
+/* ——— Главные числа ——— */
+
+/*
+ * Крупных чисел на экране ровно три — прибыль, маржа, окупаемость. Остальные показатели идут
+ * ровным весом. Экран, где выделено всё, не выделяет ничего.
+ */
+.bottom-line {
+  border-color: var(--line-strong);
+}
+
+.bottom-line dd {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.bottom-line dt {
+  font-size: 0.85rem;
+}
+
+/* ——— Полоса доли честности ——— */
+
+/*
+ * Второй показ **того же** числа, а не новое число: ширина берётся из той же величины, которую
+ * печатает текст рядом. Ни деления, ни вычитания в разметке нет. Полоса помечена `aria-hidden`:
+ * читалке экрана она сказала бы то же самое второй раз.
+ */
+.share {
+  /*
+   * Ширина ограничена нарочно. Полоса во всю строку делает 80 % и 100 % почти неразличимыми:
+   * глазу нужен видимый остаток, иначе полоса врёт видом, не соврав числом.
+   */
+  max-width: 26rem;
+  height: 8px;
+  margin: 0.6rem 0 0.9rem;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.share-fill {
+  /*
+   * `clamp` здесь — сторож, а не украшение. Значение приходит величиной `--share` из разметки;
+   * если оно окажется отрицательным или больше ста, длина всё равно останется в пределах
+   * дорожки. Прежде значение подставлялось прямо в `width`, и отрицательная доля делала
+   * объявление негодным: браузер брал ширину по умолчанию и рисовал полосу во всю дорожку —
+   * то есть «посчитано всё» там, где текст рядом говорил «минус двенадцать процентов».
+   *
+   * Доли вне 0…100 в настоящих данных не встречались ни разу; арифметически они возможны,
+   * потому что чистая выручка строки уходит в минус при крупном возврате.
+   */
+  width: clamp(0%, var(--share, 0%), 100%);
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.share-value {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+/*
+ * Нулевая дыра видна, но не кричит — она идёт базовым приглушённым цветом строки, и своего
+ * правила ей не нужно. Отдельное правило здесь стояло и не делало ничего: цвет в нём совпадал
+ * с базовым. Найдено проверкой кода.
+ *
+ * Заметной делается ненулевая. Приглушение прозрачностью убрано на круг раньше: 0,65 поверх
+ * приглушённого текста давало контраст около 2,8 : 1 при норме 4,5 : 1.
+ */
+.gaps li:not([data-zero='true']) {
+  color: var(--text);
+  font-weight: 550;
+}
+
+/*
+ * Второй абзац блока — оговорка про товары без цены поставщика.
+ *
+ * Здесь дважды промахнулись мимо цели, и оба промаха названы. Сначала стоял `p:last-of-type`:
+ * когда товаров без цены нет, второго абзаца не существует, и правило гасило подпись доли.
+ * Потом — `p + p`: между абзацами стоит полоса, соседями они не являются, и правило не
+ * совпадало **ни с чем**. Замерено: ноль совпадений, оба абзаца одного размера и цвета.
+ * Второй промах нашла проверка кода, первый — она же кругом раньше.
+ */
+.honesty > p:nth-of-type(2) {
+  margin-bottom: 0;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+/* ——— Неполнота ——— */
+
+.gaps > p {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.gaps ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: 0 1.5rem;
+}
+
+/*
+ * Раскладки в две колонки здесь нет, и это решение, а не упущение. Содержимое строки — один
+ * сплошной кусок текста «вид: число»: разделить его на подпись и значение можно было бы только
+ * вложенными тегами, а принятая проверка прошлого куска утверждает, что «скидки: 0» стоит на
+ * экране одной неразрывной строкой. Прежде здесь стоял флексбокс с раскладкой по краям — он не
+ * делал ничего вовсе: распределять между краями было нечего. Найдено проверкой кода.
+ */
+.gaps li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+/* ——— Устаревшие числа ——— */
+
+/*
+ * Гашение — видом, а не только текстом: человек, увидевший прежние числа в прежнем виде,
+ * прочитал бы отказ как «ничего не изменилось». Атрибут состояния остаётся на месте.
+ */
+/*
+ * Имя класса разведено с именем класса пометки нарочно. Прежде обёртка звалась `stale`, а
+ * пометка над ней — `stale-mark`, и проверка, искавшая слово «stale» в атрибуте класса, находила
+ * пометку вместо обёртки: слом, снимавший класс с обёртки, проходил зелёным. Найдено прогоном
+ * сломов, а не глазом.
+ */
+.numbers-stale {
+  opacity: 0.55;
+  filter: grayscale(1);
+}
+
+.stale-mark {
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* ——— Страница входа ——— */
+
+.login {
+  max-width: 22rem;
+  margin: 12vh auto 0;
+  padding: 1.75rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.login h1 {
+  margin: 0 0 1.25rem;
+  font-size: 1.15rem;
+}
+
+.login label {
+  display: block;
+  margin: 0 0 0.3rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.login input {
+  display: block;
+  width: 100%;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+}
+
+.login button {
+  width: 100%;
+}
+
+.login [role='alert'] {
+  margin: 1rem 0 0;
+}
+
+/* ——— Узкий экран ——— */
+
+/*
+ * Прокрутка таблицы — своим условием и раньше общего узкого вида. Общее условие стоит на
+ * 40 rem, а таблице тесно уже примерно с 41 rem, и в этой полосе за край уезжала вся страница.
+ *
+ * Цена приёма названа: `display: block` снимает с таблицы табличную семантику в части читалок
+ * экрана, и числа теряют связь с заголовками колонок. Обёртка в разметке была бы лучше, но она
+ * сдвинула бы отступы строк, которые цитируют сломы прежних кусков.
+ */
+@media (max-width: 48rem) {
+  .items table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 40rem) {
+  body {
+    padding: 1rem 0.85rem 3rem;
+  }
+
+  section {
+    padding: 1rem;
+  }
+
+  /*
+   * На узком экране пары разворачиваются в строки: подпись слева, число справа. Это и
+   * единственная раскладка, которая тут читается, и ровно то, как владелец просил показывать
+   * числа — подписи по левому краю, числа по правому.
+   */
+  dl {
+    grid-template-columns: 1fr auto;
+    gap: 0.55rem 1rem;
+  }
+
+  dt,
+  dd {
+    grid-row: auto;
+  }
+
+  dt {
+    grid-column: 1;
+    align-self: center;
+  }
+
+  dd {
+    grid-column: 2;
+    text-align: right;
+    font-size: 1.05rem;
+  }
+
+  .bottom-line dd {
+    font-size: 1.35rem;
+  }
+
+}
+
+:root{--bg: #f4f6f8;
+  --surface: #ffffff;
+  --text: #16191d;
+  --text-dim: #5c6670;
+  --line: #dfe4e9;
+  --line-strong: #c6ced6;
+
+   
+  --accent: #1c6b86;
+  --accent-soft: #e8f1f5;
+   
+  --on-accent: #ffffff;
+
+   
+  --danger: #a3221b;
+  --danger-soft: #fbeceb;
+
+  --radius: 10px;
+  --gap: 1.25rem;
+  --page: 72rem;
+
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><div data-stale="false" class="numbers"><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01" data-empty="true">2026-01</a></li><li><a href="/?m=2026-02">2026-02</a></li><li><a href="/?m=2026-03" aria-current="page">2026-03</a></li></ul></nav></header><section class="block"><h2>Выручка</h2><dl><dt>Оборот</dt><dd>18 764,00 €</dd><dt>Скидки</dt><dd>427,50 €</dd><dt>Возвраты</dt><dd>1 059,46 €</dd><dt>Чистая выручка</dt><dd>17 277,04 €</dd></dl></section><section class="block"><h2>Затраты</h2><dl><dt>Себестоимость проданного</dt><dd>6 028,11 €</dd><dt>Реклама</dt><dd>4 431,37 €</dd><dt>Комиссии платёжных систем</dt><dd>526,12 €</dd><dt>Постоянные расходы</dt><dd>4 552,90 €</dd></dl></section><section class="block bottom-line"><h2>Итог</h2><dl><dt>Прибыль</dt><dd>1 738,53 €</dd><dt>Маржа</dt><dd>10,1 %</dd><dt>Окупаемость рекламы (по обороту)</dt><dd>4,23 ×</dd></dl></section><section class="block items"><h2>Товары</h2><table><thead><tr><th>Артикул</th><th>Продано за вычетом возвратов</th><th>Чистая выручка</th><th>Себестоимость</th><th>Прибыль</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €</td><td>1 251,90 €</td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td></tr><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €</td><td>793,44 €</td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td></tr></tbody></table></section><section class="block honesty"><h2>Честность данных</h2><p>Посчитано по настоящей цене поставщика (доля от чистой выручки): <strong class="share-value">80,3 %</strong></p><div class="share" aria-hidden="true"><div class="share-fill" style="--share:80.3%"></div></div><p>Без цены поставщика (запасные 40%): NP-011, NP-012</p></section><section class="block gaps"><h2>Неполнота данных</h2><p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p><ul><li data-zero="true">скидки: 0</li><li data-zero="true">оборот: 0</li><li data-zero="true">возвраты без суммы: 0</li><li data-zero="true">возвраты, не попавшие в счёт: 0</li><li data-zero="true">возвращено больше, чем куплено: 0</li><li>строки продаж без цены поставщика: 77 (NP-011, NP-012)</li><li data-zero="true">ставки без процента или без фиксированной части: 0</li><li data-zero="true">заказы с разными способами оплаты: 0</li><li data-zero="true">постоянные расходы без суммы: 0</li><li data-zero="true">реклама без суммы: 0</li><li data-zero="true">дни рекламы без курса: 0</li></ul></section></main></div></div><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>

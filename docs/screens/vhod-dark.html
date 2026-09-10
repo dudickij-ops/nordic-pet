@@ -1,7 +1,8 @@
 <!doctype html><html lang="ru" style="color-scheme:dark"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>vhod</title>
 <style>/*
- * Вид приложения — кусок S9. Единственная таблица стилей на всё приложение.
+ * Вид приложения — кусок S9, оформление по системе Fluent 2 — кусок S10. Единственная таблица
+ * стилей на всё приложение.
  *
  * Подключается ввозом в корневой разметке (`app/layout.tsx`) и больше нигде. Так показывает
  * официальная документация Next: «Create a `app/global.css` file and import it in the root
@@ -11,13 +12,21 @@
  * entry file». Наш вывод из этого — наш, а не документации: одна точка ввоза заодно оставляет
  * проверки экрана без CSS вовсе, а они отрисовывают разметку и о стилях ничего не утверждают.
  *
- * ЧТО ЭТОТ ФАЙЛ НЕ ДЕЛАЕТ. Он не меняет ни одного числа и ни одной подписи: кусок S9 меняет
- * только то, как показано. Ни одна величина здесь не считается — все числа приходят на экран
+ * ЧТО ЭТОТ ФАЙЛ НЕ ДЕЛАЕТ. Он не меняет ни одного числа и ни одной подписи: куски S9 и S10
+ * меняют только то, как показано. Ни одна величина здесь не считается — все числа приходят на экран
  * готовыми строками из слоя метрик.
  *
- * ЧЕМ ЭТОТ ФАЙЛ НЕ СТОРОЖЁН. У таблицы стилей нет слома, и это сказано вслух — в контракте,
- * в README и в теле pull request. Проверка, читающая ввоз в исходном тексте, доказывала бы
- * наличие строки, а не наличие вида. Вид проверяется глазом и снимком.
+ * ЧЕМ ЭТОТ ФАЙЛ СТОРОЖЁН, А ЧЕМ НЕТ — это две разные вещи.
+ *
+ * **Числа сторожатся.** Проверка `__tests__/styles/fluent-tokens.test.ts` сверяет каждую величину
+ * с выпиской из Fluent 2, и пять сломов доказывают, что она краснеет. Но сверяет она **с нашей
+ * выпиской, а не с Fluent 2**: совпадение выписки с источником доказывают якорь у каждой величины
+ * в самой проверке и человек, который по нему сходит. Первая редакция выписки взяла смысловой цвет
+ * из комментария в исходнике, а не из значения, и проверка была зелёной на неверных числах.
+ *
+ * **Вид не сторожится ничем, кроме снимка и глаза.** Правильные числа, собранные в уродливый экран,
+ * пройдут проверку зелёными. Проверка, читающая ввоз в исходном тексте, доказывала бы наличие
+ * строки, а не наличие вида.
  *
  * ОРИЕНТИРЫ ВЛАДЕЛЬЦА, по которым он этот вид принимает:
  *   · числа вправо, подписи влево, цифры в колонке одной ширины;
@@ -30,51 +39,212 @@
 /* ——— Величины ——— */
 
 :root {
-  /* Светлая тема. Тёмная — ниже, тем же набором имён. */
-  --bg: #f4f6f8;
-  --surface: #ffffff;
-  --text: #16191d;
-  --text-dim: #5c6670;
-  --line: #dfe4e9;
-  --line-strong: #c6ced6;
-
-  /* Единственный смысловой цвет. Всё остальное — оттенки фона и текста. */
-  --accent: #1c6b86;
-  --accent-soft: #e8f1f5;
   /*
-   * Цвет текста НА смысловом цвете. Отдельная величина, а не белый впаянный в правило: в
-   * тёмной теме смысловой цвет светлый, и белым по нему не прочитать ни кнопку, ни выбранный
-   * месяц. Найдено глазом на тёмной теме, а не рассуждением.
+   * Величины Fluent 2 — задача 3 куска S10.
+   *
+   * Имена и значения взяты из официальной реализации токенов Fluent 2 (`microsoft/fluentui`,
+   * пакет `packages/tokens/src`). Ни одно число здесь не посчитано нами и ни одно не подобрано на
+   * глаз; переносом изменена только запись — пробелы после запятых, — а не значения. Что числа
+   * те самые, сторожит проверка `__tests__/styles/fluent-tokens.test.ts`; её собственная граница
+   * названа в ней самой.
+   *
+   * Тёмная тема — ниже, тем же набором имён и полным составом: у Fluent тёмная тема объявляет
+   * все цвета заново, а не правит часть.
    */
-  --on-accent: #ffffff;
 
-  /* Красный — только отказы. Пометки, выделения и украшения его не берут. */
-  --danger: #a3221b;
-  --danger-soft: #fbeceb;
+  /* Нейтральные: фон, текст, линии. `alias/lightColor.ts`. */
+  --colorNeutralBackground1: #ffffff;
+  --colorNeutralBackground1Hover: #f5f5f5;
+  --colorNeutralBackground1Pressed: #e0e0e0;
+  --colorNeutralBackground4: #f0f0f0;
+  --colorNeutralForeground1: #242424;
+  --colorNeutralForeground2: #424242;
+  --colorNeutralForeground3: #616161;
+  --colorNeutralForegroundDisabled: #bdbdbd;
+  --colorNeutralBackgroundDisabled: #f0f0f0;
+  --colorNeutralStrokeDisabled: #e0e0e0;
+  --colorNeutralForegroundOnBrand: #ffffff;
+  --colorNeutralStroke1: #d1d1d1;
+  --colorNeutralStroke2: #e0e0e0;
+  --colorNeutralStrokeAccessible: #616161;
+  --colorSubtleBackgroundHover: #f5f5f5;
 
-  --radius: 10px;
-  --gap: 1.25rem;
+  /*
+   * Смысловой цвет. Справочник, дословно (fluent2.microsoft.design/color):
+   * «Apply brand colors to different areas of an interface not only to create visual prominence,
+   * but also to anchor people in a specific product experience. Avoid overusing brand colors or
+   * using them on large surfaces as they can dilute a hierarchy and make an experience difficult
+   * to navigate.»
+   */
+  --colorBrandBackground: #0f6cbd;
+  --colorBrandBackgroundHover: #115ea3;
+  --colorBrandBackgroundPressed: #0c3b5e;
+  --colorBrandBackground2: #ebf3fc;
+  --colorBrandForeground1: #0f6cbd;
+  --colorBrandStroke1: #0f6cbd;
+  --colorNeutralBackground6: #e6e6e6;
+  --colorCompoundBrandBackground: #0f6cbd;
+
+  /*
+   * Обводка фокуса: чёрная в светлой теме, белая в тёмной. **Наш счёт:** к холсту и к карточке —
+   * от 14,55 до 21,00 : 1 (`docs/сверка/контраст.md`); справочник про это не говорит, значения
+   * взяты из реализации.
+   */
+  --colorStrokeFocus2: #000000;
+
+  /*
+   * Красный — только отказы. Справочник, дословно (fluent2.microsoft.design/color):
+   * «Select colors in the shared palette are specifically used to communicate feedback, status,
+   * or urgency. These are known as semantic colors and they should always convey important
+   * information.»
+   * **Наш вывод:** значит красный не берут на украшение — иначе он перестаёт означать «сломалось».
+   */
+  --colorPaletteRedBackground1: #fdf6f6;
+  --colorPaletteRedBorder2: #d13438;
+  --colorPaletteRedForeground1: #bc2f32;
+
+  /* Тень. `utils/shadows.ts` плюс пара цветов тени из `alias/lightColor.ts`. */
+  --shadow8: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
+
+  /* Шкала шрифта для веба. `global/fonts.ts`. */
+  --fontFamilyBase: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system,
+    BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  --fontSizeBase200: 12px;
+  --fontSizeBase300: 14px;
+  --fontSizeBase400: 16px;
+  --fontSizeBase600: 24px;
+  --fontSizeHero700: 28px;
+  --lineHeightBase200: 16px;
+  --lineHeightBase300: 20px;
+  --lineHeightBase400: 22px;
+  --lineHeightBase600: 32px;
+  --lineHeightHero700: 36px;
+  --fontWeightRegular: 400;
+  --fontWeightSemibold: 600;
+
+  /* Скругления, толщины, отступы, движение. */
+  --borderRadiusMedium: 4px;
+  --borderRadius2XLarge: 12px;
+  --borderRadiusCircular: 10000px;
+  --strokeWidthThin: 1px;
+  --strokeWidthThick: 2px;
+  --spacingHorizontalXS: 4px;
+  --spacingHorizontalS: 8px;
+  --spacingHorizontalM: 12px;
+  --spacingHorizontalL: 16px;
+  --spacingHorizontalXL: 20px;
+  --spacingHorizontalXXL: 24px;
+  --spacingVerticalXS: 4px;
+  --spacingVerticalS: 8px;
+  --spacingVerticalM: 12px;
+  --spacingVerticalL: 16px;
+  --spacingVerticalXL: 20px;
+  --spacingVerticalXXL: 24px;
+  --spacingVerticalXXXL: 32px;
+  /*
+   * Собственные величины кнопки Fluent: в реализации они стоят числами рядом с правилами
+   * (`react-button/…/useButtonStyles.styles.ts`), а не в шкале отступов. Имена наши, значения его.
+   */
+  /* Высота строки таблицы — малый размер Fluent (`react-table/…/useTableCellStyles.styles.ts`:
+   * medium 44, small 34, extra-small 24). Из трёх взят малый; довод — у правила. */
+  --tableRowHeightSmall: 34px;
+
+  --buttonSpacingSmall: 3px;
+  --buttonSpacingMedium: 5px;
+  --buttonMinWidthSmall: 64px;
+  --buttonMinWidthMedium: 96px;
+
+  --durationFaster: 100ms;
+  --curveEasyEase: cubic-bezier(0.33, 0, 0.67, 1);
+
+  /*
+   * Наши имена поверх токенов. Правила экрана ходят через них. Прежде здесь было обещано, что
+   * задачи 4–9 переведут правила на токены напрямую и слой имён растает, — он не растаял, и
+   * обещание снято, а не оставлено висеть. Имена остаются синонимами: каждое ссылается ровно на
+   * один токен Fluent и своего значения не несёт.
+   *
+   * Холст и карточка — **разных** цветов: `colorNeutralBackground4` под `colorNeutralBackground1`.
+   * Это отмена решения развилки 1 от 8 сентября, когда холст и карточка были одного цвета по
+   * двум показанным примерам Microsoft; причина отмены названа в плане, задача 7а — заказчик
+   * прислал образец вида. Рамок у карточек нет; отделяют их цвет холста, скругление и тень.
+   */
+  --bg: var(--colorNeutralBackground4);
+  --surface: var(--colorNeutralBackground1);
+  --text: var(--colorNeutralForeground1);
+  --text-dim: var(--colorNeutralForeground3);
+  /* Линия внутри карточек — разделители строк неполноты: вид по умолчанию разделителя Fluent
+   * (`react-divider/…/useDividerStyles.styles.ts`, строки 96 и 100). Рамок у карточек больше нет. */
+  --line: var(--colorNeutralStroke2);
+  --line-strong: var(--colorNeutralStroke1);
+  --accent: var(--colorBrandBackground);
+  --accent-text: var(--colorBrandForeground1);
+  --accent-line: var(--colorBrandStroke1);
+  --accent-soft: var(--colorBrandBackground2);
+  --on-accent: var(--colorNeutralForegroundOnBrand);
+  --danger: var(--colorPaletteRedForeground1);
+  /*
+   * Рамка плашки отказа берёт `Border2`, а не `Border1` — **отступление от контракта**, который
+   * называл `Border1`. Найдено проверкой кода. **Наш счёт по формуле контраста к нынешнему холсту**
+   * (`#f0f0f0` в светлой теме, `#0a0a0a` в тёмной): `Border1` в светлой теме — 1,47 : 1, и
+   * коробка отказа перестаёт читаться коробкой, остаётся один красный текст; в тёмной — 4,02 : 1.
+   * `Border2` — 4,33 : 1 и 7,08 : 1. Это для плашек отказа, стоящих на холсте, — на странице отчёта.
+   * **На странице входа плашка отказа стоит на карточке**, и там верны числа к карточке (`#ffffff`
+   * и `#292929`), тоже наш счёт: `Border1` — 1,67 : 1 и 2,95 : 1, `Border2` — 4,93 : 1 и 5,20 : 1.
+   * Прежняя редакция этого места называла «прежними и более неверными» ровно те числа, что верны на
+   * карточке; неверными они стали только для плашек на холсте. Вывод в пользу `Border2` от этого
+   * не меняется. Эти числа — наш счёт, а не выписка из Fluent.
+   */
+  --danger-line: var(--colorPaletteRedBorder2);
+  --danger-soft: var(--colorPaletteRedBackground1);
+
+  --gap: var(--spacingVerticalL);
+  --font: var(--fontFamilyBase);
+
+  /*
+   * Предельная ширина содержимого — допущение, а не число Fluent: раздел «Grid» справочника
+   * говорит про колонки, поля и жёлобы, но ни одного пикселя не называет. Названо допущением в
+   * контракте и в списке исключений проверки величин.
+   */
   --page: 72rem;
-
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14171a;
-    --surface: #1b1f23;
-    --text: #e7eaed;
-    --text-dim: #97a1aa;
-    --line: #282e34;
-    --line-strong: #39424a;
+    /* Тёмная тема Fluent объявляет цвета заново, полным составом. `alias/darkColor.ts`. */
+    --colorNeutralBackground1: #292929;
+    --colorNeutralBackground1Hover: #3d3d3d;
+    --colorNeutralBackground1Pressed: #1f1f1f;
+    --colorNeutralBackground4: #0a0a0a;
+    --colorNeutralForeground1: #ffffff;
+    --colorNeutralForeground2: #d6d6d6;
+    --colorNeutralForeground3: #adadad;
+    --colorNeutralForegroundDisabled: #5c5c5c;
+    --colorNeutralBackgroundDisabled: #141414;
+    --colorNeutralStrokeDisabled: #424242;
+    --colorNeutralForegroundOnBrand: #ffffff;
+    --colorNeutralStroke1: #666666;
+    --colorNeutralStroke2: #525252;
+    --colorNeutralStrokeAccessible: #adadad;
+    --colorSubtleBackgroundHover: #383838;
 
-    --accent: #6cb2cc;
-    --accent-soft: #16303b;
-    --on-accent: #0d1a20;
+    --colorBrandBackground: #115ea3;
+    --colorBrandBackgroundHover: #0f6cbd;
+    --colorBrandBackgroundPressed: #0c3b5e;
+    --colorBrandBackground2: #082338;
+    --colorBrandForeground1: #479ef5;
+    --colorBrandStroke1: #479ef5;
+    --colorNeutralBackground6: #333333;
+    --colorCompoundBrandBackground: #479ef5;
 
-    --danger: #f0b3ae;
-    --danger-soft: #381917;
+    --colorStrokeFocus2: #ffffff;
+
+    --colorPaletteRedBackground1: #3f1011;
+    --colorPaletteRedBorder2: #e37d80;
+    --colorPaletteRedForeground1: #e37d80;
+
+    /* Тень в тёмной теме гуще: пара цветов своя. `alias/darkColor.ts`. */
+    --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
+
   }
 }
 
@@ -92,12 +262,12 @@ html {
 
 body {
   margin: 0;
-  padding: 1.5rem 1.25rem 4rem;
+  padding: var(--spacingVerticalXXL) var(--spacingHorizontalXXL) var(--spacingVerticalXXXL);
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
   /*
    * Ширина ограничена здесь, а не на `main`: разметка страницы отчёта — это несколько соседей
    * в корне (кнопка выхода, пометка устаревания, панель кнопки), и ограничивать надо их все
@@ -117,34 +287,83 @@ body {
   font-feature-settings: 'tnum' 1;
 }
 
+/*
+ * Шкала шрифта — задача 4 куска S10. Каждый размер взят из шкалы Fluent для веба и стоит
+ * величиной, а не числом.
+ *
+ * **Что чем является.** Сами ступени — размер и интерлиньяж в паре — выписаны из
+ * `global/fonts.ts` и `global/typographyStyles.ts`. А вот **какая ступень какой роли на этом
+ * экране достаётся — наш вывод**: справочник даёт шкалу и семантические имена, но про подпись
+ * показателя в приборной панели магазина не говорит ничего.
+ *
+ * Заголовок отчёта — Title 3 (24 / 32, 600), **наш вывод**. Межбуквенное расстояние снято:
+ * своего числа у него не было ни у Fluent, ни у нас — оно было подобрано на глаз.
+ */
 h1 {
   margin: 0;
-  font-size: 1.35rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  font-size: var(--fontSizeBase600);
+  line-height: var(--lineHeightBase600);
+  font-weight: var(--fontWeightSemibold);
 }
 
+/*
+ * Заголовок блока — Body 1 Strong (14 / 20, 600), цвет `colorNeutralForeground2`.
+ *
+ * **Показанный пример, дословно.** Сайт fluent2.microsoft.design набирает заголовок плитки так:
+ * `.tile .tile-header .header-title{font-size:14px;line-height:20px;font-weight:600;
+ * color:var(--colorNeutralForeground2)}`. **Наш вывод:** заголовку блока на этом экране
+ * достаётся та же ступень.
+ *
+ * **Иерархия заголовка — замер и закрытый вопрос.** Заголовок отличается от основного текста
+ * только насыщенностью: размер тот же, цвет светлее. Наш замер обеих пар: заголовок против
+ * основного текста — **1,54 : 1 в светлой теме и 1,45 : 1 в тёмной**; смотреть надо на тёмную,
+ * она слабее. Владелец посмотрел экран после задачи 5 и вопрос закрыл: заголовок держит сама
+ * карточка, поднимать ступень не нужно.
+ *
+ * **Капитель снята.** Справочник, дословно (fluent2.microsoft.design/typography, «Styling text»,
+ * подраздел «Casing»): «Use sentence case when writing, it fits most contexts. Don’t use all caps
+ * to get a user’s attention because it’s difficult to read. See the content design guidance for
+ * more information.» Буквы в разметке при этом не двинулись ни на символ: капитель делалась
+ * показом, а не текстом.
+ */
 h2 {
-  margin: 0 0 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-dim);
+  margin: 0 0 var(--spacingVerticalM);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
+  font-weight: var(--fontWeightSemibold);
+  color: var(--colorNeutralForeground2);
 }
 
 p {
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--spacingVerticalS);
 }
 
 /* ——— Блоки ——— */
 
+/*
+ * Карточка — задача 7а куска S10, вид по образцу заказчика.
+ *
+ * **Что здесь изменилось в отступлении — точно, а не «исчезло».** Задача 5 ставила рамку и тень
+ * одновременно, и это было отступлением: справочник даёт тень карточкам **без** рамки. Рамки
+ * больше нет, и эта половина отступления ушла.
+ *
+ * **По букве цитаты мы всё ещё не в ней.** Справочник (fluent2.microsoft.design/elevation,
+ * таблица «Low elevation ramp») приписывает карточкам без рамки `shadow4`, а мы ставим `shadow8`
+ * — из соседней строки той же таблицы: «Floating action buttons, raised cards, and raised app
+ * bars». **Наш вывод, а не слово справочника:** карточка отчёта — «raised card». Отступление
+ * сменило вид, а не исчезло: было «рамка вместе с тенью», стало «ступень тени выбрана нами по
+ * нашей же классификации». Найдено проверкой кода.
+ *
+ * Холст при этом отделён от карточки цветом: `colorNeutralBackground4` под
+ * `colorNeutralBackground1`. Это отмена решения развилки 1 от 8 сентября, причина названа в
+ * плане — заказчик прислал образец вида.
+ */
 section {
   margin: 0 0 var(--gap);
-  padding: 1.15rem 1.25rem;
+  padding: var(--spacingVerticalXL) var(--spacingHorizontalXL);
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--borderRadius2XLarge);
+  box-shadow: var(--shadow8);
 }
 
 /* ——— Пары «подпись — значение» ——— */
@@ -167,21 +386,25 @@ dl {
    * Четыре — потому что больше четырёх показателей в блоке нет ни в одном из трёх блоков.
    */
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem 1.5rem;
+  gap: var(--spacingVerticalL) var(--spacingHorizontalXXL);
   margin: 0;
 }
 
+/* Подпись показателя — Caption 1 (12 / 16, 400). */
 dt {
   grid-row: 1;
-  font-size: 0.8rem;
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
   color: var(--text-dim);
 }
 
+/* Обычное значение — Subtitle 2 (16 / 22, 600). Крупных чисел на экране трое, и они ниже. */
 dd {
   grid-row: 2;
   margin: 0;
-  font-size: 1.15rem;
-  font-weight: 550;
+  font-size: var(--fontSizeBase400);
+  line-height: var(--lineHeightBase400);
+  font-weight: var(--fontWeightSemibold);
   /*
    * Значение не рвётся между числом и знаком. Этим закрыта отложенная задача прежнего куска:
    * `money` и `percent` ставят перед знаком обычный пробел, и без запрета знак евро мог уехать
@@ -195,14 +418,32 @@ dd {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
 }
 
+/*
+ * Таблица товаров — задача 7 куска S10.
+ *
+ * Из реализации Fluent: высота строки малого размера 34, отступы ячейки `0 8px`, нижняя граница
+ * строки в толщину `strokeWidthThin` цветом `colorNeutralStroke2`, наведение на строку —
+ * `colorSubtleBackgroundHover`.
+ *
+ * **Почему малый размер, а не средний.** Fluent называет три высоты и не говорит, какую брать для
+ * приборной панели, — **наш вывод**: двенадцать товаров при среднем размере занимают 528 пикселей
+ * вместо 408, и ориентир владельца «месяц помещается в один-два экрана прокрутки» перестаёт
+ * выполняться.
+ */
 th,
 td {
-  padding: 0.5rem 0.65rem;
-  border-bottom: 1px solid var(--line);
+  height: var(--tableRowHeightSmall);
+  padding: 0 var(--spacingHorizontalS);
+  border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
   text-align: left;
+}
+
+tbody tr:hover {
+  background: var(--colorSubtleBackgroundHover);
 }
 
 /* Числа вправо, подписи влево: первая колонка — артикул, остальные — числа. */
@@ -221,19 +462,30 @@ td {
   white-space: nowrap;
 }
 
+/*
+ * Заголовок колонки — Caption 1 (12 / 16) обычной насыщенности.
+ *
+ * **Что взято у Fluent, а что решено нами.** У Fluent задана только насыщенность:
+ * `react-table/…/useTableHeaderCellStyles.styles.ts` ставит `fontWeight: tokens.fontWeightRegular`
+ * и размера не задаёт вовсе — значит у него заголовок колонки идёт размером таблицы, то есть
+ * Body 1 (14). **Наш вывод и наше отступление:** здесь заголовок колонки взял Caption 1 (12),
+ * потому что колонок пять и они соперничают за ширину с числами, а называет колонку положение,
+ * а не размер. Насыщенность оставлена той, что у Fluent.
+ */
 thead th {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  font-weight: var(--fontWeightRegular);
   color: var(--text-dim);
-  border-bottom: 1px solid var(--line-strong);
+  border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
   /*
    * Шапка держится при прокрутке — **шире 48 rem, и только там**. Фон обязателен: без него
    * строки просвечивают сквозь прилипшую шапку.
    *
    * Ограничение названо, потому что оно неустранимо в этой разметке, а не потому, что руки не
-   * дошли. Уже 48 rem таблица становится собственным контейнером прокрутки (`overflow-x`), а по
-   * правилу CSS вторая ось при этом тоже перестаёт быть `visible` — и `sticky` начинает
-   * считаться от прокрутки таблицы, которой по вертикали нет. Замерено: при 760 пикселях
+   * дошли. Уже 48 rem собственным контейнером прокрутки становится **карточка «Товары»**
+   * (`overflow-x` на `.items`), а по правилу CSS вторая ось при этом тоже перестаёт быть
+   * `visible` — и `sticky` начинает считаться от прокрутки карточки, которой по вертикали нет. Замерено: при 760 пикселях
    * верх шапки уезжает на −200 при прокрутке на 200, при 1200 — остаётся нулём.
    *
    * Развести это можно было бы обёрткой в разметке, но обёртка сдвинула бы отступы строк,
@@ -253,27 +505,119 @@ tbody tr:last-child td {
 /* ——— Ссылки и кнопки ——— */
 
 a {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
+/*
+ * Кнопка — задача 6 куска S10, средний размер Fluent.
+ *
+ * Из реализации (`react-button/…/useButtonStyles.styles.ts`): отступы 5 / 12, наименьшая ширина
+ * 96, скругление `borderRadiusMedium`, шрифт 14 / 20 насыщенностью 600, рамка в толщину
+ * `strokeWidthThin` цветом `colorNeutralStroke1`, наведение — `colorNeutralBackground1Hover`,
+ * нажатие — `colorNeutralBackground1Pressed`, переход 100 ms кривой `curveEasyEase`.
+ */
 button {
-  font: inherit;
+  font-family: var(--font);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
+  font-weight: var(--fontWeightSemibold);
   color: var(--text);
   background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  padding: 0.4rem 0.9rem;
+  border: var(--strokeWidthThin) solid var(--line-strong);
+  border-radius: var(--borderRadiusMedium);
+  padding: var(--buttonSpacingMedium) var(--spacingHorizontalM);
+  min-width: var(--buttonMinWidthMedium);
   cursor: pointer;
+  transition: background var(--durationFaster) var(--curveEasyEase),
+    border-color var(--durationFaster) var(--curveEasyEase),
+    color var(--durationFaster) var(--curveEasyEase);
 }
 
 button:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--colorNeutralBackground1Hover);
 }
 
-button:disabled {
-  opacity: 0.55;
-  cursor: default;
+button:active:not(:disabled) {
+  background: var(--colorNeutralBackground1Pressed);
+}
+
+/*
+ * Отключённая кнопка берёт **свой цвет**, а не прозрачность.
+ *
+ * Прозрачность делает получившийся контраст зависимым от того, что лежит под элементом, то есть
+ * зависимым от фона. Цвета — из реализации Fluent: `colorNeutralBackgroundDisabled`,
+ * `colorNeutralForegroundDisabled`, `colorNeutralStrokeDisabled`.
+ *
+ * **Наш замер, и он не в пользу перемены по числу:** прежняя прозрачность 0,55 давала 2,21 : 1 в
+ * светлой теме, цвета Fluent дают 1,65 : 1; в тёмной было 3,24 : 1, стало 2,76 : 1. Ни одно из
+ * четырёх не дотягивает до 4,5 : 1. Перемена решает названную владельцем беду —
+ * непредсказуемость, — и не решает числа.
+ *
+ * **Порог сюда не применяется, и вот дословное основание.** WCAG 2.1, критерий 1.4.3 Contrast
+ * (Minimum), перечень исключений, целиком: «The visual presentation of text and images of text has
+ * a contrast ratio of at least 4.5:1, except for the following: **Large Text** Large-scale text and
+ * images of large-scale text have a contrast ratio of at least 3:1; **Incidental** Text or images
+ * of text that are part of an inactive user interface component, that are pure decoration, that
+ * are not visible to anyone, or that are part of a picture that contains significant other visual
+ * content, have no contrast requirement; **Logotypes** Text that is part of a logo or brand name
+ * has no contrast requirement.» (w3.org/TR/WCAG21/)
+ *
+ * **Наш вывод:** отключённая кнопка — «inactive user interface component», и порога у неё нет.
+ * Это не оправдание числа, а ответ на вопрос, отступление ли это: не отступление. Числа при этом
+ * названы выше, а не спрятаны за исключением.
+ *
+ * **Второй селектор — не украшение, и вот что было без него.** У `button:disabled` и у
+ * `button.primary` вес правила одинаков — по одному имени тега и по одному классу или
+ * псевдоклассу. При равном весе побеждает то правило, которое стоит в файле ниже, а
+ * `button.primary` стоит ниже. Значит на **главной** кнопке отключённый вид не появлялся вовсе.
+ *
+ * Цена этого была не косметической: главных кнопок в приложении две — «Обновить данные» и
+ * «Войти», — и обе объявлены `primary`, и обе только и бывают отключены. То есть правило не
+ * действовало ни на одной кнопке, которая когда-либо отключается, а числа контраста, посчитанные
+ * для него, описывали цвета, ни разу не доехавшие до экрана. **Замерено на отрисованной
+ * странице:** у отключённой главной кнопки цвет текста был `rgb(255, 255, 255)` на фоне
+ * `rgb(0, 120, 212)` — ровно как у включённой; от отключённого вида доживал один курсор.
+ *
+ * Найдено при независимой перепроверке чисел контраста задачи 11.
+ */
+button:disabled,
+button.primary:disabled {
+  color: var(--colorNeutralForegroundDisabled);
+  background: var(--colorNeutralBackgroundDisabled);
+  border-color: var(--colorNeutralStrokeDisabled);
+  cursor: not-allowed;
+}
+
+/*
+ * Движение уважает настройку человека: `prefers-reduced-motion: reduce` сводит переход к
+ * мгновенному, как это делает сам Fluent (`@media screen and (prefers-reduced-motion: reduce)` в
+ * его же файле кнопки).
+ */
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition-duration: 0.01ms;
+  }
+}
+
+/*
+ * Обводка фокуса — единственный новый механизм куска: прежде на экране не было ни одного правила
+ * фокуса вовсе (поиск `focus` и `outline` в таблице стилей `main` — 0 строк). **Толщина и цвет взяты у Fluent**, `react-table/…/useTableRowStyles.styles.ts`,
+ * строка 48: `outline: 2px solid colorStrokeFocus2`. Токен чёрный в светлой теме и белый в тёмной;
+ * к холсту и к карточке обводка даёт от 14,55 до 21,00 : 1, наш счёт. **Отступления от той же
+ * строки:** скругления `borderRadiusMedium` у обводки нет, а отступ `strokeWidthThin` у Fluent не задан — **довода в
+ * коде нет ни для того, ни для другого**. Прежняя редакция писала «форма взята у Fluent» — без
+ * скругления это была не вся форма. **У кнопки Fluent свой рецепт фокуса** —
+ * `react-button/…/useButtonStyles.styles.ts`, строки 105–114: рамка `1px` и внутренняя тень цвета
+ * `colorStrokeFocus2`, кольцо внутри кнопки. У нас одно правило на все органы управления, кольцо
+ * снаружи — **отступление, довода в коде нет**. Сверка — `docs/сверка/рецепты-fluent.md`,
+ * разделы 1 и 4.
+ *
+ * **Слома у этого правила нет, и это названо** — в списке сломов, в плане, в теле pull request и
+ * в отчёте. Доказательство ему только снимок и глаз.
+ */
+:focus-visible {
+  outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+  outline-offset: var(--strokeWidthThin);
 }
 
 /* ——— Пометки и отказы ——— */
@@ -292,20 +636,26 @@ button:disabled {
 [role='status'] {
   clear: right;
   margin: 0 0 var(--gap);
-  padding: 0.7rem 1rem;
+  padding: var(--spacingVerticalM) var(--spacingHorizontalL);
   background: var(--accent-soft);
   color: var(--text);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
+  border: var(--strokeWidthThin) solid var(--accent-line);
+  border-radius: var(--borderRadius2XLarge);
 }
 
+/*
+ * `clear` у отказа — по той же причине, что у пометки, и найдено на снимке: полоса управления
+ * плавает справа, а коробка блочного элемента заходит под плавающее — текст обтекает, а фон нет.
+ * Плашка отказа уезжала под кнопки, и «Обновить данные» стояла поверх красного поля.
+ */
 [role='alert'] {
+  clear: right;
   margin: 0 0 var(--gap);
-  padding: 0.7rem 1rem;
+  padding: var(--spacingVerticalM) var(--spacingHorizontalL);
   background: var(--danger-soft);
   color: var(--danger);
-  border: 1px solid var(--danger);
-  border-radius: var(--radius);
+  border: var(--strokeWidthThin) solid var(--danger-line);
+  border-radius: var(--borderRadius2XLarge);
 }
 
 /* ——— Верхняя полоса и полоса действия ——— */
@@ -324,7 +674,7 @@ button:disabled {
    * строке без единой обёртки в разметке.
    */
   float: right;
-  margin: 0 0 0.75rem 1rem;
+  margin: 0 0 var(--spacingVerticalM) var(--spacingHorizontalL);
 }
 
 /*
@@ -333,36 +683,47 @@ button:disabled {
  * Найдено проверкой кода.
  */
 .logout button {
-  padding: 0.25rem 0.7rem;
-  font-size: 0.85rem;
-  color: var(--text-dim);
-  background: transparent;
-  border-color: var(--line);
+  padding: var(--buttonSpacingSmall) var(--spacingHorizontalS);
+  min-width: var(--buttonMinWidthSmall);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  font-weight: var(--fontWeightRegular);
 }
 
-.logout button:hover {
-  border-color: var(--line-strong);
-  color: var(--text);
-}
-
+/*
+ * Полоса действия — задача 6 куска S10, и приём в ней стоит объяснения.
+ *
+ * **Была беда:** кнопка обновления стояла над строкой названия, месяцы — на самой строке, и
+ * получались две полосы управления вместо одной, а главное действие экрана висело выше названия
+ * отчёта, ни к чему не привязанное. Найдено владельцем на снимке.
+ *
+ * **Почему стилями, а не разметкой.** Кнопка обновления и название отчёта лежат в разных ветвях
+ * разметки и на разной глубине: собрать их в один ряд общим родителем нельзя, а разметку этот
+ * кусок не открывает вовсе. Плавающая полоса выводится из потока, и шапка отчёта — контейнер
+ * флексбокса, то есть собственный контекст форматирования — не наезжает на плавающее, а встаёт
+ * рядом. Так название, месяцы и обе кнопки оказываются на одной полосе без единой правки тегов.
+ */
 .actions {
+  float: right;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  min-height: 2.1rem;
-  margin: 0 0 var(--gap);
+  min-height: var(--lineHeightBase600);
+  margin: 0 0 var(--gap) var(--spacingHorizontalS);
 }
 
 button.primary {
   color: var(--on-accent);
   background: var(--accent);
-  border-color: var(--accent);
-  font-weight: 550;
+  border-color: transparent;
 }
 
 button.primary:hover:not(:disabled) {
-  color: var(--on-accent);
-  filter: brightness(1.08);
+  background: var(--colorBrandBackgroundHover);
+}
+
+button.primary:active:not(:disabled) {
+  background: var(--colorBrandBackgroundPressed);
 }
 
 /* ——— Заголовок отчёта и месяцы ——— */
@@ -372,41 +733,50 @@ button.primary:hover:not(:disabled) {
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.75rem 1.5rem;
+  gap: var(--spacingVerticalM) var(--spacingHorizontalXXL);
   margin: 0 0 var(--gap);
 }
 
 .months ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: var(--spacingHorizontalXS);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/*
+ * Ссылки месяцев набраны малой кнопкой Fluent (`react-button/…/useButtonStyles.styles.ts`,
+ * строки 291–299). **Отступление:** наименьшей ширины `64px` у них нет — **довода в коде нет**.
+ * Сверка — `docs/сверка/рецепты-fluent.md`, раздел 1.
+ */
 .months a {
   display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  padding: var(--buttonSpacingSmall) var(--spacingHorizontalS);
+  border: var(--strokeWidthThin) solid var(--line-strong);
+  border-radius: var(--borderRadiusMedium);
   background: var(--surface);
-  color: var(--text-dim);
+  color: var(--text);
   text-decoration: none;
-  font-size: 0.85rem;
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
 }
 
 .months a:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--colorNeutralBackground1Hover);
 }
 
-/* Выбранный месяц назван и разметкой (`aria-current`), и видом — не только цветом. */
+/*
+ * Выбранный месяц назван и разметкой (`aria-current`), и видом — не только цветом. **Отступление
+ * от малой кнопки Fluent:** насыщенность `fontWeightSemibold` вместо `fontWeightRegular`; довод —
+ * этот же: вес различает выбранный месяц без помощи цвета.
+ */
 .months a[aria-current='page'] {
   background: var(--accent);
-  border-color: var(--accent);
+  border-color: transparent;
   color: var(--on-accent);
-  font-weight: 550;
+  font-weight: var(--fontWeightSemibold);
 }
 
 /*
@@ -431,19 +801,31 @@ button.primary:hover:not(:disabled) {
 /*
  * Крупных чисел на экране ровно три — прибыль, маржа, окупаемость. Остальные показатели идут
  * ровным весом. Экран, где выделено всё, не выделяет ничего.
+ *
+ * **Отступление, названное вслух.** Справочник, дословно (fluent2.microsoft.design/color): «Apply
+ * brand colors to different areas of an interface not only to create visual prominence, but also
+ * to anchor people in a specific product experience. Avoid overusing brand colors or using them on
+ * large surfaces as they can dilute a hierarchy and make an experience difficult to navigate.»
+ * Карточка «Итог» идёт на смысловом цвете — то есть против второй половины этой цитаты. Довод
+ * владельца: одна карточка из шести, и она главная на экране. Названо здесь, в описи снимков и в
+ * теле pull request.
  */
 .bottom-line {
-  border-color: var(--line-strong);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
+.bottom-line h2,
+.bottom-line dt,
 .bottom-line dd {
-  font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  color: var(--on-accent);
 }
 
-.bottom-line dt {
-  font-size: 0.85rem;
+/* Три крупных числа — Title 2 (28 / 36, 600). Их ровно три, и больше на экране крупного нет. */
+.bottom-line dd {
+  font-size: var(--fontSizeHero700);
+  line-height: var(--lineHeightHero700);
+  font-weight: var(--fontWeightSemibold);
 }
 
 /* ——— Полоса доли честности ——— */
@@ -458,11 +840,30 @@ button.primary:hover:not(:disabled) {
    * Ширина ограничена нарочно. Полоса во всю строку делает 80 % и 100 % почти неразличимыми:
    * глазу нужен видимый остаток, иначе полоса врёт видом, не соврав числом.
    */
+  /*
+   * **Рецепт — полоса прогресса Fluent, решение владельца по развилке Г1 от 10 сентября 2026
+   * года:** дорожка `colorNeutralBackground6`, заливка `colorCompoundBrandBackground`
+   * (`react-progress/…/useProgressBarStyles.styles.ts`, строки 28 и 82, `microsoft/fluentui`
+   * @ 43665d5fb414). Сверка по свойствам блока, с выводом проверки полноты, —
+   * `docs/сверка/рецепты-fluent.md`, раздел 7.
+   *
+   * **Отступления от рецепта** (где довода нет, так и написано):
+   *   · `26rem` вместо `width: 100%` — довод выше: глазу нужен видимый остаток;
+   *   · толщина `8px` вместо `2px` среднего и `4px` крупного размера Fluent (строки 17–20) —
+   *     **довода в коде нет**. Прежний комментарий здесь утверждал, что толщины полосы у Fluent в
+   *     прочитанных файлах нет вовсе, — это было неверно: она названа в самом рецепте;
+   *   · скругление `borderRadiusCircular` вместо `borderRadiusMedium` — **довода в коде нет**;
+   *   · перехода ширины `0.3s ease` у заливки нет — **довода в коде нет**.
+   *
+   * Прежде дорожка стояла на токене разделителя `colorNeutralStroke2`, и в тёмной теме заливка к
+   * дорожке давала 1,17 : 1, а в погашенном блоке 1,02 : 1 — заполнение было неотличимо от дорожки.
+   * Нашёл рецензент без контекста автора во втором круге.
+   */
   max-width: 26rem;
   height: 8px;
-  margin: 0.6rem 0 0.9rem;
-  background: var(--line);
-  border-radius: 999px;
+  margin: var(--spacingVerticalS) 0 var(--spacingVerticalM);
+  background: var(--colorNeutralBackground6);
+  border-radius: var(--borderRadiusCircular);
   overflow: hidden;
 }
 
@@ -479,13 +880,14 @@ button.primary:hover:not(:disabled) {
    */
   width: clamp(0%, var(--share, 0%), 100%);
   height: 100%;
-  background: var(--accent);
-  border-radius: 999px;
+  background: var(--colorCompoundBrandBackground);
+  border-radius: var(--borderRadiusCircular);
 }
 
 .share-value {
-  font-size: 1.15rem;
-  font-weight: 600;
+  font-size: var(--fontSizeBase400);
+  line-height: var(--lineHeightBase400);
+  font-weight: var(--fontWeightSemibold);
 }
 
 /*
@@ -496,9 +898,11 @@ button.primary:hover:not(:disabled) {
  * Заметной делается ненулевая. Приглушение прозрачностью убрано на круг раньше: 0,65 поверх
  * приглушённого текста давало контраст около 2,8 : 1 при норме 4,5 : 1.
  */
+/* **Отступление от контракта:** контракт называл строки неполноты Body 1; ненулевая набрана
+ * насыщенностью `fontWeightSemibold`, то есть Body 1 Strong. Довод — абзацем выше. */
 .gaps li:not([data-zero='true']) {
   color: var(--text);
-  font-weight: 550;
+  font-weight: var(--fontWeightSemibold);
 }
 
 /*
@@ -510,17 +914,23 @@ button.primary:hover:not(:disabled) {
  * совпадало **ни с чем**. Замерено: ноль совпадений, оба абзаца одного размера и цвета.
  * Второй промах нашла проверка кода, первый — она же кругом раньше.
  */
+/*
+ * Проза остаётся прозой: Body 1, приглушённым цветом. Caption 1 у Fluent — подпись, а не абзац,
+ * и загонять в неё связный текст значило бы взять ступень не по роли.
+ */
 .honesty > p:nth-of-type(2) {
   margin-bottom: 0;
   color: var(--text-dim);
-  font-size: 0.9rem;
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
 }
 
 /* ——— Неполнота ——— */
 
 .gaps > p {
   color: var(--text-dim);
-  font-size: 0.9rem;
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
 }
 
 .gaps ul {
@@ -528,8 +938,13 @@ button.primary:hover:not(:disabled) {
   padding: 0;
   list-style: none;
   display: grid;
+  /*
+   * `19rem` — наименьшая ширина колонки списка неполноты, **наше число**: при ней самая длинная
+   * строка вида «ставки без процента или без фиксированной части: 0» умещается в одну. Названо
+   * исключением в проверке величин.
+   */
   grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
-  gap: 0 1.5rem;
+  gap: 0 var(--spacingHorizontalXXL);
 }
 
 /*
@@ -539,10 +954,22 @@ button.primary:hover:not(:disabled) {
  * экране одной неразрывной строкой. Прежде здесь стоял флексбокс с раскладкой по краям — он не
  * делал ничего вовсе: распределять между краями было нечего. Найдено проверкой кода.
  */
+/*
+ * Строка неполноты. Найдено владельцем на снимке: единственная ненулевая строка переносится на
+ * две, и ряд разделителей вокруг неё выглядит сломанным.
+ *
+ * **Замер показал, что рвутся не разделители, а воздух.** Границы соседей по ряду сходятся до
+ * пикселя: сетка растягивает все три ячейки на высоту самой высокой — 52 против 32. Разъезжается
+ * текст: у однострочных соседей он прижат к верху рослой ячейки, и под ним остаётся дыра. Поэтому
+ * текст ставится по середине ячейки, а не по её верху.
+ */
 .gaps li {
-  padding: 0.35rem 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  padding: var(--spacingVerticalXS) 0;
+  border-bottom: var(--strokeWidthThin) solid var(--line);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
   color: var(--text-dim);
 }
 
@@ -558,50 +985,138 @@ button.primary:hover:not(:disabled) {
  * пометку вместо обёртки: слом, снимавший класс с обёртки, проходил зелёным. Найдено прогоном
  * сломов, а не глазом.
  */
+/*
+ * Гашение устаревших чисел — **обесцвечиванием, без прозрачности**.
+ *
+ * Прозрачность отсюда убрана по той же причине, по какой она ушла с отключённой кнопки: она
+ * смешивает текст с тем, что под ним, и контраст перестаёт быть предсказуемым. Здесь он ещё и
+ * проваливался: **наш замер** при прежних 0,55 — основной текст на карточке 3,59 : 1 в светлой
+ * теме, подпись показателя 2,38 : 1; чтобы подпись удержала 4,5 : 1, прозрачность пришлось бы
+ * поднять почти до непрозрачной, то есть перестать гасить вовсе.
+ *
+ * Обесцвечивание контраста нейтрального текста не трогает совсем, а самый громкий элемент экрана
+ * — цветная карточка «Итог» — становится серым, и это видно сразу. **Наш замер после приведения
+ * смыслового цвета к источнику:** тот же фильтр `grayscale(1)` движком браузера делает фон «Итога»
+ * `rgb(94, 94, 94)` в светлой теме и `rgb(83, 83, 83)` в тёмной, и белый текст на нём — 6,48 : 1 и
+ * 7,69 : 1; основной текст и подписи остаются при своих 15,52 : 1 и 6,19 : 1. Прежняя редакция
+ * называла 5,83 и 6,29 — они были сняты на неверном смысловом цвете.
+ *
+ * Так на экране не осталось ни одного места, где приглушение делается прозрачностью.
+ */
 .numbers-stale {
-  opacity: 0.55;
   filter: grayscale(1);
 }
 
+/*
+ * Пометка устаревания приводится к одному виду с пометкой холодного открытия.
+ *
+ * Их две и они об одном: «числа отстали» приходит при открытии страницы, «числа ниже устарели» —
+ * после неудачного нажатия кнопки. Прежде первая была плашкой во всю ширину, вторая — голым
+ * жирным текстом на холсте. Теперь обе — плашка одной формы: те же отступы, то же скругление, та
+ * же рамка.
+ *
+ * **Насыщенность снята — она была последним, чем эти двое различались.** Владелец, посмотрев два
+ * состояния, назвал их «одним и тем же по смыслу, двумя разными видами»; форма к тому времени уже
+ * была общей, а разными оставались вес и цвет. Вес приведён к весу пометки холодного открытия:
+ * та принята владельцем глазами раньше, и потому двигается эта, а не она. **Наш замер обеих через
+ * `getComputedStyle` на отрисованной странице:** отступы `12px 16px`, скругление `12px`, рамка
+ * `1px solid rgb(15, 108, 189)`, фон `rgb(235, 243, 252)`, насыщенность `400` в светлой теме;
+ * рамка `rgb(71, 158, 245)` и фон `rgb(8, 35, 56)` в тёмной — совпадают все семь у обеих.
+ *
+ * **Цвет у них всё же разный, и это не недоделка.** Вторая живёт внутри блока устаревших чисел, а
+ * он обесцвечен нарочно, — значит и плашка внутри него выходит серой. **Наш замер того же фильтра
+ * `grayscale(1)` движком браузера:** в светлой теме фон становится `rgb(242, 242, 242)`, рамка —
+ * `rgb(94, 94, 94)`; в тёмной фон `rgb(31, 31, 31)`, рамка `rgb(146, 146, 146)`. Это то же самое
+ * сообщение, показанное в том же обесцвеченном слое, а не второй вид пометки.
+ */
 .stale-mark {
-  margin: 0 0 0.75rem;
-  font-weight: 600;
-  color: var(--text-dim);
+  clear: right;
+  margin: 0 0 var(--gap);
+  padding: var(--spacingVerticalM) var(--spacingHorizontalL);
+  background: var(--accent-soft);
+  color: var(--text);
+  border: var(--strokeWidthThin) solid var(--accent-line);
+  border-radius: var(--borderRadius2XLarge);
 }
 
 /* ——— Страница входа ——— */
 
 .login {
+  /*
+   * `22rem` и `12vh` — ширина карточки входа и её отступ сверху, **наши числа**: форма из двух
+   * полей не должна растягиваться на весь монитор и стоит чуть выше середины. Ни того ни другого
+   * в документации Fluent нет; оба названы исключениями в проверке величин.
+   */
   max-width: 22rem;
   margin: 12vh auto 0;
-  padding: 1.75rem;
+  padding: var(--spacingVerticalXXL) var(--spacingHorizontalXXL);
   background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--borderRadius2XLarge);
+  box-shadow: var(--shadow8);
 }
 
 .login h1 {
-  margin: 0 0 1.25rem;
-  font-size: 1.15rem;
+  margin: 0 0 var(--spacingVerticalXXL);
+  font-size: var(--fontSizeBase400);
+  line-height: var(--lineHeightBase400);
 }
 
 .login label {
   display: block;
-  margin: 0 0 0.3rem;
-  font-size: 0.8rem;
+  margin: 0 0 var(--spacingVerticalXS);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
   color: var(--text-dim);
 }
 
+/*
+ * Нижняя кромка поля ввода — `colorNeutralStrokeAccessible`, круг правок 1 куска S10.
+ *
+ * **Норматив, дословно, вместе с условием.** WCAG 2.1, критерий 1.4.11 Non-text Contrast (w3.org/
+ * TR/WCAG21/): «The visual presentation of the following have a contrast ratio of at least 3:1
+ * against adjacent color(s): User Interface Components Visual information required to identify user
+ * interface components and states, except for inactive components or where the appearance of the
+ * component is determined by the user agent and not modified by the author; Graphical Objects Parts
+ * of graphics required to understand the content, except when a particular presentation of graphics
+ * is essential to the information being conveyed.»
+ *
+ * **Распространяется ли он на границу поля — отвечает разъяснение к нему, и там условие.** «Having
+ * a visual boundary indicating the hit area is only required when there is no other visual way to
+ * identify the presence of the control – and in those cases, the boundary must have sufficient
+ * non-text contrast in order to pass this success criterion.» (w3.org/WAI/WCAG21/Understanding/
+ * non-text-contrast.html, раздел «Boundaries»)
+ *
+ * **Наш вывод:** подпадаем. Поле пустое, своего содержимого у него нет, подпись стоит снаружи —
+ * узнать поле можно только по границе или заливке. **Наш замер с отрисованной страницы до правки:**
+ * рамка к карточке 1,53 : 1 в светлой теме и 2,53 : 1 в тёмной, заливка поля к карточке 1,14 и 1,36
+ * — всё ниже 3 : 1.
+ *
+ * **Рецепт — поле ввода Fluent, вид `outline`, решение владельца по развилке Г2 от 10 сентября
+ * 2026 года.** Строки 57–59 блока обёртки (`microsoft/fluentui` @ 43665d5fb414,
+ * `packages/react-components/react-input/library/src/components/Input/useInputStyles.styles.ts`):
+ * фон `colorNeutralBackground1`, рамка `1px solid colorNeutralStroke1`, нижняя кромка
+ * `colorNeutralStrokeAccessible`. Прежняя редакция этого места цитировала строки 58–59 и
+ * обрывалась ровно перед строкой 57, которая расходилась с нашим тогдашним фоном — цветом холста.
+ * Сверка по свойствам блока, с выводом проверки полноты, — `docs/сверка/рецепты-fluent.md`,
+ * раздел 5.
+ *
+ * **Отступления от рецепта:**
+ *   · линии фокуса `::after` цветом `colorCompoundBrandStroke` (строки 63–112) нет —
+ *     **решение владельца: фокус у нас общий для всех органов управления**, и поле получает ту же
+ *     обводку, что кнопки и ссылки;
+ *   · высота из отступов, а не `minHeight: 32px` — **наш счёт: 38**; довода в коде нет.
+ */
 .login input {
   display: block;
   width: 100%;
-  margin: 0 0 1rem;
-  padding: 0.5rem 0.65rem;
+  margin: 0 0 var(--spacingVerticalL);
+  padding: var(--spacingVerticalS) var(--spacingHorizontalM);
   font: inherit;
   color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  background: var(--colorNeutralBackground1);
+  border: var(--strokeWidthThin) solid var(--line-strong);
+  border-bottom-color: var(--colorNeutralStrokeAccessible);
+  border-radius: var(--borderRadiusMedium);
 }
 
 .login button {
@@ -609,7 +1124,7 @@ button.primary:hover:not(:disabled) {
 }
 
 .login [role='alert'] {
-  margin: 1rem 0 0;
+  margin: var(--spacingVerticalL) 0 0;
 }
 
 /* ——— Узкий экран ——— */
@@ -617,25 +1132,44 @@ button.primary:hover:not(:disabled) {
 /*
  * Прокрутка таблицы — своим условием и раньше общего узкого вида. Общее условие стоит на
  * 40 rem, а таблице тесно уже примерно с 41 rem, и в этой полосе за край уезжала вся страница.
+ */
+/*
+ * Прокрутка таблицы переехала с самой таблицы на карточку «Товары» — задача 7.
  *
- * Цена приёма названа: `display: block` снимает с таблицы табличную семантику в части читалок
- * экрана, и числа теряют связь с заголовками колонок. Обёртка в разметке была бы лучше, но она
- * сдвинула бы отступы строк, которые цитируют сломы прежних кусков.
+ * **Что этим закрыто.** Прежде на узком экране таблица получала `display: block`, и в части
+ * читалок экрана числа теряли связь с заголовками колонок: табличная семантика снималась. Это
+ * было названной ценой прошлого куска. Теперь таблица остаётся таблицей, а прокручивается блок
+ * вокруг неё.
+ *
+ * **Что этим НЕ закрыто, и это остаётся названным.** Липкая шапка на узком экране не работает и
+ * не заработает: пока карточка — контейнер горизонтальной прокрутки, вторая ось перестаёт быть
+ * `visible`, и `sticky` считается от прокрутки карточки, которой по вертикали нет.
+ *
+ * **Наш замер в настоящем браузере на этой раскладке.** Прокрутка страницы на 900 пикселей:
+ * при ширине 1280 верх шапки идёт с 544 к **0** — шапка прилипла; при ширине 390 идёт с 773 к
+ * **−127** — уехала вместе с таблицей. Вернуть её могла бы обёртка в разметке, но разметку этот
+ * кусок не открывает.
+ */
+/*
+ * `48rem` и `40rem` — наши пороги ширины, а не числа Fluent: раздел «Grid» справочника говорит про
+ * колонки, поля и жёлобы и ни одного пикселя не называет. Первый — ширина, при которой таблице
+ * товаров становится тесно; второй — при которой пары «подпись — значение» перестают стоять в
+ * четыре колонки. Исключениями в проверке величин они больше не названы: условий медиазапросов
+ * проверка не читает вовсе, и эти числа не проверяются ничем. Сказано здесь, а не спрятано.
  */
 @media (max-width: 48rem) {
-  .items table {
-    display: block;
+  .items {
     overflow-x: auto;
   }
 }
 
 @media (max-width: 40rem) {
   body {
-    padding: 1rem 0.85rem 3rem;
+    padding: var(--spacingVerticalL) var(--spacingHorizontalL) var(--spacingVerticalXXL);
   }
 
   section {
-    padding: 1rem;
+    padding: var(--spacingVerticalL) var(--spacingHorizontalL);
   }
 
   /*
@@ -645,7 +1179,7 @@ button.primary:hover:not(:disabled) {
    */
   dl {
     grid-template-columns: 1fr auto;
-    gap: 0.55rem 1rem;
+    gap: var(--spacingVerticalS) var(--spacingHorizontalL);
   }
 
   dt,
@@ -661,25 +1195,59 @@ button.primary:hover:not(:disabled) {
   dd {
     grid-column: 2;
     text-align: right;
-    font-size: 1.05rem;
+    font-size: var(--fontSizeBase300);
+    line-height: var(--lineHeightBase300);
   }
 
   .bottom-line dd {
-    font-size: 1.35rem;
+    font-size: var(--fontSizeBase600);
+    line-height: var(--lineHeightBase600);
   }
 
+  /*
+   * На узком экране полоса действия перестаёт быть плавающей.
+   *
+   * На широком она плавает нарочно — так кнопка обновления, кнопка выхода, название отчёта и
+   * месяцы становятся одной полосой управления вместо двух. На узком места на это нет: название
+   * зажималось в треть ширины и ломалось на три строки. Здесь кнопки уходят своей строкой, а
+   * название получает всю ширину.
+   */
+  .actions {
+    float: none;
+    margin-left: 0;
+  }
 }
-:root{
-    --bg: #14171a;
-    --surface: #1b1f23;
-    --text: #e7eaed;
-    --text-dim: #97a1aa;
-    --line: #282e34;
-    --line-strong: #39424a;
 
-    --accent: #6cb2cc;
-    --accent-soft: #16303b;
-    --on-accent: #0d1a20;
+:root{--colorNeutralBackground1: #292929;
+    --colorNeutralBackground1Hover: #3d3d3d;
+    --colorNeutralBackground1Pressed: #1f1f1f;
+    --colorNeutralBackground4: #0a0a0a;
+    --colorNeutralForeground1: #ffffff;
+    --colorNeutralForeground2: #d6d6d6;
+    --colorNeutralForeground3: #adadad;
+    --colorNeutralForegroundDisabled: #5c5c5c;
+    --colorNeutralBackgroundDisabled: #141414;
+    --colorNeutralStrokeDisabled: #424242;
+    --colorNeutralForegroundOnBrand: #ffffff;
+    --colorNeutralStroke1: #666666;
+    --colorNeutralStroke2: #525252;
+    --colorNeutralStrokeAccessible: #adadad;
+    --colorSubtleBackgroundHover: #383838;
 
-    --danger: #f0b3ae;
-    --danger-soft: #381917;}</style></head><body><main class="login"><h1>Nordic Pet — вход</h1><label for="login">Логин</label><input id="login" type="text" autoComplete="username" required="" name="login"/><label for="password">Пароль</label><input id="password" type="password" autoComplete="current-password" required="" name="password"/><button type="submit" class="primary">Войти</button><p role="alert">Логин или пароль не подошли.</p></main></body></html>
+    --colorBrandBackground: #115ea3;
+    --colorBrandBackgroundHover: #0f6cbd;
+    --colorBrandBackgroundPressed: #0c3b5e;
+    --colorBrandBackground2: #082338;
+    --colorBrandForeground1: #479ef5;
+    --colorBrandStroke1: #479ef5;
+    --colorNeutralBackground6: #333333;
+    --colorCompoundBrandBackground: #479ef5;
+
+    --colorStrokeFocus2: #ffffff;
+
+    --colorPaletteRedBackground1: #3f1011;
+    --colorPaletteRedBorder2: #e37d80;
+    --colorPaletteRedForeground1: #e37d80;
+
+                                                                          
+    --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);}</style></head><body><main class="login"><h1>Nordic Pet — вход</h1><label for="login">Логин</label><input id="login" type="text" autoComplete="username" required="" name="login"/><label for="password">Пароль</label><input id="password" type="password" autoComplete="current-password" required="" name="password"/><button type="submit" class="primary">Войти</button><p role="alert">Логин или пароль не подошли.</p></main></body></html>
