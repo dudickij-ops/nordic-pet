@@ -264,7 +264,17 @@ export function Dashboard({ report }: { report: MonthReport }) {
           */}
           <dl>
             <dt>Окупаемость рекламы (по прибыли)</dt>
-            <dd>{ratio(report.payback.roasByProfit)}</dd>
+            <dd>
+              {ratio(report.payback.roasByProfit)}
+              {/*
+                Правило владельца: отношение называет свою базу рядом с числом. Это число читается
+                противоположно порогу, хотя противоречия нет, — фраза стоит в той же ячейке.
+              */}
+              <span className="payback-why">
+                После постоянных расходов — они от рекламы не зависят, поэтому окупается ли реклама,
+                говорит порог, а не это число.
+              </span>
+            </dd>
             <dt>Вклад с евро оборота</dt>
             <dd>{percent(report.payback.contributionPct)}</dd>
             <dt>Порог окупаемости — от вклада, а не от маржи</dt>
