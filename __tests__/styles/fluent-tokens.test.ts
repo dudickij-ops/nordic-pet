@@ -12,6 +12,20 @@ import { expect, test } from 'vitest'
  * 2. Она не доказывает, что правила **применились**: браузера здесь нет вовсе.
  * 3. Она не доказывает, что вид **хорош**. Правильные числа, собранные в уродливый экран, пройдут
  *    её зелёными. Вид принимает глаз владельца по снимкам.
+ * 4. **Она не доказывает, что числа — из Fluent 2.** Она доказывает совпадение таблицы стилей с
+ *    **нашей выпиской** ниже. Совпадение выписки с источником доказывают якорь у каждой величины
+ *    и человек, который по нему сходит. Это не оговорка на всякий случай, а след настоящей ошибки:
+ *    первая редакция выписки взяла двенадцать значений смыслового цвета из **комментария** в
+ *    `alias/lightColor.ts` и `alias/darkColor.ts` (`// #0078d4 Global.Color.Brand.80`), а не из
+ *    значения — палитры `brandWeb`, по которой строится веб-тема. Проверка была зелёной, потому
+ *    что сверяла выписку с выпиской. Нашёл рецензент без контекста автора.
+ *
+ * **Внешний якорь.** Источник всех величин — `microsoft/fluentui`, коммит
+ * `43665d5fb41408837ad1e85eb662575da9e0c4d0`. У каждой строки таблиц ниже стоит цепочка звеньев
+ * «файл:строка» от имени токена до значения: для цвета — строка в `alias/*Color.ts`, где токен
+ * получает ступень, затем тема (`themes/web/*Theme.ts` строит тему из `brandWeb`), затем строка
+ * палитры с самим значением. Цепочки построены разбором исходного текста на этом коммите и
+ * просмотрены глазом; при смене коммита они обязаны быть построены заново, а не поправлены.
  *
  * **Как она устроена после проверки кода.** Первая редакция искала в файле литералы по их виду —
  * `#hex` и `rgb()` — и потому не видела ни `rebeccapurple`, ни `hsl()`, ни величины, объявленной
@@ -46,30 +60,80 @@ const СТИЛИ = readFileSync(new URL('../../app/globals.css', import.meta.url
 
 /** Цвета, у которых значение своё в каждой теме. Имя токена → [светлая, тёмная]. */
 const ЦВЕТА: Record<string, [string, string]> = {
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:67 `white` → packages/tokens/src/global/colors.ts:124 white
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:67 `grey[16]` → packages/tokens/src/global/colors.ts:14 grey[16]
   colorNeutralBackground1: ['#ffffff', '#292929'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:68 `grey[96]` → packages/tokens/src/global/colors.ts:54 grey[96]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:68 `grey[24]` → packages/tokens/src/global/colors.ts:18 grey[24]
   colorNeutralBackground1Hover: ['#f5f5f5', '#3d3d3d'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:69 `grey[88]` → packages/tokens/src/global/colors.ts:50 grey[88]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:69 `grey[12]` → packages/tokens/src/global/colors.ts:12 grey[12]
   colorNeutralBackground1Pressed: ['#e0e0e0', '#1f1f1f'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:79 `grey[94]` → packages/tokens/src/global/colors.ts:53 grey[94]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:79 `grey[4]` → packages/tokens/src/global/colors.ts:8 grey[4]
   colorNeutralBackground4: ['#f0f0f0', '#0a0a0a'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:8 `grey[14]` → packages/tokens/src/global/colors.ts:13 grey[14]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:8 `white` → packages/tokens/src/global/colors.ts:124 white
   colorNeutralForeground1: ['#242424', '#ffffff'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:12 `grey[26]` → packages/tokens/src/global/colors.ts:19 grey[26]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:12 `grey[84]` → packages/tokens/src/global/colors.ts:48 grey[84]
   colorNeutralForeground2: ['#424242', '#d6d6d6'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:19 `grey[38]` → packages/tokens/src/global/colors.ts:25 grey[38]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:19 `grey[68]` → packages/tokens/src/global/colors.ts:40 grey[68]
   colorNeutralForeground3: ['#616161', '#adadad'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:31 `grey[74]` → packages/tokens/src/global/colors.ts:43 grey[74]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:31 `grey[36]` → packages/tokens/src/global/colors.ts:24 grey[36]
   colorNeutralForegroundDisabled: ['#bdbdbd', '#5c5c5c'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:115 `grey[94]` → packages/tokens/src/global/colors.ts:53 grey[94]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:115 `grey[8]` → packages/tokens/src/global/colors.ts:10 grey[8]
   colorNeutralBackgroundDisabled: ['#f0f0f0', '#141414'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:174 `grey[88]` → packages/tokens/src/global/colors.ts:50 grey[88]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:174 `grey[26]` → packages/tokens/src/global/colors.ts:19 grey[26]
   colorNeutralStrokeDisabled: ['#e0e0e0', '#424242'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:55 `white` → packages/tokens/src/global/colors.ts:124 white
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:55 `white` → packages/tokens/src/global/colors.ts:124 white
   colorNeutralForegroundOnBrand: ['#ffffff', '#ffffff'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:150 `grey[82]` → packages/tokens/src/global/colors.ts:47 grey[82]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:150 `grey[40]` → packages/tokens/src/global/colors.ts:26 grey[40]
   colorNeutralStroke1: ['#d1d1d1', '#666666'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:154 `grey[88]` → packages/tokens/src/global/colors.ts:50 grey[88]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:154 `grey[32]` → packages/tokens/src/global/colors.ts:22 grey[32]
   colorNeutralStroke2: ['#e0e0e0', '#525252'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:101 `grey[96]` → packages/tokens/src/global/colors.ts:54 grey[96]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:101 `grey[22]` → packages/tokens/src/global/colors.ts:17 grey[22]
   colorSubtleBackgroundHover: ['#f5f5f5', '#383838'],
-  colorBrandBackground: ['#0078d4', '#106ebe'],
-  colorBrandBackgroundHover: ['#106ebe', '#0078d4'],
-  colorBrandBackgroundPressed: ['#004578', '#004578'],
-  colorBrandBackground2: ['#eff6fc', '#002848'],
-  colorBrandForeground1: ['#0078d4', '#2899f5'],
-  colorBrandStroke1: ['#0078d4', '#2899f5'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:124 `brand[80]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:124 `brand[70]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:10 brandWeb[70]
+  colorBrandBackground: ['#0f6cbd', '#115ea3'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:125 `brand[70]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:10 brandWeb[70]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:125 `brand[80]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
+  colorBrandBackgroundHover: ['#115ea3', '#0f6cbd'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:126 `brand[40]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:7 brandWeb[40]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:126 `brand[40]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:7 brandWeb[40]
+  colorBrandBackgroundPressed: ['#0c3b5e', '#0c3b5e'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:132 `brand[160]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:19 brandWeb[160]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:132 `brand[20]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:5 brandWeb[20]
+  colorBrandBackground2: ['#ebf3fc', '#082338'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:44 `brand[80]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:44 `brand[100]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:13 brandWeb[100]
+  colorBrandForeground1: ['#0f6cbd', '#479ef5'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:166 `brand[80]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:166 `brand[100]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:13 brandWeb[100]
+  colorBrandStroke1: ['#0f6cbd', '#479ef5'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:183 `black` → packages/tokens/src/global/colors.ts:126 black
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:183 `white` → packages/tokens/src/global/colors.ts:124 white
   colorStrokeFocus2: ['#000000', '#ffffff'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:14 формула Background1 → .tint60 → packages/tokens/src/global/colors.ts:201 red.tint60
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:16 формула Background1 → .shade40 → packages/tokens/src/global/colors.ts:191 red.shade40
   colorPaletteRedBackground1: ['#fdf6f6', '#3f1011'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:22 формула Border2 → .primary → packages/tokens/src/global/colors.ts:195 red.primary
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:32 заплатка red.tint30 → packages/tokens/src/global/colors.ts:198 red.tint30
   colorPaletteRedBorder2: ['#d13438', '#e37d80'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:17 формула Foreground1 → .shade10 → packages/tokens/src/global/colors.ts:194 red.shade10
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:19 формула Foreground1 → .tint30 → packages/tokens/src/global/colors.ts:198 red.tint30
   colorPaletteRedForeground1: ['#bc2f32', '#e37d80'],
+  // fluentui@43665d5 светлая: packages/tokens/src/utils/shadows.ts:10 shadow8 → packages/tokens/src/alias/lightColor.ts:184 ambient → packages/tokens/src/alias/lightColor.ts:185 key
+  // fluentui@43665d5 тёмная: packages/tokens/src/utils/shadows.ts:10 shadow8 → packages/tokens/src/alias/darkColor.ts:184 ambient → packages/tokens/src/alias/darkColor.ts:185 key
   shadow8: [
     '0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14)',
     '0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28)',
@@ -78,42 +142,79 @@ const ЦВЕТА: Record<string, [string, string]> = {
 
 /** Величины, одинаковые в обеих темах: шкалы Fluent от темы не зависят. */
 const ШКАЛЫ: Record<string, string> = {
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:5 fontSizeBase200
   fontSizeBase200: '12px',
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:6 fontSizeBase300
   fontSizeBase300: '14px',
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:7 fontSizeBase400
   fontSizeBase400: '16px',
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:9 fontSizeBase600
   fontSizeBase600: '24px',
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:11 fontSizeHero700
   fontSizeHero700: '28px',
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:19 lineHeightBase200
   lineHeightBase200: '16px',
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:20 lineHeightBase300
   lineHeightBase300: '20px',
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:21 lineHeightBase400
   lineHeightBase400: '22px',
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:23 lineHeightBase600
   lineHeightBase600: '32px',
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:25 lineHeightHero700
   lineHeightHero700: '36px',
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:32 fontWeightRegular
   fontWeightRegular: '400',
+  // fluentui@43665d5: packages/tokens/src/global/fonts.ts:34 fontWeightSemibold
   fontWeightSemibold: '600',
+  // fluentui@43665d5: packages/tokens/src/global/borderRadius.ts:6 borderRadiusMedium
   borderRadiusMedium: '4px',
+  // fluentui@43665d5: packages/tokens/src/global/borderRadius.ts:9 borderRadius2XLarge
   borderRadius2XLarge: '12px',
+  // fluentui@43665d5: packages/tokens/src/global/borderRadius.ts:14 borderRadiusCircular
   borderRadiusCircular: '10000px',
+  // fluentui@43665d5: packages/tokens/src/global/strokeWidths.ts:4 strokeWidthThin
   strokeWidthThin: '1px',
+  // fluentui@43665d5: packages/tokens/src/global/strokeWidths.ts:5 strokeWidthThick
   strokeWidthThick: '2px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:21 → spacings.xs → packages/tokens/src/global/spacings.ts:7 xs
   spacingHorizontalXS: '4px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:23 → spacings.s → packages/tokens/src/global/spacings.ts:9 s
   spacingHorizontalS: '8px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:25 → spacings.m → packages/tokens/src/global/spacings.ts:11 m
   spacingHorizontalM: '12px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:26 → spacings.l → packages/tokens/src/global/spacings.ts:12 l
   spacingHorizontalL: '16px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:27 → spacings.xl → packages/tokens/src/global/spacings.ts:13 xl
   spacingHorizontalXL: '20px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:28 → spacings.xxl → packages/tokens/src/global/spacings.ts:14 xxl
   spacingHorizontalXXL: '24px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:35 → spacings.xs → packages/tokens/src/global/spacings.ts:7 xs
   spacingVerticalXS: '4px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:37 → spacings.s → packages/tokens/src/global/spacings.ts:9 s
   spacingVerticalS: '8px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:39 → spacings.m → packages/tokens/src/global/spacings.ts:11 m
   spacingVerticalM: '12px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:40 → spacings.l → packages/tokens/src/global/spacings.ts:12 l
   spacingVerticalL: '16px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:41 → spacings.xl → packages/tokens/src/global/spacings.ts:13 xl
   spacingVerticalXL: '20px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:42 → spacings.xxl → packages/tokens/src/global/spacings.ts:14 xxl
   spacingVerticalXXL: '24px',
+  // fluentui@43665d5: packages/tokens/src/global/spacings.ts:43 → spacings.xxxl → packages/tokens/src/global/spacings.ts:15 xxxl
   spacingVerticalXXXL: '32px',
+  // fluentui@43665d5: packages/react-components/react-table/library/src/components/TableCell/useTableCellStyles.styles.ts:25 размер small, height
   tableRowHeightSmall: '34px',
+  // fluentui@43665d5: packages/react-components/react-button/library/src/components/Button/useButtonStyles.styles.ts:17 buttonSpacingSmall
   buttonSpacingSmall: '3px',
+  // fluentui@43665d5: packages/react-components/react-button/library/src/components/Button/useButtonStyles.styles.ts:19 buttonSpacingMedium
   buttonSpacingMedium: '5px',
+  // fluentui@43665d5: packages/react-components/react-button/library/src/components/Button/useButtonStyles.styles.ts:292 размер small, minWidth
   buttonMinWidthSmall: '64px',
+  // fluentui@43665d5: packages/react-components/react-button/library/src/components/Button/useButtonStyles.styles.ts:64 основной вид кнопки, minWidth
   buttonMinWidthMedium: '96px',
+  // fluentui@43665d5: packages/tokens/src/global/durations.ts:5 durationFaster
   durationFaster: '100ms',
+  // fluentui@43665d5: packages/tokens/src/global/curves.ts:11 curveEasyEase
   curveEasyEase: 'cubic-bezier(0.33, 0, 0.67, 1)',
 }
 
@@ -142,21 +243,21 @@ const ИСКЛЮЧЕНИЯ: Record<string, { значение: string; дово�
 /**
  * Длины в правилах экрана, которых нет ни в одной шкале Fluent, — каждая с доводом.
  *
- * Их семь, и список закрыт: всё, что не здесь и не в шкалах, красит закрывающее утверждение.
+ * Их четыре, и список закрыт: всё, что не здесь и не в шкалах, красит закрывающее утверждение.
  * Каждая строка — сознательное решение, а не место, куда сметают неудобное.
+ *
+ * **Три строки удалены как мёртвые, и это делает проверку строже.** `8px` уже есть в шкале
+ * отступов — исключение ничего не разрешало. `48rem` и `40rem` стоят только в условиях
+ * медиазапросов, а условий эта проверка не читает вовсе — исключения ни на что не влияли. Это не
+ * значит, что условия медиазапросов проверены: они не проверяются ничем, и это названо здесь.
  */
 const ИСКЛЮЧЕНИЯ_ПРАВИЛ: Record<string, string> = {
   '26rem':
     'предел ширины полосы доли: во всю строку 80 % и 100 % почти неразличимы, глазу нужен видимый остаток',
-  '8px':
-    'толщина полосы доли: шкалы толщин полосы у Fluent в прочитанных нами файлах нет, число наше',
   '19rem':
     'наименьшая ширина колонки списка неполноты: при ней самая длинная строка умещается в одну',
   '22rem': 'ширина карточки входа: форма из двух полей не должна растягиваться на весь монитор',
   '12vh': 'отступ карточки входа сверху: она стоит чуть выше середины',
-  '48rem': 'порог, при котором таблице товаров становится тесно; числа для него у Fluent нет',
-  '40rem':
-    'порог, при котором пары «подпись — значение» перестают стоять в четыре колонки; числа для него у Fluent нет',
 }
 
 /** Свойства, у которых значение способно нести цвет. Всё прочее проверка не читает. */

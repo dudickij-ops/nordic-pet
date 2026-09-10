@@ -64,12 +64,12 @@
    * using them on large surfaces as they can dilute a hierarchy and make an experience difficult
    * to navigate.»
    */
-  --colorBrandBackground: #0078d4;
-  --colorBrandBackgroundHover: #106ebe;
-  --colorBrandBackgroundPressed: #004578;
-  --colorBrandBackground2: #eff6fc;
-  --colorBrandForeground1: #0078d4;
-  --colorBrandStroke1: #0078d4;
+  --colorBrandBackground: #0f6cbd;
+  --colorBrandBackgroundHover: #115ea3;
+  --colorBrandBackgroundPressed: #0c3b5e;
+  --colorBrandBackground2: #ebf3fc;
+  --colorBrandForeground1: #0f6cbd;
+  --colorBrandStroke1: #0f6cbd;
 
   /*
    * Обводка фокуса: чёрная в светлой теме, белая в тёмной. **Наш вывод:** такая пара видна на
@@ -156,7 +156,7 @@
   --text: var(--colorNeutralForeground1);
   --text-dim: var(--colorNeutralForeground3);
   /* Линия внутри карточек — разделители строк неполноты. Рамок у карточек больше нет. */
-  --line: var(--colorNeutralBackground1Pressed);
+  --line: var(--colorNeutralStroke2);
   --line-strong: var(--colorNeutralStroke1);
   --accent: var(--colorBrandBackground);
   --accent-text: var(--colorBrandForeground1);
@@ -203,12 +203,12 @@
     --colorNeutralStroke2: #525252;
     --colorSubtleBackgroundHover: #383838;
 
-    --colorBrandBackground: #106ebe;
-    --colorBrandBackgroundHover: #0078d4;
-    --colorBrandBackgroundPressed: #004578;
-    --colorBrandBackground2: #002848;
-    --colorBrandForeground1: #2899f5;
-    --colorBrandStroke1: #2899f5;
+    --colorBrandBackground: #115ea3;
+    --colorBrandBackgroundHover: #0f6cbd;
+    --colorBrandBackgroundPressed: #0c3b5e;
+    --colorBrandBackground2: #082338;
+    --colorBrandForeground1: #479ef5;
+    --colorBrandStroke1: #479ef5;
 
     --colorStrokeFocus2: #ffffff;
 
