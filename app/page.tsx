@@ -294,6 +294,19 @@ export function Dashboard({ report }: { report: MonthReport }) {
 
       <section className="block items">
         <h2>Товары</h2>
+        {/*
+          Кусок S11, шаг 4. Строка над таблицей и две колонки рисуются только при своих полях — у
+          прежних раскладок разметка таблицы не меняется ни на байт. Правило владельца: отношение
+          называет свою базу рядом с собой, — база долей названа здесь числом, и отличие её от
+          прибыли месяца тоже. Все числа готовые из SQL.
+        */}
+        {report.itemsSummary !== undefined && (
+          <p className="items-summary">
+            {report.itemsSummary.skusFor80 !== null
+              ? `80 % прибыли товаров дают ${count(String(report.itemsSummary.skusFor80))} из ${count(String(report.itemsSummary.skusTotal))} артикулов; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Прибыль товаров — выручка минус себестоимость, ${money(report.itemsSummary.productsProfit)}; это не прибыль месяца, ${money(report.bottom.profit)}.`
+              : `Прибыль товаров — выручка минус себестоимость, ${money(report.itemsSummary.productsProfit)} — не положительна: считать 80 % не от чего; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Это не прибыль месяца, ${money(report.bottom.profit)}.`}
+          </p>
+        )}
         <table>
           <thead>
             <tr>
@@ -302,16 +315,22 @@ export function Dashboard({ report }: { report: MonthReport }) {
               <th>Чистая выручка</th>
               <th>Себестоимость</th>
               <th>Прибыль</th>
+              {report.itemsSummary !== undefined && <th>Маржа от чистой выручки</th>}
+              {report.itemsSummary !== undefined && <th>Доля в прибыли товаров</th>}
             </tr>
           </thead>
           <tbody>
             {report.items.map((item) => (
-              <tr key={item.sku}>
+              <tr key={item.sku} data-loss={item.loss === true ? 'true' : undefined}>
                 <td>{item.sku}</td>
                 <td>{count(item.units)}</td>
                 <td>{money(item.net)}</td>
                 <td>{money(item.cogs)}</td>
                 <td>{money(item.profit)}</td>
+                {report.itemsSummary !== undefined && <td>{percent(item.marginPct ?? null)}</td>}
+                {report.itemsSummary !== undefined && (
+                  <td>{percent(item.profitSharePct ?? null)}</td>
+                )}
               </tr>
             ))}
           </tbody>

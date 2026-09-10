@@ -40,8 +40,8 @@ export const ПЕРЕПИСЬ: MonthReport = {
   costs: { cogs: '5555.55', ads: '6666.66', fees: '7777.77', fixed: '8888.88' },
   bottom: { profit: '9999.99', marginPct: '12.3', roasByGross: '45.6' },
   items: [
-    { sku: 'NP-101', units: '71', net: '1010.10', cogs: '2020.20', profit: '3030.30' },
-    { sku: 'NP-202', units: '82', net: '4040.40', cogs: '5050.50', profit: '6060.60' },
+    { sku: 'NP-101', units: '71', net: '1010.10', cogs: '2020.20', profit: '3030.30', marginPct: '31.3', profitSharePct: '33.4' },
+    { sku: 'NP-202', units: '82', net: '4040.40', cogs: '5050.50', profit: '6060.60', marginPct: '48.8', profitSharePct: '66.6' },
   ],
   honesty: { sharePct: '78.9', skusWithoutPrice: ['NP-202'] },
   gaps: ОДИННАДЦАТЬ.map((kind, i) => ({ kind, count: i + 1, at: [] })),
@@ -83,5 +83,7 @@ export const ПЕРЕПИСЬ: MonthReport = {
     hasOrders: true,
   },
   // Кусок S11, шаг 3. Окупаемость: числа не выводятся из итогов раскладки нарочно.
+  // Кусок S11, шаг 4. Строка над таблицей: числа не выводятся из строк раскладки нарочно.
+  itemsSummary: { productsProfit: '9090.90', skusTotal: 2, skusFor80: 2, negativeCount: 0 },
   payback: { roasByProfit: '0.31', contributionPct: '43.2', breakevenRoas: '2.31', breakevenNote: null },
 }

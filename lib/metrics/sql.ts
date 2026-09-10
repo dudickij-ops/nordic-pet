@@ -690,3 +690,52 @@ select round(p.profit / nullif(p.ads, 0), 2)::text                         as ro
 export const MONTH_PAYBACK = `
 with totals_row as (${MONTH_TOTALS}),
 ${PAYBACK_FROM_TOTALS}`
+
+/**
+ * Товары — кусок S11, шаг 4 (задачи 4, Д-1, Д-3). Новые колонки строки и строка над таблицей.
+ *
+ * **Своих выражений денег нет.** Запрос берёт готовые строки таблицы товаров — `MONTH_ITEMS`
+ * целиком, как подзапрос, — и считает от их показанных сумм: база долей — сумма прибыли строк,
+ * ровно то, что человек получит, сложив колонку «Прибыль». Текст `MONTH_ITEMS` не тронут.
+ *
+ *   · маржа строки — прибыль строки ÷ чистая выручка строки × 100; выручка ноль — пусто;
+ *   · доля в прибыли товаров — прибыль строки ÷ сумма прибыли строк × 100 (решение владельца:
+ *     делитель — сумма прибыли строк, 11 248,93 € на марте, а не прибыль месяца); сумма не
+ *     положительна — пусто у всех строк разом;
+ *   · сколько артикулов дают 80 % прибыли товаров — по убыванию прибыли, от той же суммы; при
+ *     равной прибыли порядок — по артикулу, чтобы счёт не зависел от случая;
+ *   · в минусе — прибыль строки строго меньше нуля (развилка Д1, вариант А). Счётчик и подсветка
+ *     строки берут **этот один признак**, а не каждый свой.
+ *
+ * Прибыль месяца у таблицы товаров не та же, что сумма прибыли строк: строка — выручка минус
+ * себестоимость, месяц — ещё минус реклама, комиссии и постоянные. На экране это названо у строки
+ * над таблицей числами обеих.
+ */
+export const ITEMS_FROM_ROWS = `
+base as (
+  select sum(r.profit::numeric) as total, count(*) as skus from items_row r
+),
+ranked as (
+  select r.sku, r.net::numeric as net, r.profit::numeric as profit,
+         sum(r.profit::numeric) over (order by r.profit::numeric desc, r.sku
+                                      rows between unbounded preceding and 1 preceding) as before
+    from items_row r
+)
+select k.sku,
+       round(k.profit / nullif(k.net, 0) * 100, 1)::text                     as margin_pct,
+       (case when b.total > 0 then round(k.profit / b.total * 100, 1) end)::text
+                                                                             as profit_share_pct,
+       k.profit < 0                                                          as loss,
+       b.total::text                                                         as products_profit,
+       b.skus::int                                                           as skus_total,
+       (case when b.total > 0
+             then count(*) filter (where coalesce(k.before, 0) < 0.8 * b.total) over () end)::int
+                                                                             as skus_for_80,
+       (count(*) filter (where k.profit < 0) over ())::int                   as negative_count
+  from ranked k
+ cross join base b
+`
+
+export const MONTH_ITEMS_EXTRA = `
+with items_row as (${MONTH_ITEMS}),
+${ITEMS_FROM_ROWS}`

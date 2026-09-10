@@ -7,6 +7,7 @@ import {
   MONTH_DAILY,
   MONTH_GAPS,
   MONTH_ITEMS,
+  MONTH_ITEMS_EXTRA,
   MONTH_PAYBACK,
   MONTH_TOTALS,
   MONTH_WATERFALL,
@@ -148,7 +149,19 @@ export type MonthReport = {
   revenue: { gross: Money; discounts: Money; refunds: Money; net: Money }
   costs: { cogs: Money; ads: Money; fees: Money; fixed: Money }
   bottom: { profit: Money; marginPct: Maybe; roasByGross: Maybe }
-  items: Array<{ sku: string; units: string; net: Money; cogs: Money; profit: Money }>
+  items: Array<{
+    sku: string
+    units: string
+    net: Money
+    cogs: Money
+    profit: Money
+    /** Кусок S11, шаг 4: маржа строки от её чистой выручки. Необязательное — как все новые поля. */
+    marginPct?: Maybe
+    /** Доля строки в прибыли товаров — от суммы прибыли строк, а не от прибыли месяца. */
+    profitSharePct?: Maybe
+    /** Прибыль строки строго меньше нуля — тот же признак берёт счётчик над таблицей. */
+    loss?: boolean
+  }>
   honesty: { sharePct: Maybe; skusWithoutPrice: string[] }
   gaps: Array<{ kind: string; count: number; at: string[] }>
   /**
@@ -217,6 +230,17 @@ export type MonthReport = {
    * готовыми строками из SQL (`MONTH_PAYBACK`). Определения наши и так помечены на экране.
    * `breakevenNote` — слова вместо порога, когда порога нет: вклад не положителен.
    */
+  /**
+   * Строка над таблицей товаров — кусок S11, шаг 4: база долей (сумма прибыли строк), сколько
+   * артикулов дают 80 % её и сколько в минусе. Готовыми из SQL (`MONTH_ITEMS_EXTRA`).
+   */
+  itemsSummary?: {
+    productsProfit: Money
+    skusTotal: number
+    /** Пусто, когда сумма прибыли строк не положительна: считать 80 % не от чего. */
+    skusFor80: number | null
+    negativeCount: number
+  }
   payback?: {
     roasByProfit: Maybe
     contributionPct: Maybe
@@ -360,6 +384,10 @@ export async function monthlyReport(
     const waterfallResult = await client.query(MONTH_WATERFALL, [dayParam])
     const dailyResult = await client.query(MONTH_DAILY, [dayParam])
     const paybackResult = await client.query(MONTH_PAYBACK, [dayParam])
+    const itemsExtraResult = await client.query(MONTH_ITEMS_EXTRA, [dayParam])
+    // Новые колонки строки — по артикулу; слой метрик их не считает, а только прикладывает.
+    const itemsExtra = new Map(itemsExtraResult.rows.map((row) => [row.sku as string, row]))
+    const itemsFirst = itemsExtraResult.rows[0]
 
     const totals = totalsResult.rows[0] as Record<string, string | null>
     const items = itemsResult.rows.map((row) => ({
@@ -397,7 +425,21 @@ export async function monthlyReport(
         marginPct: totals.margin_pct,
         roasByGross: totals.roas_by_gross,
       },
-      items,
+      items: items.map((item) => ({
+        ...item,
+        marginPct: (itemsExtra.get(item.sku)?.margin_pct ?? null) as string | null,
+        profitSharePct: (itemsExtra.get(item.sku)?.profit_share_pct ?? null) as string | null,
+        loss: itemsExtra.get(item.sku)?.loss === true,
+      })),
+      itemsSummary:
+        itemsFirst === undefined
+          ? undefined
+          : {
+              productsProfit: itemsFirst.products_profit as string,
+              skusTotal: itemsFirst.skus_total as number,
+              skusFor80: (itemsFirst.skus_for_80 ?? null) as number | null,
+              negativeCount: itemsFirst.negative_count as number,
+            },
       honesty: { sharePct: totals.honest_pct, skusWithoutPrice },
       gaps,
       устарели: stale,
