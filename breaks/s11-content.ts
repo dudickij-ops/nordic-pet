@@ -1033,7 +1033,7 @@ export const BREAKS: Break[] = [
       },
     ],
     file: 'app/page.tsx',
-    find: ': \x60нет базы для сравнения: в ${полоса.prevMonth} заказов нет\x60',
+    find: ': \x60нет базы: в ${полоса.prevMonth} заказов нет\x60',
     replace: ": '+0,00'",
     tests: 'все',
   },

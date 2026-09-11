@@ -59,7 +59,7 @@ function строкаДельты(полоса: Полоса, п: Показат
   if (!полоса.hasBase) {
     return полоса.prevMonth === null
       ? 'нет базы для сравнения'
-      : `нет базы для сравнения: в ${полоса.prevMonth} заказов нет`
+      : `нет базы: в ${полоса.prevMonth} заказов нет`
   }
   if (п.delta === null) return `к ${полоса.prevMonth}: нет данных`
   return `${п.unit === 'eur' ? money(п.delta) : points(п.delta)} к ${полоса.prevMonth} · ${п.verdict}`
