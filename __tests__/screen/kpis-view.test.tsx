@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
@@ -97,4 +99,26 @@ test('база есть, а дельты нет — «нет данных» у �
     items: ПОЛОСА.items.map((п) => (п.key === 'ad_share' ? { ...п, delta: null, verdict: null } : п)),
   }
   expect(строкиДельт(сПолосой(полоса))[3]).toBe('к 2026-02: нет данных')
+})
+
+/**
+ * **Две проверки текста таблицы стилей — слабые, и так названы.** Они доказывают наличие правил, а не
+ * то, что браузер их применил; вид виден на снимках, контраст — замером перед сдачей. Граница
+ * зелёного — «ровно одно правило» — утверждается в проверке чисел таблицы стилей, не здесь.
+ */
+function правилоДельты(смысл: string): string {
+  const стили = readFileSync(join(process.cwd(), 'app', 'globals.css'), 'utf8')
+  const правило = стили.match(new RegExp(`\\.kpi\\[data-verdict='${смысл}'\\] \\.kpi-delta \\{([^}]*)\\}`))?.[1]
+  expect(правило, `правило цвета дельты «${смысл}» есть`).toBeDefined()
+  return правило ?? ''
+}
+
+test('дельта «хуже» — свой красный, а не цвет отказа', () => {
+  const правило = правилоДельты('хуже')
+  expect(правило).toContain('color: var(--colorPaletteRedForeground2)')
+  expect(правило).not.toMatch(/--danger|colorPaletteRedForeground1|colorPaletteRedBorder2|colorPaletteRedBackground1/)
+})
+
+test('дельта «лучше» — зелёный', () => {
+  expect(правилоДельты('лучше')).toContain('color: var(--colorPaletteGreenForeground1)')
 })

@@ -154,6 +154,12 @@ const ЦВЕТА: Record<string, [string, string]> = {
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:17 формула Foreground1 → .shade10 → packages/tokens/src/global/colors.ts:194 red.shade10
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:19 формула Foreground1 → .tint30 → packages/tokens/src/global/colors.ts:198 red.tint30
   colorPaletteRedForeground1: ['#bc2f32', '#e37d80'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:18 формула Foreground2 → .shade30 → packages/tokens/src/global/colors.ts:192 red.shade30
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:20 формула Foreground2 → .tint40 → packages/tokens/src/global/colors.ts:199 red.tint40
+  colorPaletteRedForeground2: ['#751d1f', '#f1bbbc'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:17 формула Foreground1 → .shade10 → packages/tokens/src/global/colors.ts:434 green.shade10
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:19 формула Foreground1 → .tint30 → packages/tokens/src/global/colors.ts:438 green.tint30
+  colorPaletteGreenForeground1: ['#0e700e', '#54b054'],
   // fluentui@43665d5 светлая: packages/tokens/src/utils/shadows.ts:10 shadow8 → packages/tokens/src/alias/lightColor.ts:184 ambient → packages/tokens/src/alias/lightColor.ts:185 key
   // fluentui@43665d5 тёмная: packages/tokens/src/utils/shadows.ts:10 shadow8 → packages/tokens/src/alias/darkColor.ts:184 ambient → packages/tokens/src/alias/darkColor.ts:185 key
   shadow8: [
@@ -546,4 +552,53 @@ test('отключённый вид назван и для главной кно
       'файле ниже — значит без отдельного `button.primary:disabled` отключённый вид не доходит ' +
       `до главной кнопки, а её только и отключают. Сейчас селектор такой: «${селектор}»`,
   ).toContain('button.primary:disabled')
+})
+
+/**
+ * Граница зелёного — решение владельца по развилке Ж4, 11 сентября 2026 года: зелёный живёт только в
+ * строке дельты полосы показателей, вердикт «лучше», и больше нигде на экране. Утверждение закрывает
+ * это не словами: величина зелёного встречается ровно в одном правиле, и это правило — то самое.
+ *
+ * **Что здесь считается зелёным — и чего этот разбор не понимает.** Зелёная величина — та, чьё имя
+ * содержит `Green` или `Success`; та, чьё значение в любой теме совпадает со значением такой
+ * величины; и та, что ссылается на любую из них через `var()`, сколько бы звеньев ни было. Так
+ * ловится и зелёный, спрятанный под другим именем, — утверждения выше этого не ловят: они про
+ * значения, а не про имена. Зелёный Fluent под другим именем палитры (`Forest`, `Lime`, `Seafoam`,
+ * `LightGreen` ловится, эти — нет) и значение, записанное прямо в правило, этот разбор не узнает;
+ * второе закрывает утверждение «цвет приходит ссылкой на величину».
+ */
+test('зелёный — только в строке дельты «лучше» полосы показателей: ровно одно правило', () => {
+  const темы = [светлыеВеличины, тёмныеВеличины]
+  const зелёные = new Set<string>()
+  for (const набор of темы) for (const имя of набор.keys()) if (/Green|Success/.test(имя)) зелёные.add(имя)
+  expect(зелёные.size, 'зелёная величина в таблице стилей есть').toBeGreaterThan(0)
+
+  let прибавилось = true
+  while (прибавилось) {
+    прибавилось = false
+    const значенияЗелёных = new Set(
+      [...зелёные].flatMap((имя) => темы.map((набор) => набор.get(имя)).filter((з): з is string => з !== undefined)),
+    )
+    for (const набор of темы) {
+      for (const [имя, значение] of набор) {
+        if (зелёные.has(имя)) continue
+        const ссылка = значение.match(/^var\(--([\w-]+)\)$/)?.[1]
+        if (значенияЗелёных.has(значение) || (ссылка !== undefined && зелёные.has(ссылка))) {
+          зелёные.add(имя)
+          прибавилось = true
+        }
+      }
+    }
+  }
+
+  const селекторы: string[] = []
+  for (const м of правила.matchAll(/var\(--([\w-]+)\)/g)) {
+    if (!зелёные.has(м[1])) continue
+    const открывающая = правила.lastIndexOf('{', м.index)
+    селекторы.push(правила.slice(правила.lastIndexOf('}', открывающая) + 1, открывающая).trim())
+  }
+  expect(
+    селекторы,
+    `зелёные величины (${[...зелёные].join(', ')}) стоят в правилах: ${селекторы.join(' | ')}`,
+  ).toEqual([".kpi[data-verdict='лучше'] .kpi-delta"])
 })

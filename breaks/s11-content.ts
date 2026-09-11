@@ -1082,4 +1082,53 @@ export const BREAKS: Break[] = [
     replace: "money(п.delta) : percent(п.delta)",
     tests: 'все',
   },
+
+  // Ж4 — цвет дельты, решение владельца (вариант Б, 11 сентября 2026 года): «лучше» — зелёный, и
+  // зелёный живёт только в строке дельты полосы; «хуже» — свой красный, не токен отказа.
+  {
+    id: 'green-second-place',
+    claim: 'поставить зелёный во второе место на экране',
+    mustRedden: 'зелёный — только в строке дельты «лучше» полосы показателей: ровно одно правило',
+    file: 'app/globals.css',
+    find: '.kpi-value {\n  font-size: var(--fontSizeBase400);',
+    replace: '.kpi-value {\n  color: var(--colorPaletteGreenForeground1);\n  font-size: var(--fontSizeBase400);',
+    tests: 'все',
+  },
+  {
+    id: 'green-under-another-name',
+    claim: 'поставить зелёный во второе место под другим именем величины',
+    mustRedden: 'зелёный — только в строке дельты «лучше» полосы показателей: ровно одно правило',
+    file: 'app/globals.css',
+    find: '  --colorPaletteGreenForeground1: #0e700e;\n',
+    replace: '  --colorPaletteGreenForeground1: #0e700e;\n  --kpi-good: var(--colorPaletteGreenForeground1);\n',
+    andThen: {
+      find: '.kpi-value {\n  font-size: var(--fontSizeBase400);',
+      replace: '.kpi-value {\n  color: var(--kpi-good);\n  font-size: var(--fontSizeBase400);',
+    },
+    tests: 'все',
+  },
+  {
+    id: 'worse-refusal-token',
+    claim: 'взять для дельты «хуже» цвет отказа',
+    mustRedden: 'дельта «хуже» — свой красный, а не цвет отказа',
+    file: 'app/globals.css',
+    find: '  color: var(--colorPaletteRedForeground2);\n}',
+    replace: '  color: var(--danger);\n}',
+    tests: 'все',
+  },
+  {
+    id: 'better-not-green',
+    claim: 'снять зелёный у дельты «лучше»',
+    mustRedden: 'дельта «лучше» — зелёный',
+    alsoRedden: [
+      {
+        name: 'зелёный — только в строке дельты «лучше» полосы показателей: ровно одно правило',
+        why: 'зелёного не остаётся ни в одном правиле, а она ждёт ровно одно',
+      },
+    ],
+    file: 'app/globals.css',
+    find: '  color: var(--colorPaletteGreenForeground1);\n}',
+    replace: '  color: var(--colorNeutralForeground3);\n}',
+    tests: 'все',
+  },
 ]
