@@ -67,20 +67,22 @@ export const МАРТ: MonthReport = {
     { kind: 'дни рекламы без курса', count: 0, at: [] },
   ],  // ——— Кусок S11. Происхождение — по полю, а не по раскладке целиком (правило владельца). ———
   // Посчитано запросами куска по сверенным итогам и строкам выше: водопад, окупаемость, колонки товаров
-  // и строка над таблицей, значения полосы показателей. Выдумано: время чтения источников и дельты полосы
-  // — от выдуманного февраля (16 020,00 € оборота, 14 880,30 € чистой выручки, 4 102,00 € рекламы,
-  // 1 902,14 € прибыли, маржа 12,8 %): настоящего февраля в источниках нет.
+  // и строка над таблицей, значения полосы показателей. Снято живым заходом 11 сентября 2026 года
+  // (местная база, после — возврат посевом с наблюдением; разрешение владельца): ряд по дням за 31 день
+  // и время чтения источников; тем же заходом итоги, водопад, окупаемость и строка над таблицей совпали
+  // с числами здесь. Выдумано: дельты полосы — от выдуманного февраля (16 020,00 € оборота, 14 880,30 €
+  // чистой выручки, 4 102,00 € рекламы, 1 902,14 € прибыли, маржа 12,8 %): настоящего февраля нет.
   waterfall: {
     steps: [
-      { key: 'gross', kind: 'итог', amount: '18764.00', sharePct: '100.0', basePct: '0.0' },
-      { key: 'discounts', kind: 'вычитание', amount: '427.50', sharePct: '2.3', basePct: '97.7' },
-      { key: 'refunds', kind: 'вычитание', amount: '1059.46', sharePct: '5.6', basePct: '92.1' },
-      { key: 'net', kind: 'итог', amount: '17277.04', sharePct: '92.1', basePct: '0.0' },
+      { key: 'gross', kind: 'итог', amount: '18764.00', sharePct: '100.0', basePct: '0.0', largest: false },
+      { key: 'discounts', kind: 'вычитание', amount: '427.50', sharePct: '2.3', basePct: '97.7', largest: false },
+      { key: 'refunds', kind: 'вычитание', amount: '1059.46', sharePct: '5.6', basePct: '92.1', largest: false },
+      { key: 'net', kind: 'итог', amount: '17277.04', sharePct: '92.1', basePct: '0.0', largest: false },
       { key: 'cogs', kind: 'вычитание', amount: '6028.11', sharePct: '32.1', basePct: '59.9', largest: true },
-      { key: 'ads', kind: 'вычитание', amount: '4431.37', sharePct: '23.6', basePct: '36.3' },
-      { key: 'fees', kind: 'вычитание', amount: '526.12', sharePct: '2.8', basePct: '33.5' },
-      { key: 'fixed', kind: 'вычитание', amount: '4552.90', sharePct: '24.3', basePct: '9.3' },
-      { key: 'profit', kind: 'итог', amount: '1738.53', sharePct: '9.3', basePct: '0.0' },
+      { key: 'ads', kind: 'вычитание', amount: '4431.37', sharePct: '23.6', basePct: '36.3', largest: false },
+      { key: 'fees', kind: 'вычитание', amount: '526.12', sharePct: '2.8', basePct: '33.5', largest: false },
+      { key: 'fixed', kind: 'вычитание', amount: '4552.90', sharePct: '24.3', basePct: '9.3', largest: false },
+      { key: 'profit', kind: 'итог', amount: '1738.53', sharePct: '9.3', basePct: '0.0', largest: false },
     ],
     scaleLowPct: '0.0',
     scaleHighPct: '100.0',
@@ -94,7 +96,47 @@ export const МАРТ: MonthReport = {
     breakevenNote: null,
   },
   itemsSummary: { productsProfit: '11248.93', skusTotal: 12, skusFor80: 8, negativeCount: 0 },
-  sourcesReadAt: '2026-09-10 18:04 UTC',
+  sourcesReadAt: '2026-09-11 07:47 UTC',
+  daily: {
+    days: [
+      { day: '2026-03-01', label: '1 марта', net: '416.61', sharePct: '34.2', basePct: '0.0', tick: '1' },
+      { day: '2026-03-02', label: '2 марта', net: '381.00', sharePct: '31.3', basePct: '0.0', tick: null },
+      { day: '2026-03-03', label: '3 марта', net: '363.95', sharePct: '29.9', basePct: '0.0', tick: null },
+      { day: '2026-03-04', label: '4 марта', net: '688.62', sharePct: '56.6', basePct: '0.0', tick: null },
+      { day: '2026-03-05', label: '5 марта', net: '499.41', sharePct: '41.0', basePct: '0.0', tick: null },
+      { day: '2026-03-06', label: '6 марта', net: '750.37', sharePct: '61.7', basePct: '0.0', tick: '6' },
+      { day: '2026-03-07', label: '7 марта', net: '822.80', sharePct: '67.6', basePct: '0.0', tick: null },
+      { day: '2026-03-08', label: '8 марта', net: '421.06', sharePct: '34.6', basePct: '0.0', tick: null },
+      { day: '2026-03-09', label: '9 марта', net: null, sharePct: null, basePct: '0.0', tick: null },
+      { day: '2026-03-10', label: '10 марта', net: '384.55', sharePct: '31.6', basePct: '0.0', tick: null },
+      { day: '2026-03-11', label: '11 марта', net: '433.06', sharePct: '35.6', basePct: '0.0', tick: '11' },
+      { day: '2026-03-12', label: '12 марта', net: '447.01', sharePct: '36.7', basePct: '0.0', tick: null },
+      { day: '2026-03-13', label: '13 марта', net: '398.30', sharePct: '32.7', basePct: '0.0', tick: null },
+      { day: '2026-03-14', label: '14 марта', net: '452.00', sharePct: '37.1', basePct: '0.0', tick: null },
+      { day: '2026-03-15', label: '15 марта', net: '620.63', sharePct: '51.0', basePct: '0.0', tick: null },
+      { day: '2026-03-16', label: '16 марта', net: '317.20', sharePct: '26.1', basePct: '0.0', tick: '16' },
+      { day: '2026-03-17', label: '17 марта', net: '1162.01', sharePct: '95.5', basePct: '0.0', tick: null },
+      { day: '2026-03-18', label: '18 марта', net: '486.62', sharePct: '40.0', basePct: '0.0', tick: null },
+      { day: '2026-03-19', label: '19 марта', net: '293.21', sharePct: '24.1', basePct: '0.0', tick: null },
+      { day: '2026-03-20', label: '20 марта', net: '969.55', sharePct: '79.7', basePct: '0.0', tick: null },
+      { day: '2026-03-21', label: '21 марта', net: '1216.78', sharePct: '100.0', basePct: '0.0', tick: '21' },
+      { day: '2026-03-22', label: '22 марта', net: '556.91', sharePct: '45.8', basePct: '0.0', tick: null },
+      { day: '2026-03-23', label: '23 марта', net: '770.36', sharePct: '63.3', basePct: '0.0', tick: null },
+      { day: '2026-03-24', label: '24 марта', net: '623.57', sharePct: '51.2', basePct: '0.0', tick: null },
+      { day: '2026-03-25', label: '25 марта', net: '515.90', sharePct: '42.4', basePct: '0.0', tick: null },
+      { day: '2026-03-26', label: '26 марта', net: '314.70', sharePct: '25.9', basePct: '0.0', tick: '26' },
+      { day: '2026-03-27', label: '27 марта', net: '531.46', sharePct: '43.7', basePct: '0.0', tick: null },
+      { day: '2026-03-28', label: '28 марта', net: '528.70', sharePct: '43.5', basePct: '0.0', tick: null },
+      { day: '2026-03-29', label: '29 марта', net: '692.65', sharePct: '56.9', basePct: '0.0', tick: null },
+      { day: '2026-03-30', label: '30 марта', net: '701.90', sharePct: '57.7', basePct: '0.0', tick: null },
+      { day: '2026-03-31', label: '31 марта', net: '516.15', sharePct: '42.4', basePct: '0.0', tick: '31' },
+    ],
+    scaleLowPct: '0.0',
+    scaleHighPct: '100.0',
+    topNet: '1216.78',
+    bottomNet: '0.00',
+    hasOrders: true,
+  },
   kpis: {
     prevMonth: '2026-02',
     hasBase: true,

@@ -30,8 +30,19 @@
  *
  * ОРИЕНТИРЫ ВЛАДЕЛЬЦА, по которым он этот вид принимает:
  *   · числа вправо, подписи влево, цифры в колонке одной ширины;
- *   · крупных чисел единицы — прибыль, маржа, окупаемость; остальное ровным весом;
- *   · один цвет для смысловых пометок, красный только для отказов, чтобы он не обесценился;
+ *   · крупных чисел единицы, и считаются они на вкладку: на «Главном» четыре значения полосы
+ *     показателей, на «Деньгах» три — прибыль, маржа, окупаемость по обороту, — на остальных ноль;
+ *     остальное ровным весом. Уточнение владельцем 11 сентября 2026 года, кусок S11; прежде здесь стояло
+ *     «крупных чисел единицы — прибыль, маржа, окупаемость; остальное ровным весом», а у правила
+ *     «Итога» — «Их ровно три, и больше на экране крупного нет»;
+ *   · два смысловых цвета: красный — отказы и значения, которые плохи по смыслу; зелёный — только
+ *     вердикт «лучше» в полосе показателей. Изменения ориентира владельцем в куске S11: 10 сентября
+ *     2026 года — о красном, прежде «красный только для отказов»; 11 сентября 2026 года — о зелёном,
+ *     прежде здесь стояло «один цвет для смысловых пометок; красный — отказы и значения, которые плохи
+ *     по смыслу, больше нигде, чтобы он не обесценился». Граница зелёного утверждена проверкой чисел
+ *     таблицы стилей: его величина встречается ровно в одном правиле. Уточнение владельца того же дня:
+ *     смысловых цветов два — красный и зелёный, они несут вердикт; синий бренда вердикта не несёт, он
+ *     помечает выбранное, главное действие и рисует графику;
  *   · плотность средняя: месяц целиком помещается в один-два экрана прокрутки;
  *   · ширина ограничена — строка во весь широкий монитор нечитаема.
  */
@@ -82,8 +93,10 @@
   --colorBrandBackground2: #ebf3fc;
   --colorBrandForeground1: #0f6cbd;
   --colorBrandStroke1: #0f6cbd;
+  --colorBrandStroke2: #b4d6fa;
   --colorNeutralBackground6: #e6e6e6;
   --colorCompoundBrandBackground: #0f6cbd;
+  --colorCompoundBrandStroke: #0f6cbd;
 
   /*
    * Обводка фокуса: чёрная в светлой теме, белая в тёмной. **Наш счёт:** к холсту и к карточке —
@@ -93,15 +106,26 @@
   --colorStrokeFocus2: #000000;
 
   /*
-   * Красный — только отказы. Справочник, дословно (fluent2.microsoft.design/color):
+   * Красный — отказы и значения, которые плохи по смыслу; больше нигде. Изменение правила владельцем
+   * 10 сентября 2026 года, кусок S11; прежде здесь стояло: «Красный — только отказы». Справочник,
+   * дословно (fluent2.microsoft.design/color):
    * «Select colors in the shared palette are specifically used to communicate feedback, status,
    * or urgency. These are known as semantic colors and they should always convey important
    * information.»
    * **Наш вывод:** значит красный не берут на украшение — иначе он перестаёт означать «сломалось».
    */
   --colorPaletteRedBackground1: #fdf6f6;
+  --colorPaletteRedBackground2: #f1bbbc;
   --colorPaletteRedBorder2: #d13438;
   --colorPaletteRedForeground1: #bc2f32;
+  --colorPaletteRedForeground3: #d13438;
+
+  /*
+   * Зелёный — только вердикт «лучше» в строке дельты полосы показателей, больше нигде. Решение
+   * владельца по развилке Ж4, 11 сентября 2026 года. Граница — не пожелание: проверка чисел таблицы
+   * стилей утверждает, что зелёная величина встречается ровно в одном правиле.
+   */
+  --colorPaletteGreenForeground1: #0e700e;
 
   /* Тень. `utils/shadows.ts` плюс пара цветов тени из `alias/lightColor.ts`. */
   --shadow8: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
@@ -128,6 +152,7 @@
   --borderRadiusCircular: 10000px;
   --strokeWidthThin: 1px;
   --strokeWidthThick: 2px;
+  --strokeWidthThicker: 3px;
   --spacingHorizontalXS: 4px;
   --spacingHorizontalS: 8px;
   --spacingHorizontalM: 12px;
@@ -233,14 +258,20 @@
     --colorBrandBackground2: #082338;
     --colorBrandForeground1: #479ef5;
     --colorBrandStroke1: #479ef5;
+    --colorBrandStroke2: #0e4775;
     --colorNeutralBackground6: #333333;
     --colorCompoundBrandBackground: #479ef5;
+    --colorCompoundBrandStroke: #479ef5;
 
     --colorStrokeFocus2: #ffffff;
 
     --colorPaletteRedBackground1: #3f1011;
+    --colorPaletteRedBackground2: #751d1f;
     --colorPaletteRedBorder2: #e37d80;
     --colorPaletteRedForeground1: #e37d80;
+    --colorPaletteRedForeground3: #e37d80;
+
+    --colorPaletteGreenForeground1: #54b054;
 
     /* Тень в тёмной теме гуще: пара цветов своя. `alias/darkColor.ts`. */
     --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
@@ -502,6 +533,22 @@ tbody tr:last-child td {
   border-bottom: none;
 }
 
+/*
+ * Строка товара в минусе — кусок S11, решение владельца по П6: заливка `colorPaletteRedBackground2`
+ * (red.tint40 в светлой теме, red.shade30 в тёмной). Это вторая роль красного по изменённому правилу —
+ * «значения, которые плохи по смыслу»; токены отказа (`--danger*`) здесь не берутся, чтобы подсветка
+ * не спорила с отказами.
+ *
+ * Все ячейки подсвеченной строки — основным цветом, явно: приглушённый текст на этой заливке в светлой
+ * теме дал бы 3,71 : 1 — ниже нормы (наш счёт по формуле контраста). Основной — 9,29 и 10,76 : 1.
+ * Заливка — на ячейках, а не на строке: наведение красит строку и иначе стёрло бы подсветку.
+ * Цвет не единственный признак: в строке стоит маржа со знаком минус.
+ */
+.items tr[data-loss='true'] td {
+  background: var(--colorPaletteRedBackground2);
+  color: var(--colorNeutralForeground1);
+}
+
 /* ——— Ссылки и кнопки ——— */
 
 a {
@@ -623,8 +670,10 @@ button.primary:disabled {
 /* ——— Пометки и отказы ——— */
 
 /*
- * Пометка — смысловой цвет. Отказ — красный, и красный больше нигде: цвет, потраченный на
- * украшение, перестаёт означать «сломалось».
+ * Пометка — цвет бренда. Отказ — красный: цвет, потраченный на украшение, перестаёт означать
+ * «сломалось». Вторая роль красного — значения, плохие по смыслу, — берёт свои токены, не токены
+ * отказа (строка товара в минусе, дельта «хуже»). Прежде здесь стояло: «Пометка — смысловой цвет.
+ * Отказ — красный, и красный больше нигде» — неверно с изменения правила о красном 10 сентября.
  */
 /*
  * `clear` обязателен: кнопка выхода — плавающая, а обычный блок под плавающим не отступает, и
@@ -737,6 +786,18 @@ button.primary:active:not(:disabled) {
   margin: 0 0 var(--gap);
 }
 
+/*
+ * Время чтения источников (S11, шаг 6) — пояснение к числам, а не число: мелко и приглушённо, как
+ * строки о центах и об определениях. Своей строкой во всю ширину шапки, под названием и месяцами.
+ */
+.report-read-at {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
 .months ul {
   display: flex;
   flex-wrap: wrap;
@@ -821,7 +882,12 @@ button.primary:active:not(:disabled) {
   color: var(--on-accent);
 }
 
-/* Три крупных числа — Title 2 (28 / 36, 600). Их ровно три, и больше на экране крупного нет. */
+/*
+ * Крупные числа «Итога» — Title 2 (28 / 36, 600). Крупные числа считаются на вкладку (уточнение
+ * владельца от 11 сентября 2026 года): на «Деньгах» их три — два здесь и окупаемость по обороту в
+ * своём блоке. Прежде здесь стояло: «Три крупных числа — Title 2 (28 / 36, 600). Их ровно три, и
+ * больше на экране крупного нет.»
+ */
 .bottom-line dd {
   font-size: var(--fontSizeHero700);
   line-height: var(--lineHeightHero700);
@@ -923,6 +989,397 @@ button.primary:active:not(:disabled) {
   color: var(--text-dim);
   font-size: var(--fontSizeBase300);
   line-height: var(--lineHeightBase300);
+}
+
+/* ——— Водопад ——— */
+
+/*
+ * Водопад «куда ушли деньги» — кусок S11. Горизонтальный по решению владельца (развилка Ж1):
+ * полные подписи ступеней в вертикальный не помещаются. Строка на ступень — подпись, дорожка со
+ * столбиком, сумма, доля; числа по правому краю, табличными цифрами.
+ *
+ * Где стоит столбик на дорожке, решает эта таблица, а не разметка: край и длина приходят величинами
+ * `--step-from` и `--step-size` — те же строки, что напечатаны текстом, — пределы шкалы —
+ * `--scale-from` и `--scale-to`. Это показ того же значения, как `clamp` у полосы доли, а не новое
+ * число. `max(x, -1 * x)` — длина без знака: отрицательная прибыль идёт от своего края вправо до нуля.
+ *
+ * Итог и вычитание различаются не одним цветом: итог — насыщенный столбик от нуля и полужирные
+ * подпись и сумма; вычитание — светлый столбик обычного начертания, висящий от остатка.
+ */
+.waterfall-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.waterfall-steps li {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--spacingHorizontalL);
+  align-items: center;
+  padding: var(--spacingVerticalXS) 0;
+}
+
+.waterfall-amount,
+.waterfall-share {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.waterfall-share {
+  color: var(--colorNeutralForeground3);
+}
+
+.waterfall-track {
+  position: relative;
+  height: var(--spacingVerticalS);
+}
+
+.waterfall-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc((var(--step-from) - var(--scale-from)) / (var(--scale-to) - var(--scale-from)) * 100%);
+  width: calc(
+    max(var(--step-size), -1 * var(--step-size)) / (var(--scale-to) - var(--scale-from)) * 100%
+  );
+  border-radius: var(--borderRadiusCircular);
+}
+
+.waterfall-steps li[data-kind='итог'] .waterfall-bar {
+  background: var(--colorCompoundBrandBackground);
+}
+
+.waterfall-steps li[data-kind='итог'] .waterfall-label,
+.waterfall-steps li[data-kind='итог'] .waterfall-amount {
+  font-weight: var(--fontWeightSemibold);
+}
+
+/*
+ * Вычитание — светлая заливка, а не обводка: тонкая обводка превращала малую ступень в точку, и
+ * экран не отвечал на «кто съедает больше» (замечание владельца). `colorBrandStroke2` — светлый
+ * оттенок бренда (brandWeb[140] и brandWeb[50]); **отступление от роли, названное:** у Fluent это
+ * токен обводки, а заливочного токена такой светлоты нет — `colorBrandBackground2` к карточке даёт
+ * 1,12 и 1,10 : 1 и не виден. Наш счёт к карточке — 1,51 : 1 в обеих темах, у итога — 5,38 и 5,18.
+ * Столбик числа не несёт в одиночку: сумма и доля напечатаны рядом.
+ */
+.waterfall-steps li[data-kind='вычитание'] .waterfall-bar {
+  background: var(--colorBrandStroke2);
+}
+
+/* «Съедает больше всего» — подпись, а не тревога: цвет текста обычный, свой не заводится. */
+.waterfall-largest {
+  margin: 0 0 var(--spacingVerticalS);
+}
+
+/* Строка о центах округления — пояснение к числам, а не число: мелко и приглушённо. */
+.waterfall-gap {
+  margin: var(--spacingVerticalS) 0 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
+/* ——— Полоса вкладок ——— */
+
+/*
+ * Рецепт вкладки Fluent 2 — `react-tabs/library/src/components/Tab/useTabStyles.styles.ts` на коммите
+ * выписки `43665d5`: средний размер, горизонтально, вид `transparent`. Сверка по каждому свойству
+ * блоков — `docs/сверка/рецепты-fluent.md`, раздел 8. Признаков текущей вкладки три, и цвет среди них
+ * не единственный: `aria-current` в разметке, полоса-указатель под текстом, полужирное начертание.
+ *
+ * Отступ ссылки по горизонтали — `spacingHorizontalM` (12): у Fluent это `spacingHorizontalMNudge` (10)
+ * у кнопки плюс `spacingHorizontalXXS` (2) у текста — **совпало по действию**: текст отстоит от края на
+ * те же 12, на которые отстоит указатель. Двух величин с `Nudge` в выписке нет.
+ */
+.tabs {
+  margin: 0 0 var(--gap);
+}
+
+.tabs ul {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tabs a {
+  position: relative;
+  display: inline-block;
+  padding: var(--spacingVerticalM) var(--spacingHorizontalM);
+  border-radius: var(--borderRadiusMedium);
+  color: var(--colorNeutralForeground2);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
+  font-weight: var(--fontWeightRegular);
+  text-decoration: none;
+}
+
+.tabs a[aria-current='page'] {
+  color: var(--colorNeutralForeground1);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.tabs a[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: var(--spacingHorizontalM);
+  right: var(--spacingHorizontalM);
+  height: var(--strokeWidthThicker);
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorCompoundBrandStroke);
+}
+
+/* ——— «Деньги»: «Выручка» и «Затраты» рядом ——— */
+
+/*
+ * Решение по макету, задача В-5: на широком экране два раздела стоят рядом, без обёртки разделов. На
+ * узком экране — одна под другой (ниже, в медиазапросе). Раскладку сторожат только снимки — проверки у
+ * неё нет.
+ *
+ * **Строчными блоками, а не сеткой у родителя — и это найдено снимком.** Первая редакция делала `main`
+ * сеткой. Сетка открывает свой блочный поток, а такой блок не заходит под плавающую кнопку «Обновить
+ * данные» и сжимается рядом с ней: на черновике все разделы всех вкладок стали уже на ширину кнопки.
+ * Строчный блок ширину родителя не меняет. Цена — высота: карточки рядом не выравниваются по высоте.
+ */
+.report > .revenue,
+.report > .costs {
+  display: inline-block;
+  width: calc((100% - var(--gap)) / 2);
+  vertical-align: top;
+}
+
+.report > .revenue {
+  margin-right: var(--gap);
+}
+
+/* ——— Полоса показателей ——— */
+
+/*
+ * Четыре показателя в ряд (кусок S11, шаг 7), на узком экране — по два. Значение набрано Title 2
+ * (28 / 36, 600), как числа «Итога», — решение владельца на шаге вкладок по паре снимков: «Главное»
+ * обязано отвечать за десять секунд, и без крупного числа глаз садится на водопад. Крупных на вкладке
+ * четыре. Строка дельты — мелко; смысл в ней несут знак и слово, цвет — второй канал того же смысла.
+ */
+.kpi-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacingVerticalM) var(--spacingHorizontalL);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacingVerticalXS);
+}
+
+.kpi-label {
+  color: var(--colorNeutralForeground2);
+}
+
+.kpi-value {
+  font-size: var(--fontSizeHero700);
+  line-height: var(--lineHeightHero700);
+  font-weight: var(--fontWeightSemibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-delta {
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
+/*
+ * Цвет дельты по смыслу — решение владельца по развилке Ж4, вариант Б, 11 сентября 2026 года. Цвет
+ * берётся из признака, который дал счёт, а не из знака: рост доли рекламы — «хуже».
+ *   · «лучше» — зелёный `colorPaletteGreenForeground1` (green.shade10 / green.tint30). Единственное
+ *     место зелёного на экране — это утверждает проверка чисел таблицы стилей;
+ *   · «хуже» — красный `colorPaletteRedForeground3` (red.primary в светлой теме, red.tint30 в тёмной —
+ *     заплатка Fluent). Решение владельца по развилке Ж5, 11 сентября 2026 года: прежний
+ *     `colorPaletteRedForeground2` (red.shade30) к обычному тексту давал 1,44 : 1 и глазом читался не
+ *     красным, а чёрным;
+ *   · «без изменений» — без цвета.
+ *
+ * **Что из этого следует — прямо, чтобы потом не догадывались.** «Дельта „хуже“ — не цвет отказа»
+ * верно по имени токена, и в светлой теме — по значению (#d13438 против #bc2f32). **В тёмной теме
+ * значение совпадает с цветом текста отказа (#e37d80), и различает их только форма:** отказ всегда
+ * плашка с фоном и рамкой, дельта всегда простой текст внутри карточки, без фона и рамки — это
+ * утверждает проверка вида полосы. Совпадение цвета не делает роль одной.
+ *
+ * Наш счёт по формуле контраста, светлая / тёмная: к карточке — красный 4,93 и 5,20 : 1, зелёный 6,28
+ * и 5,34 : 1; к основному тексту — красный 3,15 и 2,80, зелёный 2,47 и 2,72. Формула меряет светлоту,
+ * не оттенок: зелёный к приглушённому серому — 1,01 : 1, а глазом отличается сразу; отличается ли цвет,
+ * решает снимок. Замер с отрисованной страницы — в задаче 13. Знак и слово стоят в строке всегда.
+ */
+.kpi[data-verdict='лучше'] .kpi-delta {
+  color: var(--colorPaletteGreenForeground1);
+}
+
+.kpi[data-verdict='хуже'] .kpi-delta {
+  color: var(--colorPaletteRedForeground3);
+}
+
+/* ——— Доли статей затрат ——— */
+
+/*
+ * Доля статьи в обороте — под суммой, в той же ячейке: число «… % оборота» и полоска той же длины.
+ * Рецепт — тот же, что у полосы доли честности (полоса прогресса Fluent, решение владельца по Г1 в
+ * S10): дорожка `colorNeutralBackground6`, заливка `colorCompoundBrandBackground`. Светлый оттенок
+ * бренда, как у вычитаний водопада, здесь не годится: к дорожке он дал бы около 1,2 : 1 — наш счёт,
+ * та же беда, что у полосы доли во втором круге S10. `clamp` держит длину в пределах дорожки.
+ */
+.cost-share {
+  display: block;
+  margin-top: var(--spacingVerticalXS);
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  font-weight: var(--fontWeightRegular);
+}
+
+.cost-bar {
+  display: block;
+  height: var(--spacingVerticalXS);
+  margin-top: var(--spacingVerticalXS);
+  background: var(--colorNeutralBackground6);
+  border-radius: var(--borderRadiusCircular);
+  overflow: hidden;
+}
+
+.cost-bar-fill {
+  display: block;
+  width: clamp(0%, calc(var(--cost-share) * 1%), 100%);
+  height: 100%;
+  background: var(--colorCompoundBrandBackground);
+}
+
+/* ——— Окупаемость рекламы ——— */
+
+/*
+ * Окупаемость по обороту — крупным числом рядом с порогом, с которым её сравнивают (решение владельца
+ * по В7). Title 2 (28 / 36, 600), как числа «Итога»: на вкладке «Деньги» крупных чисел три — прибыль,
+ * маржа и она.
+ */
+.payback-main {
+  font-size: var(--fontSizeHero700);
+  line-height: var(--lineHeightHero700);
+  font-weight: var(--fontWeightSemibold);
+}
+
+/* База окупаемости по прибыли — под числом, в той же ячейке: мелко и приглушённо, строкой ниже. */
+.payback-why {
+  display: block;
+  margin-top: var(--spacingVerticalXS);
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  font-weight: var(--fontWeightRegular);
+  /*
+   * Фраза — текст, а не значение: запрет переноса у `dd` к ней не относится. Найдено снимком шага
+   * вкладок: в ряду из четырёх чисел фраза без переноса уезжала за край карточки.
+   */
+  white-space: normal;
+}
+
+/* Строка об определениях — пояснение к числам, а не число: мелко и приглушённо, как у водопада. */
+.payback-note {
+  margin: var(--spacingVerticalM) 0 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
+/* ——— Выручка по дням ——— */
+
+/*
+ * Ряд чистой выручки по дням — кусок S11, шаг 2. Столбик на день; где он стоит в области, решает эта
+ * таблица по величинам из разметки — `--day-from`, `--day-size` (те же строки, что в данных) и
+ * пределам шкалы `--scale-from`, `--scale-to`. Это показ того же значения, как у водопада.
+ *
+ * Высота области — `8rem`, решение владельца по развилке Ж3: шкалы высот графика у Fluent нет, и
+ * длина названа исключением в проверке чисел таблицы стилей с доводом. Записана один раз — у строки
+ * сетки, — чтобы у неё было одно место и один слом.
+ *
+ * Линия отсчёта рисуется у каждого дня своим отрезком: у дня с заказами — сплошным, у дня без заказов
+ * — пунктиром (развилка Д2′-б). Ноль и разрыв различаются формой, а не цветом.
+ */
+.daily-chart {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: 8rem auto;
+  column-gap: var(--spacingHorizontalS);
+}
+
+.daily-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.daily-bars,
+.daily-ticks {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-column: 2;
+}
+
+.daily-bars li {
+  position: relative;
+  flex: 1 1 0;
+}
+
+.daily-bars li::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc((0 - var(--scale-from)) / (var(--scale-to) - var(--scale-from)) * 100%);
+  border-top: var(--strokeWidthThin) solid var(--colorNeutralStrokeAccessible);
+}
+
+.daily-bars li[data-empty='true']::after {
+  border-top-style: dashed;
+}
+
+.daily-bar {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  bottom: calc((var(--day-from) - var(--scale-from)) / (var(--scale-to) - var(--scale-from)) * 100%);
+  height: calc(
+    max(var(--day-size), -1 * var(--day-size)) / (var(--scale-to) - var(--scale-from)) * 100%
+  );
+  background: var(--colorCompoundBrandBackground);
+}
+
+.daily-ticks {
+  grid-row: 2;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-ticks li {
+  flex: 1 1 0;
+  text-align: center;
+}
+
+.daily-empty {
+  color: var(--colorNeutralForeground3);
 }
 
 /* ——— Неполнота ——— */
@@ -1199,9 +1656,52 @@ button.primary:active:not(:disabled) {
     line-height: var(--lineHeightBase300);
   }
 
-  .bottom-line dd {
+  .bottom-line dd,
+  .payback-main,
+  .kpi-value {
     font-size: var(--fontSizeBase600);
     line-height: var(--lineHeightBase600);
+  }
+
+  /* «Выручка» и «Затраты» на узком экране — одна под другой. */
+  .report > .revenue,
+  .report > .costs {
+    display: block;
+    width: auto;
+    margin-right: 0;
+  }
+
+  /* Полоса показателей на узком экране — по две карточки в ряд. */
+  .kpi-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /*
+   * Водопад на узком экране: четыре колонки не помещают сумму вида «18 764,00 €». Строка ступени
+   * становится двумя — подпись и сумма, под ними дорожка и доля. Вид тот же, направление то же.
+   */
+  .waterfall-steps li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label amount'
+      'track share';
+    row-gap: var(--spacingVerticalXS);
+  }
+
+  .waterfall-label {
+    grid-area: label;
+  }
+
+  .waterfall-amount {
+    grid-area: amount;
+  }
+
+  .waterfall-track {
+    grid-area: track;
+  }
+
+  .waterfall-share {
+    grid-area: share;
   }
 
   /*
@@ -1240,14 +1740,20 @@ button.primary:active:not(:disabled) {
     --colorBrandBackground2: #082338;
     --colorBrandForeground1: #479ef5;
     --colorBrandStroke1: #479ef5;
+    --colorBrandStroke2: #0e4775;
     --colorNeutralBackground6: #333333;
     --colorCompoundBrandBackground: #479ef5;
+    --colorCompoundBrandStroke: #479ef5;
 
     --colorStrokeFocus2: #ffffff;
 
     --colorPaletteRedBackground1: #3f1011;
+    --colorPaletteRedBackground2: #751d1f;
     --colorPaletteRedBorder2: #e37d80;
     --colorPaletteRedForeground1: #e37d80;
+    --colorPaletteRedForeground3: #e37d80;
+
+    --colorPaletteGreenForeground1: #54b054;
 
                                                                           
     --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);}</style></head><body><main class="login"><h1>Nordic Pet — вход</h1><label for="login">Логин</label><input id="login" type="text" autoComplete="username" required="" name="login"/><label for="password">Пароль</label><input id="password" type="password" autoComplete="current-password" required="" name="password"/><button type="submit" class="primary">Войти</button><p role="alert">Логин или пароль не подошли.</p></main></body></html>
