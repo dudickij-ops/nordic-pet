@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { redirect } from 'next/navigation'
 
 import { проверитьДоступ } from '@/lib/auth/guard'
-import { count, money, percent, ratio } from '@/lib/metrics/format'
+import { count, money, percent, points, ratio } from '@/lib/metrics/format'
 import { monthlyReport, type MonthReport } from '@/lib/metrics/report'
 import { LogoutButton } from './logout-button'
 import { RefreshPanel } from './refresh-panel'
@@ -28,6 +28,41 @@ const ПОДПИСИ_СТУПЕНЕЙ: Record<string, string> = {
   fees: 'Комиссии платёжных систем',
   fixed: 'Постоянные расходы',
   profit: 'Прибыль',
+}
+
+/**
+ * Подписи полосы показателей — кусок S11, шаг 7. У отношений база названа в самой подписи (правило
+ * владельца: отношение называет свою базу рядом с собой) — маржа от чистой выручки, доля рекламы от
+ * оборота; дельты этих двух — в процентных пунктах, и это говорит единица дельты.
+ */
+const ПОДПИСИ_ПОКАЗАТЕЛЕЙ: Record<string, string> = {
+  profit: 'Прибыль',
+  margin: 'Маржа от чистой выручки',
+  net: 'Чистая выручка',
+  ad_share: 'Доля рекламы от оборота',
+}
+
+type Полоса = NonNullable<MonthReport['kpis']>
+type Показатель = Полоса['items'][number]
+
+/** Значение карточки — всегда: деньгами или процентами, `null` — словами «нет данных». */
+function значениеПоказателя(п: Показатель): string {
+  if (п.unit === 'pp') return percent(п.value)
+  return п.value === null ? 'нет данных' : money(п.value)
+}
+
+/**
+ * Строка дельты карточки — одна короткая строка. Базы нет — так и сказано, с месяцем, у которого нет
+ * заказов; база есть, а дельты нет (у прошлого месяца нет рекламы или маржи) — «нет данных».
+ */
+function строкаДельты(полоса: Полоса, п: Показатель): string {
+  if (!полоса.hasBase) {
+    return полоса.prevMonth === null
+      ? 'нет базы для сравнения'
+      : `нет базы для сравнения: в ${полоса.prevMonth} заказов нет`
+  }
+  if (п.delta === null) return `к ${полоса.prevMonth}: нет данных`
+  return `${п.unit === 'eur' ? money(п.delta) : points(п.delta)} к ${полоса.prevMonth} · ${п.verdict}`
 }
 
 /**
@@ -66,6 +101,7 @@ export function Dashboard({ report }: { report: MonthReport }) {
   // одно, полоса не может разойтись с числом. Второе чтение того же поля рядом с первым
   // было бы вторым источником правды, и однажды они разъехались бы молча.
   const доля = report.honesty.sharePct
+  const полоса = report.kpis
 
   // «Съедает больше всего» — ступени, помеченные запросом; своего «самого большого» разметка не
   // ищет. Без доли (нулевой оборот) строки нет: сказать «… % оборота» не о чем.
@@ -109,6 +145,27 @@ export function Dashboard({ report }: { report: MonthReport }) {
           </p>
         )}
       </header>
+
+      {/*
+        Полоса показателей — кусок S11, шаг 7. Значение стоит всегда; пустой бывает только дельта, и
+        тогда на её месте одна короткая строка. Дельта, её знак и её смысл («лучше», «хуже», «без
+        изменений») приходят готовыми из SQL: разметка знак с нулём не сравнивает, а прошлых значений,
+        из которых дельту можно было бы посчитать, в отчёте нет вовсе. Смысл назван словом, а не
+        только цветом: признак на карточке нужен таблице стилей, слово — человеку.
+      */}
+      {полоса !== undefined && (
+        <section className="block kpis" aria-label="Показатели месяца">
+          <ul className="kpi-list">
+            {полоса.items.map((п) => (
+              <li key={п.key} className="kpi" data-verdict={п.verdict ?? undefined}>
+                <span className="kpi-label">{ПОДПИСИ_ПОКАЗАТЕЛЕЙ[п.key] ?? п.key}</span>
+                <span className="kpi-value">{значениеПоказателя(п)}</span>
+                <span className="kpi-delta">{строкаДельты(полоса, п)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {report.waterfall !== undefined && (
         <section className="block waterfall">

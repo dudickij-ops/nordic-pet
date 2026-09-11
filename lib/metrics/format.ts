@@ -59,3 +59,14 @@ export function ratio(v: string | null): string {
 export function count(v: string): string {
   return groupDigits(v)
 }
+
+/**
+ * Процентные пункты — кусок S11, шаг 7: дельта маржи и доли рекламы. Разность процентов — пункты, а
+ * не проценты от прошлой, и подпись это говорит: «2,2 п. п.», а не «2,2 %». Знак приходит из SQL
+ * готовым, как и у денежной дельты: плюс здесь не дописывается. Пробелы неразрывные — единица не
+ * отрывается от числа. `null` — «нет данных», как у `percent`.
+ */
+export function points(v: string | null): string {
+  if (v === null) return 'нет данных'
+  return `${groupDigits(v)} п. п.`
+}

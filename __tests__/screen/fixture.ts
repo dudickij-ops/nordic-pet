@@ -88,4 +88,16 @@ export const ПЕРЕПИСЬ: MonthReport = {
   payback: { roasByProfit: '0.31', contributionPct: '43.2', breakevenRoas: '2.31', breakevenNote: null },
   // Кусок S11, шаг 6. Строка готовая, как из SQL; ни с одним числом раскладки не совпадает.
   sourcesReadAt: '2026-04-02 07:15 UTC',
+  // Кусок S11, шаг 7. Значения нарочно не совпадают с итогами и с долей ступени рекламы выше: разметка,
+  // напечатавшая колонку итогов вместо значения полосы, покраснит перепись. Смысл дельт — из поля.
+  kpis: {
+    prevMonth: '2026-02',
+    hasBase: true,
+    items: [
+      { key: 'profit', unit: 'eur', value: '2323.23', delta: '+141.41', verdict: 'лучше' },
+      { key: 'margin', unit: 'pp', value: '34.5', delta: '-2.7', verdict: 'хуже' },
+      { key: 'net', unit: 'eur', value: '2424.24', delta: '+151.51', verdict: 'лучше' },
+      { key: 'ad_share', unit: 'pp', value: '25.6', delta: '+1.9', verdict: 'хуже' },
+    ],
+  },
 }

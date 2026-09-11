@@ -1048,6 +1048,46 @@ button.primary:active:not(:disabled) {
   line-height: var(--lineHeightBase200);
 }
 
+/* ——— Полоса показателей ——— */
+
+/*
+ * Четыре показателя в ряд (кусок S11, шаг 7), на узком экране — по два. Значение набрано Subtitle 2
+ * (16 / 22, 600) — наш выбор роли: крупных чисел на экране по-прежнему три, в «Итоге», а вес полосы
+ * на «Главном» решается на шаге вкладок по снимку. Строка дельты — мелко; смысл в ней несут знак и
+ * слово, цвет по смыслу ждёт решения владельца.
+ */
+.kpi-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacingVerticalM) var(--spacingHorizontalL);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacingVerticalXS);
+}
+
+.kpi-label {
+  color: var(--colorNeutralForeground2);
+}
+
+.kpi-value {
+  font-size: var(--fontSizeBase400);
+  line-height: var(--lineHeightBase400);
+  font-weight: var(--fontWeightSemibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-delta {
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
 /* ——— Доли статей затрат ——— */
 
 /*
@@ -1466,6 +1506,11 @@ button.primary:active:not(:disabled) {
   .bottom-line dd {
     font-size: var(--fontSizeBase600);
     line-height: var(--lineHeightBase600);
+  }
+
+  /* Полоса показателей на узком экране — по две карточки в ряд. */
+  .kpi-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   /*

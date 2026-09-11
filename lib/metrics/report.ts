@@ -5,6 +5,7 @@ import { resolveIngestTarget, type ProductionConnection } from '../ingest/target
 import {
   ALL_MONTHS,
   MONTH_DAILY,
+  MONTH_DELTAS,
   MONTH_GAPS,
   MONTH_ITEMS,
   MONTH_ITEMS_EXTRA,
@@ -254,6 +255,23 @@ export type MonthReport = {
    * рисуется (прежние раскладки о нём не знают, как и об `устарели`).
    */
   sourcesReadAt?: string | null
+  /**
+   * Полоса показателей — кусок S11, шаг 7: четыре показателя и дельты к предыдущему календарному
+   * месяцу, готовыми строками из SQL (`MONTH_DELTAS`). Дельта — со знаком; `verdict` — «лучше»,
+   * «хуже», «без изменений» по признаку «рост — это хорошо» из слоя счёта. `hasBase` ложно — у
+   * прошлого месяца нет заказов, и дельты пусты у всех разом; значения стоят всегда.
+   */
+  kpis?: {
+    prevMonth: string | null
+    hasBase: boolean
+    items: Array<{
+      key: string
+      unit: 'eur' | 'pp'
+      value: Maybe
+      delta: Maybe
+      verdict: string | null
+    }>
+  }
 }
 
 /**
@@ -394,6 +412,7 @@ export async function monthlyReport(
     const dailyResult = await client.query(MONTH_DAILY, [dayParam])
     const paybackResult = await client.query(MONTH_PAYBACK, [dayParam])
     const itemsExtraResult = await client.query(MONTH_ITEMS_EXTRA, [dayParam])
+    const deltasResult = await client.query(MONTH_DELTAS, [dayParam])
     // Новые колонки строки — по артикулу; слой метрик их не считает, а только прикладывает.
     const itemsExtra = new Map(itemsExtraResult.rows.map((row) => [row.sku as string, row]))
     const itemsFirst = itemsExtraResult.rows[0]
@@ -453,6 +472,17 @@ export async function monthlyReport(
       gaps,
       устарели: stale,
       sourcesReadAt,
+      kpis: {
+        prevMonth: (deltasResult.rows[0]?.prev_month ?? null) as string | null,
+        hasBase: deltasResult.rows[0]?.has_base === true,
+        items: deltasResult.rows.map((row) => ({
+          key: row.key as string,
+          unit: row.unit as 'eur' | 'pp',
+          value: row.value as string | null,
+          delta: row.delta as string | null,
+          verdict: row.verdict as string | null,
+        })),
+      },
       waterfall: {
         steps: waterfallResult.rows.map((row) => ({
           key: row.key as string,

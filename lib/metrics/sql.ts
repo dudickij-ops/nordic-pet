@@ -762,3 +762,89 @@ select (
    where f.raw_seen_at > to_timestamp(0)
 ) as read_at
 `
+
+/**
+ * Полоса показателей — кусок S11, шаг 7 (задача 1): четыре показателя месяца и их дельты к
+ * предыдущему **календарному** месяцу (решение владельца по развилке 7). Прибыль и чистая выручка —
+ * в евро, маржа и доля рекламы — в процентных пунктах: дельта процентной величины — это разность
+ * пунктов, а не процент от прошлой.
+ *
+ * **Своих выражений денег здесь нет.** Значения — колонки готовой строки итогов (`cur_row`), та же
+ * прибыль и та же маржа, что в «Итоге»; прошлый месяц — такая же строка (`prev_row`). Дельта —
+ * разность **показанных** значений, уже округлённых: напечатанная дельта ровно равна разнице двух
+ * чисел, которые человек увидит на двух месяцах. Доля рекламы — реклама ÷ оборот × 100, то же
+ * выражение, что у доли ступени рекламы в водопаде; равенство утверждает проверка.
+ *
+ * **Пустое — пустое, а не ноль.** Нет предыдущего месяца или в нём нет заказов (`prev_state`) —
+ * дельты пусты у всех четырёх разом, значения при этом стоят. Оборот ноль — доля рекламы пуста. В
+ * прошлом месяце нет ни одной строки рекламы — пуста дельта доли рекламы (контракт, правило «нет
+ * данных — словами»): отсутствие выгрузки — это «данных нет», а не «реклама стоила ноль».
+ *
+ * Признак «рост — это хорошо» заведён здесь, у числа: прибыль, маржа, выручка — да, доля рекламы —
+ * нет. Отсюда и вывод `verdict` — «лучше», «хуже», «без изменений»; разметка знак с нулём не
+ * сравнивает. Знак плюс у дельты ставится здесь же: разметка его не выводит.
+ *
+ * Переход между «нет базы» и «есть база» — от данных и только от них: появился прошлый месяц с
+ * заказами — дельты считаются, исчез — снова пусто. Ни флага, ни настройки.
+ */
+export const DELTAS_FROM_ROWS = `
+kpi as (
+  select k.ord, k.key, k.unit, k.good_when_up, k.value, k.cur, k.prev,
+         s.month as prev_month, s.has_orders
+    from cur_row c
+   cross join prev_row p
+   cross join prev_state s
+   cross join lateral (values
+     (1, 'profit',   'eur', true,  c.profit,     c.profit::numeric,     p.profit::numeric),
+     (2, 'margin',   'pp',  true,  c.margin_pct, c.margin_pct::numeric, p.margin_pct::numeric),
+     (3, 'net',      'eur', true,  c.net,        c.net::numeric,        p.net::numeric),
+     (4, 'ad_share', 'pp',  false,
+         round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1)::text,
+         round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1),
+         case when s.has_ads then round(p.ads::numeric / nullif(p.gross::numeric, 0) * 100, 1) end)
+   ) as k(ord, key, unit, good_when_up, value, cur, prev)
+),
+diff as (
+  select k.*, case when k.has_orders then k.cur - k.prev end as d
+    from kpi k
+)
+select key, unit, good_when_up, value,
+       (case when d > 0 then '+' else '' end || d::text) as delta,
+       case when d is null then null
+            when d = 0 then 'без изменений'
+            when (d > 0) = good_when_up then 'лучше'
+            else 'хуже'
+       end                                                as verdict,
+       prev_month,
+       has_orders                                         as has_base
+  from diff
+ order by ord
+`
+
+/**
+ * Итоги предыдущего календарного месяца — **тот же текст `MONTH_TOTALS`**, у которого граница
+ * месяца сдвинута на месяц назад. Параметр месяца в нём стоит ровно дважды, оба раза как
+ * `$1::date` в границах месяца, и замена трогает только их. Равенство этих итогов итогам
+ * `MONTH_TOTALS`, спрошенным за прошлый месяц напрямую, утверждает проверка — на фактах, где оба
+ * месяца не пусты. Второго выражения итогов нет: сам текст `MONTH_TOTALS` не тронут.
+ */
+export const PREVIOUS_MONTH_TOTALS = MONTH_TOTALS.replaceAll('$1::date', "($1::date - interval '1 month')::date")
+
+/**
+ * Боевой запрос полосы. Есть ли у прошлого месяца заказы — по тому же определению, что у
+ * переключателя месяцев (`ALL_MONTHS`, `has_orders`), второго определения нет. Есть ли у него
+ * реклама — хоть одна строка `fact.ads` в его границах.
+ */
+export const MONTH_DELTAS = `
+with cur_row as (${MONTH_TOTALS}),
+prev_row as (${PREVIOUS_MONTH_TOTALS}),
+prev_state as (
+  select to_char($1::date - interval '1 month', 'YYYY-MM') as month,
+         exists(select 1 from (${ALL_MONTHS}) m
+                 where m.month = to_char($1::date - interval '1 month', 'YYYY-MM')
+                   and m.has_orders)                                   as has_orders,
+         exists(select 1 from fact.ads a
+                 where a.date >= ($1::date - interval '1 month')::date
+                   and a.date < $1::date)                              as has_ads
+),
+${DELTAS_FROM_ROWS}`
