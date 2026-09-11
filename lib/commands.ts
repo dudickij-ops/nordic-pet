@@ -187,4 +187,5 @@ export const DATABASE_COMMANDS: DatabaseCommand[] = withRealCalls(COMMAND_FIXTUR
 export const NOT_A_COMMAND: Record<string, string> = {
   'scripts/db-reset.ts': 'пересоздание местной базы, а не команда дашборда: в бой не ходит',
   'scripts/run-breaks.ts': 'инструмент разработчика: правит файлы в рабочем дереве',
+  'scripts/prose-numbers.ts': 'инструмент сдачи: сверяет числа прозы отчёта и заявки с источниками, в базу не ходит',
 }
