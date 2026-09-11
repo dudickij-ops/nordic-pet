@@ -1255,6 +1255,12 @@ export const BREAKS: Break[] = [
     id: 'roas-as-percent',
     claim: 'печатать окупаемость по обороту форматом процента',
     mustRedden: 'экран / окупаемость печатается отношением, а не процентами',
+    alsoRedden: [
+      { name: 'экран / экран печатает поля отчёта, а не свои числа', why: 'она ждёт окупаемость «1,23 ×»' },
+      { name: ПЕРЕПИСЬ, why: 'в списке «Денег» окупаемость по обороту — «4,23 ×»' },
+      { name: 'окупаемость по обороту стоит в блоке всегда, а три числа шага 3 — только при своём поле', why: 'она ждёт окупаемость по обороту знаком «×»' },
+      ...генПолный(),
+    ],
     file: 'app/page.tsx',
     find: '          <dd className="payback-main">{ratio(report.bottom.roasByGross)}</dd>',
     replace: '          <dd className="payback-main">{percent(report.bottom.roasByGross)}</dd>',
@@ -1278,6 +1284,10 @@ export const BREAKS: Break[] = [
     id: 'no-price-line-dropped',
     claim: 'снять строку «Без цены поставщика»',
     mustRedden: 'экран называет товары без цены поставщика',
+    alsoRedden: [
+      { name: ПЕРЕПИСЬ, why: 'в списке «Качества данных» есть строка «Без цены поставщика»' },
+      ...генПолный(),
+    ],
     file: 'app/page.tsx',
     find: "          <p>Без цены поставщика (запасные 40%): {report.honesty.skusWithoutPrice.join(', ')}</p>\n",
     // Пустой фрагмент, а не пустота: без строки остаются пустые скобки условия, и файл проверок
