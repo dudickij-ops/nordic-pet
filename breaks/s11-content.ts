@@ -993,6 +993,12 @@ export const BREAKS: Break[] = [
     id: 'deltas-ad-share-zero',
     claim: 'отдать ноль вместо пустоты у доли рекламы, когда оборот ноль',
     mustRedden: 'оборот ноль — доля рекламы пустая',
+    alsoRedden: [
+      {
+        name: 'отчёт несёт полосу показателей: значения — те же, что в итогах и в водопаде',
+        why: 'в этот момент прогона у марта в местной базе нет фактов, оборот ноль: доля ступени рекламы пуста, а доля полосы под сломом — ноль',
+      },
+    ],
     file: 'lib/metrics/sql.ts',
     find: '         round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1)::text,',
     replace: '         coalesce(round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1), 0)::text,',
