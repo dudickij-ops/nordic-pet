@@ -1124,7 +1124,7 @@ export const BREAKS: Break[] = [
     file: 'app/globals.css',
     find: '  color: var(--colorPaletteRedForeground3);\n}',
     replace:
-      '  color: var(--colorPaletteRedForeground3);\n  background: var(--danger-soft);\n  border: var(--strokeWidthThin) solid var(--danger-line);\n}',
+      '  color: var(--colorPaletteRedForeground3);\n  background: var(--colorNeutralBackground4);\n  border: var(--strokeWidthThin) solid var(--colorNeutralStroke1);\n}',
     tests: 'все',
   },
   {
