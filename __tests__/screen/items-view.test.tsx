@@ -15,7 +15,7 @@ import { ПЕРЕПИСЬ } from './fixture.ts'
  */
 
 function сОтчётом(правка: Partial<MonthReport>): string {
-  return renderToStaticMarkup(<Dashboard report={{ ...ПЕРЕПИСЬ, ...правка }} />)
+  return renderToStaticMarkup(<Dashboard report={{ ...ПЕРЕПИСЬ, ...правка }} tab="tovary" />)
 }
 
 function блок(разметка: string): string {

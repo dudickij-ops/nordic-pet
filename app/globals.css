@@ -90,6 +90,7 @@
   --colorBrandStroke2: #b4d6fa;
   --colorNeutralBackground6: #e6e6e6;
   --colorCompoundBrandBackground: #0f6cbd;
+  --colorCompoundBrandStroke: #0f6cbd;
 
   /*
    * Обводка фокуса: чёрная в светлой теме, белая в тёмной. **Наш счёт:** к холсту и к карточке —
@@ -145,6 +146,7 @@
   --borderRadiusCircular: 10000px;
   --strokeWidthThin: 1px;
   --strokeWidthThick: 2px;
+  --strokeWidthThicker: 3px;
   --spacingHorizontalXS: 4px;
   --spacingHorizontalS: 8px;
   --spacingHorizontalM: 12px;
@@ -253,6 +255,7 @@
     --colorBrandStroke2: #0e4775;
     --colorNeutralBackground6: #333333;
     --colorCompoundBrandBackground: #479ef5;
+    --colorCompoundBrandStroke: #479ef5;
 
     --colorStrokeFocus2: #ffffff;
 
@@ -1066,6 +1069,81 @@ button.primary:active:not(:disabled) {
   line-height: var(--lineHeightBase200);
 }
 
+/* ——— Полоса вкладок ——— */
+
+/*
+ * Рецепт вкладки Fluent 2 — `react-tabs/library/src/components/Tab/useTabStyles.styles.ts` на коммите
+ * выписки `43665d5`: средний размер, горизонтально, вид `transparent`. Сверка по каждому свойству
+ * блоков — `docs/сверка/рецепты-fluent.md`, раздел 8. Признаков текущей вкладки три, и цвет среди них
+ * не единственный: `aria-current` в разметке, полоса-указатель под текстом, полужирное начертание.
+ *
+ * Отступ ссылки по горизонтали — `spacingHorizontalM` (12): у Fluent это `spacingHorizontalMNudge` (10)
+ * у кнопки плюс `spacingHorizontalXXS` (2) у текста — **совпало по действию**: текст отстоит от края на
+ * те же 12, на которые отстоит указатель. Двух величин с `Nudge` в выписке нет.
+ */
+.tabs {
+  margin: 0 0 var(--gap);
+}
+
+.tabs ul {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tabs a {
+  position: relative;
+  display: inline-block;
+  padding: var(--spacingVerticalM) var(--spacingHorizontalM);
+  border-radius: var(--borderRadiusMedium);
+  color: var(--colorNeutralForeground2);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
+  font-weight: var(--fontWeightRegular);
+  text-decoration: none;
+}
+
+.tabs a[aria-current='page'] {
+  color: var(--colorNeutralForeground1);
+  font-weight: var(--fontWeightSemibold);
+}
+
+.tabs a[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: var(--spacingHorizontalM);
+  right: var(--spacingHorizontalM);
+  height: var(--strokeWidthThicker);
+  border-radius: var(--borderRadiusCircular);
+  background: var(--colorCompoundBrandStroke);
+}
+
+/* ——— «Деньги»: «Выручка» и «Затраты» рядом ——— */
+
+/*
+ * Решение по макету, задача В-5: на широком экране два раздела стоят рядом, без обёртки разделов. На
+ * узком экране — одна под другой (ниже, в медиазапросе). Раскладку сторожат только снимки — проверки у
+ * неё нет.
+ *
+ * **Строчными блоками, а не сеткой у родителя — и это найдено снимком.** Первая редакция делала `main`
+ * сеткой. Сетка открывает свой блочный поток, а такой блок не заходит под плавающую кнопку «Обновить
+ * данные» и сжимается рядом с ней: на черновике все разделы всех вкладок стали уже на ширину кнопки.
+ * Строчный блок ширину родителя не меняет. Цена — высота: карточки рядом не выравниваются по высоте.
+ */
+.report > .revenue,
+.report > .costs {
+  display: inline-block;
+  width: calc((100% - var(--gap)) / 2);
+  vertical-align: top;
+}
+
+.report > .revenue {
+  margin-right: var(--gap);
+}
+
 /* ——— Полоса показателей ——— */
 
 /*
@@ -1172,6 +1250,17 @@ button.primary:active:not(:disabled) {
 
 /* ——— Окупаемость рекламы ——— */
 
+/*
+ * Окупаемость по обороту — крупным числом рядом с порогом, с которым её сравнивают (решение владельца
+ * по В7). Title 2 (28 / 36, 600), как числа «Итога»: на вкладке «Деньги» крупных чисел три — прибыль,
+ * маржа и она.
+ */
+.payback-main {
+  font-size: var(--fontSizeHero700);
+  line-height: var(--lineHeightHero700);
+  font-weight: var(--fontWeightSemibold);
+}
+
 /* База окупаемости по прибыли — под числом, в той же ячейке: мелко и приглушённо, строкой ниже. */
 .payback-why {
   display: block;
@@ -1180,6 +1269,11 @@ button.primary:active:not(:disabled) {
   font-size: var(--fontSizeBase200);
   line-height: var(--lineHeightBase200);
   font-weight: var(--fontWeightRegular);
+  /*
+   * Фраза — текст, а не значение: запрет переноса у `dd` к ней не относится. Найдено снимком шага
+   * вкладок: в ряду из четырёх чисел фраза без переноса уезжала за край карточки.
+   */
+  white-space: normal;
 }
 
 /* Строка об определениях — пояснение к числам, а не число: мелко и приглушённо, как у водопада. */
@@ -1551,9 +1645,18 @@ button.primary:active:not(:disabled) {
     line-height: var(--lineHeightBase300);
   }
 
-  .bottom-line dd {
+  .bottom-line dd,
+  .payback-main {
     font-size: var(--fontSizeBase600);
     line-height: var(--lineHeightBase600);
+  }
+
+  /* «Выручка» и «Затраты» на узком экране — одна под другой. */
+  .report > .revenue,
+  .report > .costs {
+    display: block;
+    width: auto;
+    margin-right: 0;
   }
 
   /* Полоса показателей на узком экране — по две карточки в ряд. */

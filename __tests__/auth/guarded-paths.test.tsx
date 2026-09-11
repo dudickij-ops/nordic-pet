@@ -78,7 +78,7 @@ test('страница отчёта уводит на вход, а не рису
 test('страница отчёта с годной cookie печатает числа', async () => {
   cookieЗапроса = начеканить(Date.now(), СЕКРЕТ).value
 
-  const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }))
+  const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({ tab: 'tovary' }) }))
 
   expect(html).toContain('NP-СТОРОЖ')
   expect(html).toContain('100,00')

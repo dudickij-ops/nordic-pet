@@ -15,7 +15,7 @@ import { ПЕРЕПИСЬ } from './fixture.ts'
 type Водопад = NonNullable<MonthReport['waterfall']>
 
 function сВодопадом(водопад: Водопад | undefined): string {
-  return renderToStaticMarkup(<Dashboard report={{ ...ПЕРЕПИСЬ, waterfall: водопад }} />)
+  return renderToStaticMarkup(<Dashboard report={{ ...ПЕРЕПИСЬ, waterfall: водопад }} tab="dengi" />)
 }
 
 /** Кусок разметки блока «Затраты». */

@@ -139,6 +139,9 @@ const ЦВЕТА: Record<string, [string, string]> = {
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:128 `brand[80]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:128 `brand[100]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:13 brandWeb[100]
   colorCompoundBrandBackground: ['#0f6cbd', '#479ef5'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:171 `brand[80]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:171 `brand[100]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:13 brandWeb[100]
+  colorCompoundBrandStroke: ['#0f6cbd', '#479ef5'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:183 `black` → packages/tokens/src/global/colors.ts:126 black
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:183 `white` → packages/tokens/src/global/colors.ts:124 white
   colorStrokeFocus2: ['#000000', '#ffffff'],
@@ -204,6 +207,8 @@ const ШКАЛЫ: Record<string, string> = {
   strokeWidthThin: '1px',
   // fluentui@43665d5: packages/tokens/src/global/strokeWidths.ts:5 strokeWidthThick
   strokeWidthThick: '2px',
+  // fluentui@43665d5: packages/tokens/src/global/strokeWidths.ts:6 strokeWidthThicker
+  strokeWidthThicker: '3px',
   // fluentui@43665d5: packages/tokens/src/global/spacings.ts:21 → spacings.xs → packages/tokens/src/global/spacings.ts:7 xs
   spacingHorizontalXS: '4px',
   // fluentui@43665d5: packages/tokens/src/global/spacings.ts:23 → spacings.s → packages/tokens/src/global/spacings.ts:9 s
