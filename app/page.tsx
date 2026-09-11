@@ -110,6 +110,18 @@ const ПОДПИСИ_ПОКАЗАТЕЛЕЙ: Record<string, string> = {
   ad_share: 'Доля рекламы от оборота',
 }
 
+/**
+ * Число со знаком единицы внутри предложения — неразрывно (кусок S11). Общий формат денег ставит перед
+ * знаком обычный пробел — отложенная задача S5, общая починка тронула бы ожидаемые строки принятых
+ * проверок нескольких кусков. Поэтому по отдельности: в ячейках значений перенос запрещён таблицей
+ * стилей, в предложениях этого куска — здесь, заменой пробела перед знаком на неразрывный. Это обход,
+ * а не починка, и он сторожится проверкой «денежное значение внутри предложения не бывает без защиты
+ * от переноса» — решение владельца.
+ */
+function вместе(значение: string): string {
+  return значение.replace(/ ([€%])$/, '\u00A0$1')
+}
+
 type Полоса = NonNullable<MonthReport['kpis']>
 type Показатель = Полоса['items'][number]
 
@@ -130,7 +142,7 @@ function строкаДельты(полоса: Полоса, п: Показат
       : `нет базы: в ${полоса.prevMonth} заказов нет`
   }
   if (п.delta === null) return `к ${полоса.prevMonth}: нет данных`
-  return `${п.unit === 'eur' ? money(п.delta) : points(п.delta)} к ${полоса.prevMonth} · ${п.verdict}`
+  return `${п.unit === 'eur' ? вместе(money(п.delta)) : points(п.delta)} к ${полоса.prevMonth} · ${п.verdict}`
 }
 
 /**
@@ -249,12 +261,12 @@ export function Dashboard({ report, tab = 'glavnoe' }: { report: MonthReport; ta
           */}
           {съедает.length === 1 && (
             <p className="waterfall-largest">
-              {`Съедает больше всего: ${подписьСтроки(съедает[0])} · ${percent(съедает[0].sharePct)} оборота`}
+              {`Съедает больше всего: ${подписьСтроки(съедает[0])} · ${вместе(percent(съедает[0].sharePct))} оборота`}
             </p>
           )}
           {съедает.length > 1 && (
             <p className="waterfall-largest">
-              {`Съедает больше всего поровну: ${съедает.map(подписьСтроки).join(' и ')} · по ${percent(съедает[0].sharePct)} оборота`}
+              {`Съедает больше всего поровну: ${съедает.map(подписьСтроки).join(' и ')} · по ${вместе(percent(съедает[0].sharePct))} оборота`}
             </p>
           )}
           {/*
@@ -307,12 +319,12 @@ export function Dashboard({ report, tab = 'glavnoe' }: { report: MonthReport; ta
           */}
           {typeof report.waterfall.netGap === 'string' && (
             <p className="waterfall-gap">
-              {`Суммы ступеней округлены до цента по отдельности; сложенные, они расходятся с чистой выручкой на ${money(report.waterfall.netGap)}.`}
+              {`Суммы ступеней округлены до цента по отдельности; сложенные, они расходятся с чистой выручкой на ${вместе(money(report.waterfall.netGap))}.`}
             </p>
           )}
           {typeof report.waterfall.profitGap === 'string' && (
             <p className="waterfall-gap">
-              {`Суммы ступеней округлены до цента по отдельности; сложенные, они расходятся с прибылью на ${money(report.waterfall.profitGap)}.`}
+              {`Суммы ступеней округлены до цента по отдельности; сложенные, они расходятся с прибылью на ${вместе(money(report.waterfall.profitGap))}.`}
             </p>
           )}
         </Раздел>
@@ -483,8 +495,8 @@ export function Dashboard({ report, tab = 'glavnoe' }: { report: MonthReport; ta
         {report.itemsSummary !== undefined && (
           <p className="items-summary">
             {report.itemsSummary.skusFor80 !== null
-              ? `80 % прибыли товаров дают ${count(String(report.itemsSummary.skusFor80))} из ${count(String(report.itemsSummary.skusTotal))} артикулов; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Прибыль товаров — выручка минус себестоимость, ${money(report.itemsSummary.productsProfit)}; это не прибыль месяца, ${money(report.bottom.profit)}.`
-              : `Прибыль товаров — выручка минус себестоимость, ${money(report.itemsSummary.productsProfit)} — не положительна: считать 80 % не от чего; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Это не прибыль месяца, ${money(report.bottom.profit)}.`}
+              ? `80\u00A0% прибыли товаров дают ${count(String(report.itemsSummary.skusFor80))} из ${count(String(report.itemsSummary.skusTotal))} артикулов; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Прибыль товаров — выручка минус себестоимость, ${вместе(money(report.itemsSummary.productsProfit))}; это не прибыль месяца, ${вместе(money(report.bottom.profit))}.`
+              : `Прибыль товаров — выручка минус себестоимость, ${вместе(money(report.itemsSummary.productsProfit))} — не положительна: считать 80\u00A0% не от чего; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Это не прибыль месяца, ${вместе(money(report.bottom.profit))}.`}
           </p>
         )}
         <table>
