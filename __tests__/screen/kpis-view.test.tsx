@@ -113,10 +113,21 @@ function правилоДельты(смысл: string): string {
   return правило ?? ''
 }
 
-test('дельта «хуже» — свой красный, а не цвет отказа', () => {
+test('дельта «хуже» — свой токен красного, а не токен отказа', () => {
+  // Верно по имени, и в светлой теме по значению. В тёмной значение совпадает с текстом отказа (#e37d80):
+  // различает их форма — утверждение ниже.
   const правило = правилоДельты('хуже')
-  expect(правило).toContain('color: var(--colorPaletteRedForeground2)')
+  expect(правило).toContain('color: var(--colorPaletteRedForeground3)')
   expect(правило).not.toMatch(/--danger|colorPaletteRedForeground1|colorPaletteRedBorder2|colorPaletteRedBackground1/)
+})
+
+test('дельта — простой текст: без фона и рамки, в отличие от плашки отказа', () => {
+  const стили = readFileSync(join(process.cwd(), 'app', 'globals.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  const правилаДельты = [...стили.matchAll(/([^{}]*\.kpi-delta[^{}]*)\{([^}]*)\}/g)]
+  expect(правилаДельты.length, 'правила строки дельты найдены').toBeGreaterThanOrEqual(3)
+  for (const [, селектор, тело] of правилаДельты) {
+    expect(тело, `правило «${селектор.trim()}»`).not.toMatch(/background|border|outline|box-shadow/)
+  }
 })
 
 test('дельта «лучше» — зелёный', () => {

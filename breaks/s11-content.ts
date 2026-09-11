@@ -1084,7 +1084,8 @@ export const BREAKS: Break[] = [
   },
 
   // Ж4 — цвет дельты, решение владельца (вариант Б, 11 сентября 2026 года): «лучше» — зелёный, и
-  // зелёный живёт только в строке дельты полосы; «хуже» — свой красный, не токен отказа.
+  // зелёный живёт только в строке дельты полосы; «хуже» — свой токен красного (Ж5), не токен отказа; в
+  // тёмной теме его значение совпадает с текстом отказа, и роли различает форма — дельта без плашки.
   {
     id: 'green-second-place',
     claim: 'поставить зелёный во второе место на экране',
@@ -1110,10 +1111,20 @@ export const BREAKS: Break[] = [
   {
     id: 'worse-refusal-token',
     claim: 'взять для дельты «хуже» цвет отказа',
-    mustRedden: 'дельта «хуже» — свой красный, а не цвет отказа',
+    mustRedden: 'дельта «хуже» — свой токен красного, а не токен отказа',
     file: 'app/globals.css',
-    find: '  color: var(--colorPaletteRedForeground2);\n}',
+    find: '  color: var(--colorPaletteRedForeground3);\n}',
     replace: '  color: var(--danger);\n}',
+    tests: 'все',
+  },
+  {
+    id: 'worse-as-plaque',
+    claim: 'оформить дельту «хуже» плашкой с фоном и рамкой, как отказ',
+    mustRedden: 'дельта — простой текст: без фона и рамки, в отличие от плашки отказа',
+    file: 'app/globals.css',
+    find: '  color: var(--colorPaletteRedForeground3);\n}',
+    replace:
+      '  color: var(--colorPaletteRedForeground3);\n  background: var(--danger-soft);\n  border: var(--strokeWidthThin) solid var(--danger-line);\n}',
     tests: 'все',
   },
   {

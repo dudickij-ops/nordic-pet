@@ -154,9 +154,9 @@ const ЦВЕТА: Record<string, [string, string]> = {
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:17 формула Foreground1 → .shade10 → packages/tokens/src/global/colors.ts:194 red.shade10
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:19 формула Foreground1 → .tint30 → packages/tokens/src/global/colors.ts:198 red.tint30
   colorPaletteRedForeground1: ['#bc2f32', '#e37d80'],
-  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:18 формула Foreground2 → .shade30 → packages/tokens/src/global/colors.ts:192 red.shade30
-  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:20 формула Foreground2 → .tint40 → packages/tokens/src/global/colors.ts:199 red.tint40
-  colorPaletteRedForeground2: ['#751d1f', '#f1bbbc'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:19 формула Foreground3 → .primary → packages/tokens/src/global/colors.ts:195 red.primary
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:31 заплатка red.tint30 → packages/tokens/src/global/colors.ts:198 red.tint30
+  colorPaletteRedForeground3: ['#d13438', '#e37d80'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:17 формула Foreground1 → .shade10 → packages/tokens/src/global/colors.ts:434 green.shade10
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:19 формула Foreground1 → .tint30 → packages/tokens/src/global/colors.ts:438 green.tint30
   colorPaletteGreenForeground1: ['#0e700e', '#54b054'],
