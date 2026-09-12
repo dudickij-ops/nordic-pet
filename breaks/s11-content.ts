@@ -720,8 +720,8 @@ export const BREAKS: Break[] = [
     claim: "считать строку с прибылью ровно ноль убыточной",
     mustRedden: "в минусе — прибыль строго меньше нуля, и счётчик берёт тот же признак",
     file: "lib/metrics/sql.ts",
-    find: "       k.profit < 0                                                          as loss,",
-    replace: "       k.profit <= 0                                                         as loss,",
+    find: "         r.profit::numeric < 0 as loss,",
+    replace: "         r.profit::numeric <= 0 as loss,",
     tests: "все",
   },
   {
@@ -729,8 +729,8 @@ export const BREAKS: Break[] = [
     claim: "завести счётчику «в минусе» своё условие, отдельное от признака строки",
     mustRedden: "в минусе — прибыль строго меньше нуля, и счётчик берёт тот же признак",
     file: "lib/metrics/sql.ts",
-    find: "(count(*) filter (where k.profit < 0) over ())::int",
-    replace: "(count(*) filter (where k.profit <= 0) over ())::int",
+    find: "(count(*) filter (where k.loss) over ())::int",
+    replace: "(count(*) filter (where k.profit < 0) over ())::int",
     tests: "все",
   },
   {
@@ -1083,9 +1083,36 @@ export const BREAKS: Break[] = [
       },
     ],
     file: 'lib/metrics/sql.ts',
-    find: '         round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1)::text,',
-    replace: '         coalesce(round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1), 0)::text,',
+    find: '         case when cs.has_ads then round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1) end::text,',
+    replace: '         coalesce(case when cs.has_ads then round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1) end, 0)::text,',
     tests: 'все',
+  },
+  {
+    id: 'deltas-cur-no-ads-zero',
+    claim: 'считать долю рекламы текущего месяца нулём, когда строк рекламы за него нет',
+    mustRedden: 'у текущего месяца нет ни одной строки рекламы — доля рекламы пустая, а не ноль',
+    file: 'lib/metrics/sql.ts',
+    find: '         case when cs.has_ads then round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1) end::text,',
+    replace: '         round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1)::text,',
+    alsoRedden: [
+      {
+        name: 'в месяце нет строк рекламы — боевой запрос отдаёт долю рекламы пустой',
+        why: 'та же правка на боевом запросе: подставки в ней нет, и ноль вместо пустоты виден обеими проверками',
+      },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'payback-why-wrap-guard-off',
+    claim: 'снять у пояснения окупаемости возврат переноса, вернув ему защиту родителя',
+    mustRedden: 'возврат переноса в таблице стилей перечислен в списке снятой защиты',
+    file: 'app/globals.css',
+    find:
+      '   * вкладок: в ряду из четырёх чисел фраза без переноса уезжала за край карточки.\n' +
+      '   */\n' +
+      '  white-space: normal;\n',
+    replace: '   * вкладок: в ряду из четырёх чисел фраза без переноса уезжала за край карточки.\n   */\n',
+    tests: '__tests__/screen/no-break-units.test.tsx',
   },
   {
     id: 'deltas-prev-no-ads-zero',

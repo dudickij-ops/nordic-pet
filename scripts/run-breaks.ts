@@ -153,6 +153,13 @@ function applyBreak(one: Break): BreakVerdict | null {
 
 const results: BreakResult[] = []
 
+/** Местное время «ЧЧ:ММ:СС» — для строк начала и конца прогона. */
+function время(): string {
+  return new Date().toTimeString().slice(0, 8)
+}
+
+const началоПрогона = время()
+
 requireCleanTree()
 
 let catalogue: string[] = []
@@ -256,7 +263,11 @@ const mark: Record<BreakVerdict, string> = {
   'ломает больше обещанного': '**ломает больше, чем объявлено**',
 }
 
+// Время начала и конца печатает сам прибор — правило владельца после куска S11: прогон, переживший
+// сон машины, недействителен целиком, и отличить его от настоящего можно только по времени. Разрыв
+// обязан быть виден в выводе, а не в догадке задним числом.
 console.log(`# Прогон сломов: ${list}\n`)
+console.log(`Начало ${началоПрогона}, конец ${время()}.\n`)
 console.log('| № | Что ломаем | Что обязано покраснеть | Итог |')
 console.log('|---|---|---|---|')
 results.forEach((result, index) => {

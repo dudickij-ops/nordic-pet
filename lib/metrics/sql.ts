@@ -717,6 +717,7 @@ base as (
 ),
 ranked as (
   select r.sku, r.net::numeric as net, r.profit::numeric as profit,
+         r.profit::numeric < 0 as loss,
          sum(r.profit::numeric) over (order by r.profit::numeric desc, r.sku
                                       rows between unbounded preceding and 1 preceding) as before
     from items_row r
@@ -725,13 +726,13 @@ select k.sku,
        round(k.profit / nullif(k.net, 0) * 100, 1)::text                     as margin_pct,
        (case when b.total > 0 then round(k.profit / b.total * 100, 1) end)::text
                                                                              as profit_share_pct,
-       k.profit < 0                                                          as loss,
+       k.loss                                                                as loss,
        b.total::text                                                         as products_profit,
        b.skus::int                                                           as skus_total,
        (case when b.total > 0
              then count(*) filter (where coalesce(k.before, 0) < 0.8 * b.total) over () end)::int
                                                                              as skus_for_80,
-       (count(*) filter (where k.profit < 0) over ())::int                   as negative_count
+       (count(*) filter (where k.loss) over ())::int                         as negative_count
   from ranked k
  cross join base b
 `
@@ -780,6 +781,14 @@ select (
  * прошлом месяце нет ни одной строки рекламы — пуста дельта доли рекламы (контракт, правило «нет
  * данных — словами»): отсутствие выгрузки — это «данных нет», а не «реклама стоила ноль».
  *
+ * **То же правило — и для текущего месяца (`cur_state`), и это правка круга проверки кода 1.**
+ * Прежде месяц, для которого файлы рекламы ещё не загружены, показывал долю рекламы 0,0 % и дельту к
+ * прошлому месяцу — то есть ноль вместо «нет данных», да ещё с вердиктом «лучше». Теперь нет ни одной
+ * строки рекламы в границах месяца — доля рекламы пуста и дельта пуста; прочие три показателя стоят.
+ * **Чего эта правка не чинит:** сами итоги месяца (`MONTH_TOTALS`, кусок S5) считают рекламу без
+ * выгрузки нулём, и прибыль такого месяца завышена. Это дефект счёта прежнего куска; он назван в
+ * `docs/ОТЧЁТ.md`, «Где не уверен».
+ *
  * Признак «рост — это хорошо» заведён здесь, у числа: прибыль, маржа, выручка — да, доля рекламы —
  * нет. Отсюда и вывод `verdict` — «лучше», «хуже», «без изменений»; разметка знак с нулём не
  * сравнивает. Знак плюс у дельты ставится здесь же: разметка его не выводит.
@@ -794,13 +803,14 @@ kpi as (
     from cur_row c
    cross join prev_row p
    cross join prev_state s
+   cross join cur_state cs
    cross join lateral (values
      (1, 'profit',   'eur', true,  c.profit,     c.profit::numeric,     p.profit::numeric),
      (2, 'margin',   'pp',  true,  c.margin_pct, c.margin_pct::numeric, p.margin_pct::numeric),
      (3, 'net',      'eur', true,  c.net,        c.net::numeric,        p.net::numeric),
      (4, 'ad_share', 'pp',  false,
-         round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1)::text,
-         round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1),
+         case when cs.has_ads then round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1) end::text,
+         case when cs.has_ads then round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1) end,
          case when s.has_ads then round(p.ads::numeric / nullif(p.gross::numeric, 0) * 100, 1) end)
    ) as k(ord, key, unit, good_when_up, value, cur, prev)
 ),
@@ -832,12 +842,18 @@ export const PREVIOUS_MONTH_TOTALS = MONTH_TOTALS.replaceAll('$1::date', "($1::d
 
 /**
  * Боевой запрос полосы. Есть ли у прошлого месяца заказы — по тому же определению, что у
- * переключателя месяцев (`ALL_MONTHS`, `has_orders`), второго определения нет. Есть ли у него
- * реклама — хоть одна строка `fact.ads` в его границах.
+ * переключателя месяцев (`ALL_MONTHS`, `has_orders`), второго определения нет. Есть ли реклама —
+ * хоть одна строка `fact.ads` в границах месяца; спрашивается это об обоих месяцах, одним и тем же
+ * выражением, сдвинутым на месяц: у прошлого — `prev_state`, у текущего — `cur_state`.
  */
 export const MONTH_DELTAS = `
 with cur_row as (${MONTH_TOTALS}),
 prev_row as (${PREVIOUS_MONTH_TOTALS}),
+cur_state as (
+  select exists(select 1 from fact.ads a
+                 where a.date >= date_trunc('month', $1::date)
+                   and a.date < (date_trunc('month', $1::date) + interval '1 month'))  as has_ads
+),
 prev_state as (
   select to_char($1::date - interval '1 month', 'YYYY-MM') as month,
          exists(select 1 from (${ALL_MONTHS}) m

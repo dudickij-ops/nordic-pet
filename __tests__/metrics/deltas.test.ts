@@ -25,7 +25,7 @@ const pool = new Pool({ connectionString: projectDatabaseUrl() })
 afterAll(() => pool.end())
 
 type Итоги = { gross: string; net: string; ads: string; profit: string; margin_pct: string | null }
-type Состояние = { month: string | null; has_orders: boolean; has_ads: boolean }
+type Состояние = { month: string | null; has_orders: boolean; has_ads: boolean; has_ads_cur: boolean }
 type Показатель = {
   key: string
   unit: string
@@ -48,6 +48,7 @@ async function показатели(текущий: Итоги, прошлый: 
           prev_row as (${строкаИтогов(прошлый)}),
           prev_state as (select ${состояние.month === null ? 'null::text' : `'${состояние.month}'::text`} as month,
                                 ${состояние.has_orders} as has_orders, ${состояние.has_ads} as has_ads),
+          cur_state as (select ${состояние.has_ads_cur} as has_ads),
      ${DELTAS_FROM_ROWS}`,
   )
   return Object.fromEntries((rows as Показатель[]).map((п) => [п.key, п]))
@@ -56,7 +57,7 @@ async function показатели(текущий: Итоги, прошлый: 
 /** Март и февраль, выдуманные: числа неудобны, и ни одно не выводится из соседей. */
 const МАРТ: Итоги = { gross: '1000.00', net: '800.00', ads: '250.00', profit: '120.00', margin_pct: '12.3' }
 const ФЕВРАЛЬ: Итоги = { gross: '640.00', net: '500.00', ads: '96.00', profit: '100.50', margin_pct: '10.1' }
-const ЕСТЬ_БАЗА: Состояние = { month: '2026-02', has_orders: true, has_ads: true }
+const ЕСТЬ_БАЗА: Состояние = { month: '2026-02', has_orders: true, has_ads: true, has_ads_cur: true }
 
 describe('полоса показателей: счёт дельт', () => {
   test('четыре показателя в названном порядке, значения — готовые колонки итогов', async () => {
@@ -111,6 +112,7 @@ describe('полоса показателей: счёт дельт', () => {
       month: '2026-02',
       has_orders: false,
       has_ads: false,
+      has_ads_cur: true,
     })
     expect(Object.values(п).map((к) => [к.delta, к.verdict, к.has_base])).toEqual([
       [null, null, false],
@@ -127,6 +129,14 @@ describe('полоса показателей: счёт дельт', () => {
     const п = await показатели(МАРТ, { ...ФЕВРАЛЬ, ads: '0.00' }, { ...ЕСТЬ_БАЗА, has_ads: false })
     expect([п.ad_share.delta, п.ad_share.verdict]).toEqual([null, null])
     expect(п.profit.delta).toBe('+19.50')
+  })
+
+  test('у текущего месяца нет ни одной строки рекламы — доля рекламы пустая, а не ноль', async () => {
+    // Круг проверки кода 1. Прежде такой месяц печатал «0,0 %» и настоящую дельту к прошлому: ноль
+    // вместо «нет данных», да ещё с вердиктом «лучше». Прочие три показателя при этом стоят и считаются.
+    const п = await показатели({ ...МАРТ, ads: '0.00' }, ФЕВРАЛЬ, { ...ЕСТЬ_БАЗА, has_ads_cur: false })
+    expect([п.ad_share.value, п.ad_share.delta, п.ad_share.verdict]).toEqual([null, null, null])
+    expect([п.profit.value, п.profit.delta]).toEqual(['120.00', '+19.50'])
   })
 
   test('оборот ноль — доля рекламы пустая', async () => {
@@ -206,6 +216,16 @@ describe('полоса показателей: боевая сборка', () =>
         [null, false, '2026-02'],
         [null, false, '2026-02'],
       ])
+    })
+  })
+
+  test('в месяце нет строк рекламы — боевой запрос отдаёт долю рекламы пустой', async () => {
+    // Та же правка на боевом запросе: `положить` снимает все строки `fact.ads`, то есть это месяц, для
+    // которого выгрузка рекламы ещё не загружена, — путь, который владелец увидит первым в апреле.
+    await вТранзакции([МАРТОВСКИЙ, ФЕВРАЛЬСКИЙ], async (client) => {
+      const п = await дельтыМарта(client)
+      const доля = п.find((к) => к.key === 'ad_share')
+      expect([доля?.value, доля?.delta, доля?.verdict]).toEqual([null, null, null])
     })
   })
 
