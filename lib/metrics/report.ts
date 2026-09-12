@@ -189,7 +189,8 @@ export type MonthReport = {
     steps: Array<{
       key: string
       kind: string
-      amount: Money
+      /** Пусто у ступени «Реклама», когда за месяц нет ни одной строки рекламы: «нет данных», а не ноль. */
+      amount: Maybe
       sharePct: Maybe
       basePct: Maybe
       /** Самое большое вычитание — признак из того же запроса; при равенстве до цента — у всех равных. */
@@ -487,7 +488,7 @@ export async function monthlyReport(
         steps: waterfallResult.rows.map((row) => ({
           key: row.key as string,
           kind: row.kind as string,
-          amount: row.amount as string,
+          amount: row.amount as string | null,
           sharePct: row.share_pct as string | null,
           basePct: row.base_pct as string | null,
           largest: row.largest === true,

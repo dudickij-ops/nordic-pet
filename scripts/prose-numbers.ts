@@ -290,8 +290,8 @@ function numstat(...пути: string[]): Array<{ added: number; removed: number;
   })
 }
 const [sql] = numstat('lib/metrics/sql.ts')
-числа.push({ name: 'строк добавлено в sql.ts', value: String(sql.added), source: 'git diff --numstat origin/main', places: [{ file: ЗАЯВКА, anchor: '`lib/metrics/sql.ts`: ' }] })
-числа.push({ name: 'строк удалено в sql.ts', value: String(sql.removed), source: 'git diff --numstat origin/main', places: [{ file: ЗАЯВКА, anchor: `${sql.added} строки добавлено, ` }] })
+числа.push({ name: 'строк добавлено в sql.ts', value: String(sql.added), source: 'git diff --numstat origin/main HEAD', places: [{ file: ЗАЯВКА, anchor: '`lib/metrics/sql.ts`: ' }] })
+числа.push({ name: 'строк удалено в sql.ts', value: String(sql.removed), source: 'git diff --numstat origin/main HEAD', places: [{ file: ЗАЯВКА, anchor: `${sql.added} строки добавлено, ` }] })
 const проверкиДифф = numstat('__tests__/')
 const правленые = проверкиДифф.filter((f) => f.removed > 0)
 числа.push({ name: 'файлов проверок только с добавленными строками', value: String(проверкиДифф.length - правленые.length), source: 'git diff --numstat origin/main -- __tests__/', places: [{ file: ЗАЯВКА, anchor: 'Дифф `__tests__/` с main: ' }] })
@@ -299,10 +299,49 @@ const правленые = проверкиДифф.filter((f) => f.removed > 0)
 for (const f of правленые) {
   числа.push({ name: `добавлено / удалено: ${f.path}`, value: `${f.added} / ${f.removed}`, source: 'git diff --numstat origin/main', places: [{ file: ЗАЯВКА, anchor: `| \`${f.path}\` | ` }] })
 }
+// ——— Обвязанные проверки: сколько их и у скольких есть свой слом ———
+// Счёт по делу, а не по строкам диффа: одна изменённая строка живёт в помощнике трёх проверок, а две
+// другие — внутри одной. Прежде в отчёте стояло число изменённых строк, названное числом проверок.
+const обвязанные: string[] = []
+for (const f of ['__tests__/metrics/screen.test.tsx', '__tests__/metrics/screen-month.test.tsx', '__tests__/screen/honesty-bar.test.tsx', '__tests__/auth/guarded-paths.test.tsx', '__tests__/screen/census.test.tsx']) {
+  const diff = spawnSync('git', ['diff', '-U0', 'origin/main', 'HEAD', '--', f], { encoding: 'utf8' })
+  if (diff.status !== 0) отказ(`git diff -U0 вернул ${diff.status}: ${diff.stderr}`)
+  const строки = прочесть(f).split('\n')
+  const имена = new Set<string>()
+  let помощник = false
+  for (const кусок of [...diff.stdout.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)]) {
+    const первая = Number(кусок[1])
+    for (let n = первая; n < первая + Number(кусок[2] ?? 1); n++) {
+      const выше = строки.slice(0, n).join('\n')
+      const тесты = [...выше.matchAll(/^\s*test\(\s*['"`](.+?)['"`]/gm)]
+      const закрытых = (выше.match(/^\}\)$/gm) ?? []).length
+      if (тесты.length === 0 || закрытых >= тесты.length) помощник = true
+      else имена.add(тесты[тесты.length - 1][1])
+    }
+  }
+  // Правка в помощнике обвязывает все проверки своего файла: подставить вкладку в одном месте значит
+  // поменять вызов у каждой, кто этим помощником пользуется.
+  if (помощник) for (const m of прочесть(f).matchAll(/^\s*test\(\s*['"`](.+?)['"`]/gm)) имена.add(m[1])
+  обвязанные.push(...имена)
+}
+const сломы: Array<{ mustRedden: string; alsoRedden?: Array<{ name: string }> }> = []
+for (const l of ['s3-drive', 's4-facts', 's5-metrics', 's6-access', 's8-holes', 's9-screen', 's10-fluent', 's11-content']) {
+  const { BREAKS } = (await import(`${process.cwd()}/breaks/${l}.ts`)) as { BREAKS: typeof сломы }
+  сломы.push(...BREAKS)
+}
+const подходит = (имя: string, что: string) => имя.includes(что) || что.includes(имя)
+const своиСломы = обвязанные.filter((имя) => сломы.some((b) => подходит(имя, b.mustRedden)))
+const толькоОбъявление = обвязанные.filter(
+  (имя) => !сломы.some((b) => подходит(имя, b.mustRedden)) && сломы.some((b) => (b.alsoRedden ?? []).some((a) => подходит(имя, a.name))),
+)
+числа.push({ name: 'обвязанных принятых проверок', value: String(обвязанные.length), source: 'git diff -U0 origin/main HEAD по пяти файлам, счёт проверок', places: [{ file: ОТЧЁТ, anchor: '| Обвязка принятых проверок | ' }, { file: ЗАЯВКА, anchor: 'Обвязано принятых проверок — ' }] })
+числа.push({ name: 'из них доказаны своим сломом', value: String(своиСломы.length), source: 'breaks/*.ts, поле mustRedden', places: [{ file: ОТЧЁТ, anchor: `${обвязанные.length} проверок. **Доказано сломом ` }, { file: ЗАЯВКА, anchor: `${обвязанные.length}; доказано сломом ` }] })
+числа.push({ name: 'держатся только на объявлении «заодно»', value: String(толькоОбъявление.length), source: 'breaks/*.ts, поле alsoRedden', places: [{ file: ОТЧЁТ, anchor: 'держатся только на объявлении «заодно» — ' }, { file: ЗАЯВКА, anchor: 'на объявлении «заодно» — ' }] })
+
 const [s9, s10] = [numstat('breaks/s9-screen.ts')[0], numstat('breaks/s10-fluent.ts')[0]]
 числа.push({ name: 'строк прежних списков с переведённым именем', value: String(s9.removed + s10.removed), source: 'git diff --numstat origin/main -- breaks/s9-screen.ts breaks/s10-fluent.ts', places: [{ file: ЗАЯВКА, anchor: 'Имя проверки генератора переведено в ' }] })
-числа.push({ name: 'из них в s9-screen', value: String(s9.removed), source: 'git diff --numstat', places: [{ file: ЗАЯВКА, anchor: 'строках прежних списков: ' }] })
-числа.push({ name: 'из них в s10-fluent', value: String(s10.removed), source: 'git diff --numstat', places: [{ file: ЗАЯВКА, anchor: '`breaks/s9-screen.ts`, ' }] })
+числа.push({ name: 'из них в s9-screen', value: String(s9.removed), source: 'git diff --numstat origin/main HEAD', places: [{ file: ЗАЯВКА, anchor: 'строках прежних списков: ' }] })
+числа.push({ name: 'из них в s10-fluent', value: String(s10.removed), source: 'git diff --numstat origin/main HEAD', places: [{ file: ЗАЯВКА, anchor: '`breaks/s9-screen.ts`, ' }] })
 
 // ——— Вывод прогонов и ворот: файл ветки, а не тело заявки ———
 // Прежде эти числа брались из тела заявки, и сверка замыкалась сама на себя. Теперь источник — файл
@@ -317,9 +356,39 @@ if (началоРаздела < 0 || конецРаздела < 0) отказ(`
 const прогон = весьПрогон.slice(началоРаздела, конецРаздела)
 const сумма = (re: RegExp) => [...прогон.matchAll(re)].reduce((n, m) => n + Number(m[1]), 0)
 const списков = [...прогон.matchAll(/^Всего сломов: \d+\./gm)].length
-const тесты = весьПрогон.match(/^ +Tests +(\d+) passed \((\d+)\)$/m)
-const файлы = весьПрогон.match(/^ +Test Files +(\d+) passed \((\d+)\)$/m)
+const началоВорот = весьПрогон.indexOf('## Ворота на голове заявки')
+if (началоВорот < 0) отказ(`в ${ПРОГОН} нет раздела «Ворота на голове заявки»`)
+const ворота = весьПрогон.slice(началоВорот)
+const тесты = ворота.match(/^ +Tests +(\d+) passed \((\d+)\)$/m)
+const файлы = ворота.match(/^ +Test Files +(\d+) passed \((\d+)\)$/m)
 if (тесты === null || файлы === null) отказ(`в ${ПРОГОН} нет вывода ворот со сводкой npm test`)
+
+// ——— Голова прогона и ворот — та же, что у заявки ———
+// Обещание «ворота сняты на голове заявки» соврало дважды подряд, поэтому его утверждает команда, а не
+// текст: голова из строк прогона сверяется с нынешней головой, а всё, что менялось после прогона,
+// обязано быть только отчётом и самим файлом прогона — в них исполняемого кода нет.
+const головаПрогона = весьПрогон.match(/^start .* HEAD ([0-9a-f]{40}) porcelain (\d+)$/m)
+if (головаПрогона === null) отказ(`в ${ПРОГОН} нет строки «start … HEAD … porcelain …» — по ней сверяется голова прогона`)
+if (головаПрогона[2] !== '0') отказ(`прогон начат на грязном дереве: porcelain ${головаПрогона[2]}`)
+const голова = spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' })
+if (голова.status !== 0) отказ(`git rev-parse HEAD вернул ${голова.status}`)
+const сейчас = голова.stdout.trim()
+if (сейчас !== головаПрогона[1]) {
+  const после = spawnSync(
+    'git',
+    ['diff', '--name-only', головаПрогона[1], сейчас, '--', '.', `:(exclude)${ПРОГОН}`, `:(exclude)${ОТЧЁТ}`],
+    { encoding: 'utf8' },
+  )
+  if (после.status !== 0) отказ(`git diff --name-only вернул ${после.status}: ${после.stderr}`)
+  const тронуто = после.stdout.trim()
+  if (тронуто !== '') {
+    отказ(
+      `прогон и ворота сняты на ${головаПрогона[1].slice(0, 7)}, а голова — ${сейчас.slice(0, 7)}, и между ними менялось не только ` +
+        `«${ПРОГОН}» и «${ОТЧЁТ}»:\n  ${тронуто.split('\n').join('\n  ')}\nПрогоните ворота и приборы на этой голове.`,
+    )
+  }
+}
+console.log(`Голова прогона и ворот — \`${головаПрогона[1].slice(0, 7)}\`; голова сейчас — \`${сейчас.slice(0, 7)}\`; между ними менялись только отчёт и файл прогона.\n`)
 числа.push({
   name: 'списков сломов',
   value: String(списков),

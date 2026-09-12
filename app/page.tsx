@@ -304,7 +304,14 @@ export function Dashboard({ report, tab = 'glavnoe' }: { report: MonthReport; ta
                     />
                   )}
                 </span>
-                <span className="waterfall-amount">{money(ступень.amount)}</span>
+                {/*
+                  Нет ни одной строки рекламы за месяц — у ступени пусто и здесь, и в доле: то же
+                  правило и то же выражение, что у доли рекламы в полосе показателей. Формат денег
+                  не тронут: словами отвечает разметка, как у значений полосы.
+                */}
+                <span className="waterfall-amount">
+                  {ступень.amount === null ? 'нет данных' : money(ступень.amount)}
+                </span>
                 <span className="waterfall-share">
                   {ступень.sharePct === null
                     ? percent(null)

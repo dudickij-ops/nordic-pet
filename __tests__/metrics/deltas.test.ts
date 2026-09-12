@@ -84,13 +84,31 @@ describe('полоса показателей: счёт дельт', () => {
     expect([п.ad_share.value, п.ad_share.delta, п.ad_share.unit]).toEqual(['25.0', '+10.0', 'pp'])
   })
 
+  /**
+   * Инвариант «доля рекламы полосы = доля ступени рекламы» утверждается **на обоих случаях**, и
+   * второй здесь главный: месяц без единой строки рекламы. Прежде проверка шла только по месяцу, где
+   * реклама есть, и расхождение, ради которого инвариант заведён — пусто в полосе против нуля в
+   * водопаде, — покраснеть на ней не могло никогда (круг проверки кода 2, правило владельца о
+   * стороже, прибитом к лёгкой раскладке).
+   */
+  async function доляСтупениРекламы(естьРеклама: boolean): Promise<string | null> {
+    const итоги = `select '1000.00'::text as gross, '30.00'::text as discounts, '170.00'::text as refunds,
+                          '800.00'::text as net, '310.00'::text as cogs, '${естьРеклама ? '250.00' : '0.00'}'::text as ads,
+                          '20.00'::text as fees, '100.00'::text as fixed, '120.00'::text as profit`
+    const { rows } = await pool.query(
+      `with totals_row as (${итоги}),\n       cur_state as (select ${естьРеклама} as has_ads),\n${WATERFALL_FROM_TOTALS}`,
+    )
+    return (rows.find((с) => с.key === 'ads')?.share_pct ?? null) as string | null
+  }
+
   test('доля рекламы полосы — та же, что у ступени рекламы в водопаде', async () => {
     const п = await показатели(МАРТ, ФЕВРАЛЬ, ЕСТЬ_БАЗА)
-    const итоги = `select '1000.00'::text as gross, '30.00'::text as discounts, '170.00'::text as refunds,
-                          '800.00'::text as net, '310.00'::text as cogs, '250.00'::text as ads,
-                          '20.00'::text as fees, '100.00'::text as fixed, '120.00'::text as profit`
-    const { rows } = await pool.query(`with totals_row as (${итоги}),\n${WATERFALL_FROM_TOTALS}`)
-    expect(rows.find((с) => с.key === 'ads')?.share_pct).toBe(п.ad_share.value)
+    expect(await доляСтупениРекламы(true)).toBe(п.ad_share.value)
+  })
+
+  test('месяц без строк рекламы: пусто и в полосе, и у ступени водопада — обе стороны разом', async () => {
+    const п = await показатели({ ...МАРТ, ads: '0.00' }, ФЕВРАЛЬ, { ...ЕСТЬ_БАЗА, has_ads_cur: false })
+    expect([п.ad_share.value, await доляСтупениРекламы(false)]).toEqual([null, null])
   })
 
   test('у доли рекламы рост — это плохо, у прибыли — хорошо', async () => {

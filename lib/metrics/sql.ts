@@ -488,6 +488,17 @@ select am.month as month,
 `
 
 /**
+ * Есть ли в месяце хоть одна строка рекламы. **Выражение одно**, и о прошлом месяце оно спрашивается
+ * тем же сдвигом `$1::date`, каким сдвигаются итоги (`PREVIOUS_MONTH_TOTALS`): второго определения
+ * «месяц без рекламы» в коде нет. Поправлено в круге проверки кода 2 — прежде текущий месяц брал
+ * границы через `date_trunc`, а прошлый через вычитание месяца, и совпадали они, только пока `$1` —
+ * первое число месяца.
+ */
+export const ЕСТЬ_РЕКЛАМА = `select exists(select 1 from fact.ads a
+                 where a.date >= $1::date
+                   and a.date < ($1::date + interval '1 month')::date) as has_ads`
+
+/**
  * Водопад «куда ушли деньги» — кусок S11, шаг 1. Девять ступеней: оборот → скидки → возвраты →
  * чистая выручка → себестоимость → реклама → комиссии → постоянные → прибыль. Три итога — оборот,
  * чистая выручка, прибыль — идут от нуля; шесть вычитаний висят от остатка после предыдущих.
@@ -499,6 +510,14 @@ select am.month as month,
  *
  * Доли — в процентах **от оборота**, как у всех долей экрана (решение владельца: одна база).
  * Делитель — под `nullif`: оборот ноль — доли и основания пусты, на экране слова, а не ноль.
+ *
+ * **Нет ни одной строки рекламы за месяц — у ступени «Реклама» пусты и сумма, и доля** (круг
+ * проверки кода 2): то же правило, что у доли рекламы в полосе показателей, и то же выражение
+ * `ЕСТЬ_РЕКЛАМА`. Отсутствие выгрузки — это «данных нет», а не «реклама стоила ноль»; и «съедает
+ * больше всего» такую ступень не выбирает, потому что суммы у неё нет. **Края столбиков при этом
+ * по-прежнему считаются от нуля рекламы**, как и прибыль в итогах: вычитание нуля — дефект счёта
+ * прежнего куска, названный в `docs/ОТЧЁТ.md`, «Где не уверен», и здесь он не чинится. Из-за него
+ * цепочка ступеней на таком месяце сходится с прибылью, которая сама завышена.
  *
  * **Наше решение, названное вслух:** доли и основания считаются от денег итогов, уже округлённых
  * до цента, — то есть от тех самых чисел, что стоят на экране. Округление доли одно — здесь, до
@@ -518,6 +537,7 @@ export const WATERFALL_FROM_TOTALS = `
 steps as (
   select s.ord, s.key, s.kind, s.amount, s.edge_from, s.edge_to
     from totals_row t
+   cross join cur_state cs
    cross join lateral (values
      (1, 'gross',     'итог',      t.gross::numeric,     0::numeric,
                                    t.gross::numeric),
@@ -529,7 +549,8 @@ steps as (
                                    t.net::numeric),
      (5, 'cogs',      'вычитание', t.cogs::numeric,      t.net::numeric,
                                    t.net::numeric - t.cogs::numeric),
-     (6, 'ads',       'вычитание', t.ads::numeric,       t.net::numeric - t.cogs::numeric,
+     (6, 'ads',       'вычитание', case when cs.has_ads then t.ads::numeric end,
+                                   t.net::numeric - t.cogs::numeric,
                                    t.net::numeric - t.cogs::numeric - t.ads::numeric),
      (7, 'fees',      'вычитание', t.fees::numeric,
                                    t.net::numeric - t.cogs::numeric - t.ads::numeric,
@@ -581,6 +602,7 @@ select s.key,
 
 export const MONTH_WATERFALL = `
 with totals_row as (${MONTH_TOTALS}),
+cur_state as (${ЕСТЬ_РЕКЛАМА}),
 ${WATERFALL_FROM_TOTALS}`
 
 /**
@@ -842,25 +864,17 @@ export const PREVIOUS_MONTH_TOTALS = MONTH_TOTALS.replaceAll('$1::date', "($1::d
 
 /**
  * Боевой запрос полосы. Есть ли у прошлого месяца заказы — по тому же определению, что у
- * переключателя месяцев (`ALL_MONTHS`, `has_orders`), второго определения нет. Есть ли реклама —
- * хоть одна строка `fact.ads` в границах месяца; спрашивается это об обоих месяцах, одним и тем же
- * выражением, сдвинутым на месяц: у прошлого — `prev_state`, у текущего — `cur_state`.
+ * переключателя месяцев (`ALL_MONTHS`, `has_orders`), второго определения нет.
  */
 export const MONTH_DELTAS = `
 with cur_row as (${MONTH_TOTALS}),
 prev_row as (${PREVIOUS_MONTH_TOTALS}),
-cur_state as (
-  select exists(select 1 from fact.ads a
-                 where a.date >= date_trunc('month', $1::date)
-                   and a.date < (date_trunc('month', $1::date) + interval '1 month'))  as has_ads
-),
+cur_state as (${ЕСТЬ_РЕКЛАМА}),
 prev_state as (
   select to_char($1::date - interval '1 month', 'YYYY-MM') as month,
          exists(select 1 from (${ALL_MONTHS}) m
                  where m.month = to_char($1::date - interval '1 month', 'YYYY-MM')
                    and m.has_orders)                                   as has_orders,
-         exists(select 1 from fact.ads a
-                 where a.date >= ($1::date - interval '1 month')::date
-                   and a.date < $1::date)                              as has_ads
+         (${ЕСТЬ_РЕКЛАМА.replaceAll('$1::date', "($1::date - interval '1 month')::date")})  as has_ads
 ),
 ${DELTAS_FROM_ROWS}`
