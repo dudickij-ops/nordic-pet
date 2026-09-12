@@ -28,7 +28,7 @@ import { ПЕРЕПИСЬ } from './fixture.ts'
 /** Отрисовка отчёта с подменённой долей. Всё прочее — раскладка переписи, значения в ней различны. */
 function сДолей(доля: string | null): string {
   return renderToStaticMarkup(
-    <Dashboard report={{ ...ПЕРЕПИСЬ, honesty: { sharePct: доля, skusWithoutPrice: [] } }} />,
+    <Dashboard report={{ ...ПЕРЕПИСЬ, honesty: { sharePct: доля, skusWithoutPrice: [] } }} tab="kachestvo" />,
   )
 }
 

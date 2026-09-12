@@ -94,13 +94,13 @@ const { default: HomePage } = await import('@/app/page')
 
 test('месяц из адреса определяет, что видно на экране, а не месяц по умолчанию', async () => {
   const сВыбором = renderToStaticMarkup(
-    await HomePage({ searchParams: Promise.resolve({ m: МЕСЯЦ_Б }) }),
+    await HomePage({ searchParams: Promise.resolve({ m: МЕСЯЦ_Б, tab: 'tovary' }) }),
   )
   expect(сВыбором).toContain('2099-12')
   expect(сВыбором).toContain('NP-777')
   expect(сВыбором).not.toContain('NP-001')
 
-  const поУмолчанию = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }))
+  const поУмолчанию = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({ tab: 'tovary' }) }))
   expect(поУмолчанию).toContain('2026-03')
   expect(поУмолчанию).toContain('NP-001')
   expect(поУмолчанию).not.toContain('NP-777')

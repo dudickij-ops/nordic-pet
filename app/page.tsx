@@ -1,8 +1,8 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 
 import { проверитьДоступ } from '@/lib/auth/guard'
-import { count, money, percent, ratio } from '@/lib/metrics/format'
+import { count, money, percent, points, ratio } from '@/lib/metrics/format'
 import { monthlyReport, type MonthReport } from '@/lib/metrics/report'
 import { LogoutButton } from './logout-button'
 import { RefreshPanel } from './refresh-panel'
@@ -14,6 +14,159 @@ import { RefreshPanel } from './refresh-panel'
 export const dynamic = 'force-dynamic'
 
 /**
+ * Вкладки отчёта — кусок S11, шаг 8. Имя вкладки живёт в адресе (`?tab=dengi`), и сервер отдаёт только
+ * её разделы: вкладка — ссылка, а не состояние в браузере, клиентского кода у неё нет. Порядок —
+ * порядок отчёта. Адрес без вкладки — «Главное»: отдельного вида «весь отчёт» нет (решение владельца
+ * по В2): вид, который видят только проверки, — путь, которого нет в бою.
+ */
+export const ВКЛАДКИ = ['glavnoe', 'dengi', 'tovary', 'kachestvo'] as const
+export type Вкладка = (typeof ВКЛАДКИ)[number]
+
+export const ПОДПИСИ_ВКЛАДОК: Record<Вкладка, string> = {
+  glavnoe: 'Главное',
+  dengi: 'Деньги',
+  tovary: 'Товары',
+  kachestvo: 'Качество данных',
+}
+
+/**
+ * Раздел отчёта, который рисуется только на своей вкладке.
+ *
+ * Заменяет у разделов тег `<section>`, а не оборачивает их: строки внутри разделов цитируют сломы
+ * прошлых кусков вместе с отступом, и обёртка сдвинула бы их все. Меняются только строки
+ * открывающего и закрывающего тега — отступление от буквы «не оборачивается», названное в контракте.
+ */
+function Раздел({
+  вкладка,
+  текущая,
+  className,
+  children,
+  ...прочее
+}: {
+  вкладка: Вкладка
+  текущая: Вкладка
+  className: string
+  children: ReactNode
+  'aria-label'?: string
+}) {
+  return вкладка === текущая ? (
+    <section className={className} {...прочее}>
+      {children}
+    </section>
+  ) : null
+}
+
+/**
+ * Полоса вкладок — обычные ссылки в `<nav>`, без ролей `tablist` и `tab`: роль вкладки обещала бы
+ * переход стрелками, а стрелки — клиентский код (довод в контракте). У текущей — `aria-current`,
+ * у прочих его нет. Ссылка несёт месяц отчёта, если он есть, и ни одна не ведёт на корень.
+ * `текущая` пуста на странице отказа незнакомой вкладки: там текущей нет.
+ */
+export function ПолосаВкладок({ месяц, текущая }: { месяц: string | null; текущая: Вкладка | null }) {
+  return (
+    <nav className="tabs" aria-label="Разделы отчёта">
+      <ul>
+        {ВКЛАДКИ.map((имя) => (
+          <li key={имя}>
+            <a
+              href={месяц === null ? `/?tab=${имя}` : `/?m=${месяц}&tab=${имя}`}
+              aria-current={имя === текущая ? 'page' : undefined}
+            >
+              {ПОДПИСИ_ВКЛАДОК[имя]}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+/**
+ * Подписи ступеней водопада — кусок S11. Те же слова, что у строк блоков «Выручка», «Затраты» и
+ * «Итог», полностью: метрики не переименовываются и не сокращаются. Ради полных подписей водопад
+ * лежит горизонтально — решение владельца по развилке Ж1.
+ */
+const ПОДПИСИ_СТУПЕНЕЙ: Record<string, string> = {
+  gross: 'Оборот',
+  discounts: 'Скидки',
+  refunds: 'Возвраты',
+  net: 'Чистая выручка',
+  cogs: 'Себестоимость проданного',
+  ads: 'Реклама',
+  fees: 'Комиссии платёжных систем',
+  fixed: 'Постоянные расходы',
+  profit: 'Прибыль',
+}
+
+/**
+ * Подписи полосы показателей — кусок S11, шаг 7. У отношений база названа в самой подписи (правило
+ * владельца: отношение называет свою базу рядом с собой) — маржа от чистой выручки, доля рекламы от
+ * оборота; дельты этих двух — в процентных пунктах, и это говорит единица дельты.
+ */
+const ПОДПИСИ_ПОКАЗАТЕЛЕЙ: Record<string, string> = {
+  profit: 'Прибыль',
+  margin: 'Маржа от чистой выручки',
+  net: 'Чистая выручка',
+  ad_share: 'Доля рекламы от оборота',
+}
+
+/**
+ * Число со знаком единицы внутри предложения — неразрывно (кусок S11). Общий формат денег ставит перед
+ * знаком обычный пробел — отложенная задача S5, общая починка тронула бы ожидаемые строки принятых
+ * проверок нескольких кусков. Поэтому по отдельности: в ячейках значений перенос запрещён таблицей
+ * стилей, в предложениях этого куска — здесь, заменой пробела перед знаком на неразрывный. Это обход,
+ * а не починка, и он сторожится проверкой «денежное значение внутри предложения не бывает без защиты
+ * от переноса» — решение владельца.
+ */
+function вместе(значение: string): string {
+  return значение.replace(/ ([€%])$/, '\u00A0$1')
+}
+
+type Полоса = NonNullable<MonthReport['kpis']>
+type Показатель = Полоса['items'][number]
+
+/** Значение карточки — всегда: деньгами или процентами, `null` — словами «нет данных». */
+function значениеПоказателя(п: Показатель): string {
+  if (п.unit === 'pp') return percent(п.value)
+  return п.value === null ? 'нет данных' : money(п.value)
+}
+
+/**
+ * Строка дельты карточки — одна короткая строка. Базы нет — так и сказано, с месяцем, у которого нет
+ * заказов; база есть, а дельты нет (у прошлого месяца нет рекламы или маржи) — «нет данных».
+ */
+function строкаДельты(полоса: Полоса, п: Показатель): string {
+  if (!полоса.hasBase) {
+    return полоса.prevMonth === null
+      ? 'нет базы для сравнения'
+      : `нет базы: в ${полоса.prevMonth} заказов нет`
+  }
+  if (п.delta === null) return `к ${полоса.prevMonth}: нет данных`
+  return `${п.unit === 'eur' ? вместе(money(п.delta)) : points(п.delta)} к ${полоса.prevMonth} · ${п.verdict}`
+}
+
+/**
+ * Доля статьи затрат в обороте — кусок S11, шаг 5. Это та же готовая доля, что у ступени водопада
+ * (решение: одна база — оборот, одно поле): статья берёт её по своему ключу, своего счёта нет. Текст
+ * и длина полоски — одно значение, как у полосы доли честности. Нет водопада в отчёте — нет и доли:
+ * у прежних раскладок блок «Затраты» не меняется ни на байт.
+ */
+function ДоляСтатьи({ report, ключ }: { report: MonthReport; ключ: string }) {
+  if (report.waterfall === undefined) return null
+  const доля = report.waterfall.steps.find((с) => с.key === ключ)?.sharePct ?? null
+  return (
+    <span className="cost-share">
+      <span>{доля === null ? percent(null) : `${percent(доля)} оборота`}</span>
+      {доля !== null && (
+        <span className="cost-bar" aria-hidden="true">
+          <span className="cost-bar-fill" style={{ '--cost-share': доля } as CSSProperties} />
+        </span>
+      )}
+    </span>
+  )
+}
+
+/**
  * Разметка экрана — задача 7. Чистый компонент: получает готовый отчёт и только
  * печатает его поля через `money`/`percent`/`count` из `lib/metrics/format.ts`. Ни
  * сложения, ни деления, ни округления здесь нет — это сделано в SQL (`lib/metrics/sql.ts`)
@@ -22,12 +175,22 @@ export const dynamic = 'force-dynamic'
  * Вынесен из страницы отдельно, чтобы его можно было отрисовать в проверке
  * (`__tests__/metrics/screen.test.tsx`) без базы: подставляется выдуманный `MonthReport`.
  */
-export function Dashboard({ report }: { report: MonthReport }) {
+export function Dashboard({ report, tab = 'glavnoe' }: { report: MonthReport; tab?: Вкладка }) {
   // Доля честности читается **один раз, в одну величину**, и дальше её берут оба показа:
   // напечатанное число и длина полосы. Это условие владельца, а не удобство: пока значение
   // одно, полоса не может разойтись с числом. Второе чтение того же поля рядом с первым
   // было бы вторым источником правды, и однажды они разъехались бы молча.
   const доля = report.honesty.sharePct
+  const полоса = report.kpis
+  // Переключатель месяцев помнит вкладку (решение владельца по В3). У «Главного» хвоста нет: адрес без
+  // вкладки и есть «Главное».
+  const хвостВкладки = tab === 'glavnoe' ? '' : `&tab=${tab}`
+
+  // «Съедает больше всего» — ступени, помеченные запросом; своего «самого большого» разметка не
+  // ищет. Без доли (нулевой оборот) строки нет: сказать «… % оборота» не о чем.
+  const съедает = report.waterfall?.steps.filter((с) => с.largest === true && с.sharePct !== null) ?? []
+  const подписьСтроки = (с: { key: string }) =>
+    (ПОДПИСИ_СТУПЕНЕЙ[с.key] ?? с.key).toLocaleLowerCase('ru')
 
   return (
     <main className="report">
@@ -40,7 +203,7 @@ export function Dashboard({ report }: { report: MonthReport }) {
               {report.months.map((m) => (
                 <li key={m.month}>
                   <a
-                    href={`/?m=${m.month}`}
+                    href={`/?m=${m.month}${хвостВкладки}`}
                     aria-current={m.month === report.month ? 'page' : undefined}
                     data-empty={m.hasOrders ? undefined : 'true'}
                   >
@@ -51,9 +214,189 @@ export function Dashboard({ report }: { report: MonthReport }) {
             </ul>
           </nav>
         )}
+
+        {/*
+          Время чтения источников — кусок S11, шаг 6. Строка готовая из SQL: дата, время и пояс;
+          разметка её не разбирает и не переводит. Стоит последней в шапке и во всю её ширину — под
+          названием и месяцами: название ничем не оборачивается, и порядок чтения совпадает с видом.
+        */}
+        {report.sourcesReadAt !== undefined && (
+          <p className="report-read-at">
+            {report.sourcesReadAt === null
+              ? 'Время чтения источников неизвестно: отметки о чтении нет.'
+              : `Источники прочитаны по состоянию на ${report.sourcesReadAt}`}
+          </p>
+        )}
       </header>
 
-      <section className="block">
+      <ПолосаВкладок месяц={report.month} текущая={tab} />
+
+      {/*
+        Полоса показателей — кусок S11, шаг 7. Значение стоит всегда; пустой бывает только дельта, и
+        тогда на её месте одна короткая строка. Дельта, её знак и её смысл («лучше», «хуже», «без
+        изменений») приходят готовыми из SQL: разметка знак с нулём не сравнивает, а прошлых значений,
+        из которых дельту можно было бы посчитать, в отчёте нет вовсе. Смысл назван словом, а не
+        только цветом: признак на карточке нужен таблице стилей, слово — человеку.
+      */}
+      {полоса !== undefined && (
+        <Раздел вкладка="glavnoe" текущая={tab} className="block kpis" aria-label="Показатели месяца">
+          <ul className="kpi-list">
+            {полоса.items.map((п) => (
+              <li key={п.key} className="kpi" data-verdict={п.verdict ?? undefined}>
+                <span className="kpi-label">{ПОДПИСИ_ПОКАЗАТЕЛЕЙ[п.key] ?? п.key}</span>
+                <span className="kpi-value">{значениеПоказателя(п)}</span>
+                <span className="kpi-delta">{строкаДельты(полоса, п)}</span>
+              </li>
+            ))}
+          </ul>
+        </Раздел>
+      )}
+
+      {report.waterfall !== undefined && (
+        <Раздел вкладка="glavnoe" текущая={tab} className="block waterfall">
+          <h2>Куда ушли деньги</h2>
+          {/*
+            Подпись, а не тревога: обычный текст, без сигнального цвета — решение владельца. Второй
+            канал того же смысла, что длина светлых ступеней: словом, а не сравнением полос на глаз.
+          */}
+          {съедает.length === 1 && (
+            <p className="waterfall-largest">
+              {`Съедает больше всего: ${подписьСтроки(съедает[0])} · ${вместе(percent(съедает[0].sharePct))} оборота`}
+            </p>
+          )}
+          {съедает.length > 1 && (
+            <p className="waterfall-largest">
+              {`Съедает больше всего поровну: ${съедает.map(подписьСтроки).join(' и ')} · по ${вместе(percent(съедает[0].sharePct))} оборота`}
+            </p>
+          )}
+          {/*
+            Водопад — кусок S11. Разметка ничего не считает: сумма, доля и края столбика приходят
+            готовыми строками из SQL. Доля печатается текстом и **та же строка** уходит величиной
+            в длину столбика, край — в его начало; где стоит столбик на дорожке, решает таблица
+            стилей по пределам шкалы. Подпись, сумма и доля — отдельные ячейки вне дорожки: наехать
+            на столбик им негде по устройству.
+          */}
+          <ol
+            className="waterfall-steps"
+            style={
+              {
+                // Пределов нет только при нулевом обороте — тогда нет и ни одного столбика.
+                '--scale-from': report.waterfall.scaleLowPct ?? undefined,
+                '--scale-to': report.waterfall.scaleHighPct ?? undefined,
+              } as CSSProperties
+            }
+          >
+            {report.waterfall.steps.map((ступень) => (
+              <li key={ступень.key} data-kind={ступень.kind}>
+                <span className="waterfall-label">
+                  {ПОДПИСИ_СТУПЕНЕЙ[ступень.key] ?? ступень.key}
+                </span>
+                <span className="waterfall-track" aria-hidden="true">
+                  {ступень.sharePct !== null && ступень.basePct !== null && (
+                    <span
+                      className="waterfall-bar"
+                      style={
+                        {
+                          '--step-from': ступень.basePct,
+                          '--step-size': ступень.sharePct,
+                        } as CSSProperties
+                      }
+                    />
+                  )}
+                </span>
+                {/*
+                  Нет ни одной строки рекламы за месяц — у ступени пусто и здесь, и в доле: то же
+                  правило и то же выражение, что у доли рекламы в полосе показателей. Формат денег
+                  не тронут: словами отвечает разметка, как у значений полосы.
+                */}
+                <span className="waterfall-amount">
+                  {ступень.amount === null ? 'нет данных' : money(ступень.amount)}
+                </span>
+                <span className="waterfall-share">
+                  {ступень.sharePct === null
+                    ? percent(null)
+                    : `${percent(ступень.sharePct)} оборота`}
+                </span>
+              </li>
+            ))}
+          </ol>
+          {/*
+            Расхождение цепочки с итогом — центы округления, решение владельца по развилке Ж2.
+            Число готовое из SQL: ровно разница показанных сумм. Строка есть, только когда оно есть.
+          */}
+          {typeof report.waterfall.netGap === 'string' && (
+            <p className="waterfall-gap">
+              {`Суммы ступеней округлены до цента по отдельности; сложенные, они расходятся с чистой выручкой на ${вместе(money(report.waterfall.netGap))}.`}
+            </p>
+          )}
+          {typeof report.waterfall.profitGap === 'string' && (
+            <p className="waterfall-gap">
+              {`Суммы ступеней округлены до цента по отдельности; сложенные, они расходятся с прибылью на ${вместе(money(report.waterfall.profitGap))}.`}
+            </p>
+          )}
+        </Раздел>
+      )}
+
+      {tab === 'glavnoe' && report.daily !== undefined && !report.daily.hasOrders && (
+        // Решение владельца по Д3: у месяца без заказов блока нет вовсе — на его месте слова, а не
+        // пустая рамка.
+        <p className="daily-empty">Чистая выручка по дням: нет данных за месяц</p>
+      )}
+
+      {report.daily !== undefined && report.daily.hasOrders && (
+        <Раздел вкладка="glavnoe" текущая={tab} className="block daily">
+          <h2>Чистая выручка по дням</h2>
+          {/*
+            Ряд — кусок S11, шаг 2. Блок называется выручкой и только выручкой: прибыль по дням не
+            считается (постоянные расходы лежат помесячно). Разметка ничего не считает: доля и край
+            столбика, подписи оси и шаг видимых подписей дней приходят готовыми из SQL. Доступная
+            подпись есть у каждого дня без исключения — ею ряд читает тот, кто не читает глазом.
+          */}
+          <div className="daily-chart">
+            <div className="daily-axis" aria-hidden="true">
+              {report.daily.topNet !== null && <span>{money(report.daily.topNet)}</span>}
+              {report.daily.bottomNet !== null && <span>{money(report.daily.bottomNet)}</span>}
+            </div>
+            <ol
+              className="daily-bars"
+              style={
+                {
+                  '--scale-from': report.daily.scaleLowPct ?? undefined,
+                  '--scale-to': report.daily.scaleHighPct ?? undefined,
+                } as CSSProperties
+              }
+            >
+              {report.daily.days.map((день) => (
+                <li
+                  key={день.day}
+                  data-empty={день.net === null ? 'true' : undefined}
+                  aria-label={
+                    день.net === null
+                      ? `${день.label}: заказов не было`
+                      : `${день.label}: ${money(день.net)}`
+                  }
+                >
+                  {день.sharePct !== null && день.basePct !== null && (
+                    <span
+                      className="daily-bar"
+                      style={
+                        { '--day-from': день.basePct, '--day-size': день.sharePct } as CSSProperties
+                      }
+                    />
+                  )}
+                </li>
+              ))}
+            </ol>
+            <ol className="daily-ticks" aria-hidden="true">
+              {report.daily.days.map((день) => (
+                <li key={день.day}>{день.tick}</li>
+              ))}
+            </ol>
+          </div>
+        </Раздел>
+      )}
+
+      <Раздел вкладка="dengi" текущая={tab} className="block revenue">
         <h2>Выручка</h2>
         <dl>
           <dt>Оборот</dt>
@@ -65,36 +408,104 @@ export function Dashboard({ report }: { report: MonthReport }) {
           <dt>Чистая выручка</dt>
           <dd>{money(report.revenue.net)}</dd>
         </dl>
-      </section>
+      </Раздел>
 
-      <section className="block">
+      <Раздел вкладка="dengi" текущая={tab} className="block costs">
         <h2>Затраты</h2>
         <dl>
           <dt>Себестоимость проданного</dt>
-          <dd>{money(report.costs.cogs)}</dd>
+          <dd>
+            {money(report.costs.cogs)}
+            <ДоляСтатьи report={report} ключ="cogs" />
+          </dd>
           <dt>Реклама</dt>
-          <dd>{money(report.costs.ads)}</dd>
+          <dd>
+            {money(report.costs.ads)}
+            <ДоляСтатьи report={report} ключ="ads" />
+          </dd>
           <dt>Комиссии платёжных систем</dt>
-          <dd>{money(report.costs.fees)}</dd>
+          <dd>
+            {money(report.costs.fees)}
+            <ДоляСтатьи report={report} ключ="fees" />
+          </dd>
           <dt>Постоянные расходы</dt>
-          <dd>{money(report.costs.fixed)}</dd>
+          <dd>
+            {money(report.costs.fixed)}
+            <ДоляСтатьи report={report} ключ="fixed" />
+          </dd>
         </dl>
-      </section>
+      </Раздел>
 
-      <section className="block bottom-line">
+      <Раздел вкладка="dengi" текущая={tab} className="block bottom-line">
         <h2>Итог</h2>
         <dl>
           <dt>Прибыль</dt>
           <dd>{money(report.bottom.profit)}</dd>
-          <dt>Маржа</dt>
+          <dt>Маржа (от чистой выручки)</dt>
           <dd>{percent(report.bottom.marginPct)}</dd>
-          <dt>Окупаемость рекламы (по обороту)</dt>
-          <dd>{ratio(report.bottom.roasByGross)}</dd>
         </dl>
-      </section>
+      </Раздел>
 
-      <section className="block items">
+      <Раздел вкладка="dengi" текущая={tab} className="block payback">
+        <h2>Окупаемость рекламы</h2>
+        {/*
+          Кусок S11. Окупаемость по обороту переехала сюда из «Итога» на шаге вкладок — решение
+          владельца по В7: крупным числом рядом с порогом, с которым её сравнивают. Блок есть всегда:
+          окупаемость по обороту — прежнее число экрана и не пропадает ни при какой раскладке. Три
+          числа шага 3 рисуются при своём поле, как все новые. Условия владельца: порог и вклад стоят
+          числами; подпись порога называет его базу — вклад, а не маржу экрана; рядом сказано, что
+          определения наши. Все числа готовые из SQL.
+        */}
+        <dl>
+          <dt>Окупаемость рекламы (по обороту)</dt>
+          <dd className="payback-main">{ratio(report.bottom.roasByGross)}</dd>
+          {report.payback !== undefined && <>
+            <dt>Окупаемость рекламы (по прибыли)</dt>
+            <dd>
+              {ratio(report.payback.roasByProfit)}
+              {/*
+                Правило владельца: отношение называет свою базу рядом с числом. Это число читается
+                противоположно порогу, хотя противоречия нет, — фраза стоит в той же ячейке.
+              */}
+              <span className="payback-why">
+                После постоянных расходов — они от рекламы не зависят, поэтому окупается ли реклама,
+                говорит порог, а не это число.
+              </span>
+            </dd>
+            <dt>Вклад с евро оборота</dt>
+            <dd>{percent(report.payback.contributionPct)}</dd>
+            <dt>Порог окупаемости — от вклада, а не от маржи</dt>
+            <dd>
+              {report.payback.breakevenNote !== null
+                ? `порога нет: ${report.payback.breakevenNote}`
+                : ratio(report.payback.breakevenRoas)}
+            </dd>
+          </>}
+        </dl>
+        {report.payback !== undefined && (
+          <p className="payback-note">
+            Вклад и порог — наши определения. Вклад — (чистая выручка − себестоимость − комиссии) ÷
+            оборот: сколько с евро оборота остаётся на рекламу и постоянные расходы. Порог — 100 ÷
+            вклад: реклама окупается, когда окупаемость по обороту выше порога.
+          </p>
+        )}
+      </Раздел>
+
+      <Раздел вкладка="tovary" текущая={tab} className="block items">
         <h2>Товары</h2>
+        {/*
+          Кусок S11, шаг 4. Строка над таблицей и две колонки рисуются только при своих полях — у
+          прежних раскладок разметка таблицы не меняется ни на байт. Правило владельца: отношение
+          называет свою базу рядом с собой, — база долей названа здесь числом, и отличие её от
+          прибыли месяца тоже. Все числа готовые из SQL.
+        */}
+        {report.itemsSummary !== undefined && (
+          <p className="items-summary">
+            {report.itemsSummary.skusFor80 !== null
+              ? `80\u00A0% прибыли товаров дают ${count(String(report.itemsSummary.skusFor80))} из ${count(String(report.itemsSummary.skusTotal))} артикулов; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Прибыль товаров — выручка минус себестоимость, ${вместе(money(report.itemsSummary.productsProfit))}; это не прибыль месяца, ${вместе(money(report.bottom.profit))}.`
+              : `Прибыль товаров — выручка минус себестоимость, ${вместе(money(report.itemsSummary.productsProfit))} — не положительна: считать 80\u00A0% не от чего; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Это не прибыль месяца, ${вместе(money(report.bottom.profit))}.`}
+          </p>
+        )}
         <table>
           <thead>
             <tr>
@@ -103,23 +514,29 @@ export function Dashboard({ report }: { report: MonthReport }) {
               <th>Чистая выручка</th>
               <th>Себестоимость</th>
               <th>Прибыль</th>
+              {report.itemsSummary !== undefined && <th>Маржа от чистой выручки</th>}
+              {report.itemsSummary !== undefined && <th>Доля в прибыли товаров</th>}
             </tr>
           </thead>
           <tbody>
             {report.items.map((item) => (
-              <tr key={item.sku}>
+              <tr key={item.sku} data-loss={item.loss === true ? 'true' : undefined}>
                 <td>{item.sku}</td>
                 <td>{count(item.units)}</td>
                 <td>{money(item.net)}</td>
                 <td>{money(item.cogs)}</td>
                 <td>{money(item.profit)}</td>
+                {report.itemsSummary !== undefined && <td>{percent(item.marginPct ?? null)}</td>}
+                {report.itemsSummary !== undefined && (
+                  <td>{percent(item.profitSharePct ?? null)}</td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
-      </section>
+      </Раздел>
 
-      <section className="block honesty">
+      <Раздел вкладка="kachestvo" текущая={tab} className="block honesty">
         <h2>Честность данных</h2>
         <p>
           Посчитано по настоящей цене поставщика (доля от чистой выручки):{' '}
@@ -145,9 +562,9 @@ export function Dashboard({ report }: { report: MonthReport }) {
         {report.honesty.skusWithoutPrice.length > 0 && (
           <p>Без цены поставщика (запасные 40%): {report.honesty.skusWithoutPrice.join(', ')}</p>
         )}
-      </section>
+      </Раздел>
 
-      <section className="block gaps">
+      <Раздел вкладка="kachestvo" текущая={tab} className="block gaps">
         <h2>Неполнота данных</h2>
         <p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p>
         <ul>
@@ -158,7 +575,23 @@ export function Dashboard({ report }: { report: MonthReport }) {
             </li>
           ))}
         </ul>
-      </section>
+      </Раздел>
+    </main>
+  )
+}
+
+/**
+ * Отказ на незнакомую вкладку — решение владельца по В4: называет разделы ссылками, первой —
+ * «Главное», сохраняет месяц, если он правильной формы, и оставляет кнопку выхода. Отдельным
+ * компонентом, чтобы снимок отказа брал разметку у приложения, а не рисовал её второй раз.
+ */
+export function ОтказВкладки({ имя, месяц }: { имя: string; месяц: string | null }) {
+  return (
+    <main>
+      <h1>Nordic Pet — прибыль</h1>
+      <p role="alert">Раздела «{имя}» в отчёте нет. Выберите один из разделов:</p>
+      <ПолосаВкладок месяц={месяц} текущая={null} />
+      <LogoutButton />
     </main>
   )
 }
@@ -208,12 +641,25 @@ function видОтказа(error: unknown): 'кривой месяц' | 'дан
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ m?: string | string[] }>
+  searchParams: Promise<{ m?: string | string[]; tab?: string | string[] }>
 }) {
   if ((await проверитьДоступ()) === 'отказать') redirect('/login')
 
   const params = await searchParams
   const monthParam = Array.isArray(params.m) ? params.m[0] : params.m
+  // Вкладка читается так же, как месяц: из двух значений берётся первое.
+  const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab
+
+  // Нет вкладки в адресе — «Главное». Незнакомая — отказ словами, а не молчаливая первая вкладка:
+  // подстановка по умолчанию без называния у нас запрещена (решение владельца по В4). Отказ не тупик —
+  // называет разделы отчёта ссылками, первой — «Главное», и сохраняет месяц, если он правильной формы.
+  // Проверяется до похода в базу, как кривой месяц: шапки с месяцами и временем здесь нет — её не из
+  // чего собрать без отчёта.
+  const вкладка = tabParam === undefined ? 'glavnoe' : ВКЛАДКИ.find((имя) => имя === tabParam)
+  if (вкладка === undefined) {
+    const месяц = monthParam !== undefined && ФОРМА_МЕСЯЦА.test(monthParam) ? monthParam : null
+    return <ОтказВкладки имя={tabParam ?? ''} месяц={месяц} />
+  }
 
   let report: MonthReport
   try {
@@ -282,7 +728,7 @@ export default async function HomePage({
         </p>
       )}
       <RefreshPanel>
-        <Dashboard report={report} />
+        <Dashboard report={report} tab={вкладка} />
       </RefreshPanel>
     </>
   )

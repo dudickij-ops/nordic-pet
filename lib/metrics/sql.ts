@@ -486,3 +486,395 @@ select am.month as month,
   from all_months am
  order by am.month desc
 `
+
+/**
+ * Есть ли в месяце хоть одна строка рекламы. **Выражение одно**, и о прошлом месяце оно спрашивается
+ * тем же сдвигом `$1::date`, каким сдвигаются итоги (`PREVIOUS_MONTH_TOTALS`): второго определения
+ * «месяц без рекламы» в коде нет. Поправлено в круге проверки кода 2 — прежде текущий месяц брал
+ * границы через `date_trunc`, а прошлый через вычитание месяца, и совпадали они, только пока `$1` —
+ * первое число месяца.
+ */
+export const ЕСТЬ_РЕКЛАМА = `select exists(select 1 from fact.ads a
+                 where a.date >= $1::date
+                   and a.date < ($1::date + interval '1 month')::date) as has_ads`
+
+/**
+ * Водопад «куда ушли деньги» — кусок S11, шаг 1. Девять ступеней: оборот → скидки → возвраты →
+ * чистая выручка → себестоимость → реклама → комиссии → постоянные → прибыль. Три итога — оборот,
+ * чистая выручка, прибыль — идут от нуля; шесть вычитаний висят от остатка после предыдущих.
+ *
+ * **Своих выражений денег здесь нет ни одного.** Ступени берут готовую строку итогов месяца —
+ * `MONTH_TOTALS` целиком, как подзапрос, — и только раскладывают её колонки по порядку. Прибыль
+ * ступени — буквально колонка `profit` итогов, а не её пересчёт из слагаемых: второе выражение
+ * прибыли однажды разошлось бы с первым молча. Текст `MONTH_TOTALS` не тронут.
+ *
+ * Доли — в процентах **от оборота**, как у всех долей экрана (решение владельца: одна база).
+ * Делитель — под `nullif`: оборот ноль — доли и основания пусты, на экране слова, а не ноль.
+ *
+ * **Нет ни одной строки рекламы за месяц — у ступени «Реклама» пусты и сумма, и доля** (круг
+ * проверки кода 2): то же правило, что у доли рекламы в полосе показателей, и то же выражение
+ * `ЕСТЬ_РЕКЛАМА`. Отсутствие выгрузки — это «данных нет», а не «реклама стоила ноль»; и «съедает
+ * больше всего» такую ступень не выбирает, потому что суммы у неё нет. **Края столбиков при этом
+ * по-прежнему считаются от нуля рекламы**, как и прибыль в итогах: вычитание нуля — дефект счёта
+ * прежнего куска, названный в `docs/ОТЧЁТ.md`, «Где не уверен», и здесь он не чинится. Из-за него
+ * цепочка ступеней на таком месяце сходится с прибылью, которая сама завышена.
+ *
+ * **Наше решение, названное вслух:** доли и основания считаются от денег итогов, уже округлённых
+ * до цента, — то есть от тех самых чисел, что стоят на экране. Округление доли одно — здесь, до
+ * десятой. Остаток после вычитаний считается от ближайшего итога, а не накоплением от оборота:
+ * так нижний край ступени «постоянные» сходится с прибылью, а «возвраты» — с чистой выручкой.
+ *
+ * Геометрия — числами, готовыми: `share_pct` — доля ступени со знаком, та же, что печатается
+ * текстом; `base_pct` — нижний край столбика. Итог от нуля: край — меньшее из нуля и самой доли,
+ * поэтому отрицательная прибыль идёт вниз от нуля. `scale_low_pct` и `scale_high_pct` — пределы
+ * шкалы: не выше нуля и не ниже ста, шире — если ступень выходит за них.
+ *
+ * `WATERFALL_FROM_TOTALS` читает строку итогов из `totals_row` и сам итогов не считает; боевой
+ * запрос — `MONTH_WATERFALL` — подставляет туда `MONTH_TOTALS`. Проверки подставляют выдуманную
+ * строку итогов, чтобы ступени можно было сличить с числами, которые нарочно не сходятся.
+ */
+export const WATERFALL_FROM_TOTALS = `
+steps as (
+  select s.ord, s.key, s.kind, s.amount, s.edge_from, s.edge_to
+    from totals_row t
+   cross join cur_state cs
+   cross join lateral (values
+     (1, 'gross',     'итог',      t.gross::numeric,     0::numeric,
+                                   t.gross::numeric),
+     (2, 'discounts', 'вычитание', t.discounts::numeric, t.gross::numeric,
+                                   t.gross::numeric - t.discounts::numeric),
+     (3, 'refunds',   'вычитание', t.refunds::numeric,   t.gross::numeric - t.discounts::numeric,
+                                   t.gross::numeric - t.discounts::numeric - t.refunds::numeric),
+     (4, 'net',       'итог',      t.net::numeric,       0::numeric,
+                                   t.net::numeric),
+     (5, 'cogs',      'вычитание', t.cogs::numeric,      t.net::numeric,
+                                   t.net::numeric - t.cogs::numeric),
+     (6, 'ads',       'вычитание', case when cs.has_ads then t.ads::numeric end,
+                                   t.net::numeric - t.cogs::numeric,
+                                   t.net::numeric - t.cogs::numeric - t.ads::numeric),
+     (7, 'fees',      'вычитание', t.fees::numeric,
+                                   t.net::numeric - t.cogs::numeric - t.ads::numeric,
+                                   t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric),
+     (8, 'fixed',     'вычитание', t.fixed::numeric,
+                                   t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric,
+                                   t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric
+                                     - t.fixed::numeric),
+     (9, 'profit',    'итог',      t.profit::numeric,    0::numeric,
+                                   t.profit::numeric)
+   ) as s(ord, key, kind, amount, edge_from, edge_to)
+),
+-- Расхождения цепочек — решение владельца по развилке Ж2. Каждая сумма итогов округлена до цента
+-- отдельно, а чистая выручка и прибыль считаются из неокруглённых слагаемых и округляются один раз:
+-- показанные ступени, сложенные глазами, могут разойтись с показанным итогом на центы (на марте
+-- 2026 — 1 738,54 против 1 738,53). Здесь — ровно разница показанных чисел, без порога и без
+-- округления: слагаемые уже в центах. Нет расхождения — пусто, и строки под водопадом нет.
+base as (
+  select t.gross::numeric as gross,
+         nullif(t.gross::numeric - t.discounts::numeric - t.refunds::numeric - t.net::numeric, 0)
+           as net_gap,
+         nullif(t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric
+                  - t.fixed::numeric - t.profit::numeric, 0)
+           as profit_gap
+    from totals_row t
+)
+select s.key,
+       s.kind,
+       s.amount::text                                                            as amount,
+       round(s.amount / nullif(b.gross, 0) * 100, 1)::text                       as share_pct,
+       round(least(s.edge_from, s.edge_to) / nullif(b.gross, 0) * 100, 1)::text  as base_pct,
+       round(least(0, min(least(s.edge_from, s.edge_to)) over ())
+             / nullif(b.gross, 0) * 100, 1)::text                                as scale_low_pct,
+       round(greatest(b.gross, max(greatest(s.edge_from, s.edge_to)) over ())
+             / nullif(b.gross, 0) * 100, 1)::text                                as scale_high_pct,
+       b.net_gap::text                                                           as net_gap,
+       b.profit_gap::text                                                        as profit_gap,
+       -- «Съедает больше всего» — решение владельца: самое большое вычитание, признаком в той же
+       -- строке, что и ступень; второго определения «самого большого» разметка не заводит. Равенство
+       -- до цента помечает все равные ступени — строка назовёт их поровну, а не выберет одну наугад.
+       -- Все вычитания ноль — не помечено ничего: «съедает больше всего ничто» — не подпись.
+       (s.kind = 'вычитание'
+        and s.amount > 0
+        and s.amount = max(s.amount) filter (where s.kind = 'вычитание') over ())  as largest
+  from steps s
+ cross join base b
+ order by s.ord
+`
+
+export const MONTH_WATERFALL = `
+with totals_row as (${MONTH_TOTALS}),
+cur_state as (${ЕСТЬ_РЕКЛАМА}),
+${WATERFALL_FROM_TOTALS}`
+
+/**
+ * Чистая выручка по дням — кусок S11, шаг 2 (задача Д-7). Блок называется выручкой и только
+ * выручкой: прибыль по дням не считается, потому что постоянные расходы лежат в базе помесячно,
+ * и разнести их по дням значило бы выдумать число (развилка Д2′-а, решение владельца).
+ *
+ * **Своих выражений денег здесь нет.** Ряд берёт готовую цепочку `money` из `MONEY_CTES` — ту же,
+ * из которой итоги берут `sum(net)`, — и группирует её по дню заказа. Суммы дня — точные центы:
+ * выручка, скидка и возврат строки хранятся в фактах с двумя знаками, поэтому ряд сходится с
+ * чистой выручкой месяца до цента, а не с точностью до округления.
+ *
+ * В ряду **все дни месяца**: день без заказов приходит пустой строкой выручки, а не нулём и не
+ * пропуском (развилка Д2′-б: на экране — разрыв, линия отсчёта пунктиром). Ноль возможен и честен:
+ * заказы были, но всё вернули.
+ *
+ * Доля столбика — выручка дня ÷ наибольшая **по модулю** выручка дня месяца, процентами со знаком:
+ * отрицательный день в грязных данных возможен и идёт вниз, а не ломает шкалу. Делитель — под
+ * `nullif`. Подпись дня — готовой строкой («5 марта»): форматирование даты — тоже счёт.
+ *
+ * `DAILY_FROM_MONEY` читает `bounds` и `money` и сам их не строит; боевой запрос — `MONTH_DAILY` —
+ * подставляет `MONEY_CTES`. Проверки подставляют выдуманные строки `money`, у которых выручка
+ * нарочно не равна «оборот − скидка − возврат»: ряд, посчитавший выручку своим выражением, это
+ * покажет.
+ */
+export const DAILY_FROM_MONEY = `
+days as (
+  select d::date as day
+    from bounds b
+   cross join generate_series(b.first_day, b.next_month - 1, interval '1 day') as d
+),
+by_day as (
+  select m.sold_on as day, sum(m.net) as net
+    from money m
+   group by m.sold_on
+),
+-- Шкала ряда — один раз на месяц. Делитель долей — наибольшая по модулю выручка дня, под nullif;
+-- края шкалы — не выше нуля и не ниже нуля, с двумя знаками, чтобы подпись оси печаталась деньгами.
+peak as (
+  select nullif(max(abs(net)), 0) as top,
+         least(0.00, min(net))    as low_net,
+         greatest(0.00, max(net)) as high_net,
+         count(net) > 0           as has_orders
+    from by_day
+)
+select to_char(d.day, 'YYYY-MM-DD')                                             as day,
+       extract(day from d.day)::int || ' ' ||
+         (array['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа',
+                'сентября', 'октября', 'ноября', 'декабря'])[extract(month from d.day)::int]
+                                                                                 as label,
+       bd.net::text                                                              as net,
+       round(bd.net / p.top * 100, 1)::text                                      as share_pct,
+       round(least(0, bd.net) / p.top * 100, 1)::text                            as base_pct,
+       round(p.low_net / p.top * 100, 1)::text                                   as scale_low_pct,
+       round(p.high_net / p.top * 100, 1)::text                                  as scale_high_pct,
+       p.high_net::text                                                          as top_net,
+       p.low_net::text                                                           as bottom_net,
+       -- Видимая подпись — у каждого пятого дня, начиная с первого: 1, 6, 11, 16, 21, 26, 31.
+       -- Тридцать одна подпись в ширину не входит; доступная подпись при этом есть у каждого дня.
+       case when (extract(day from d.day)::int - 1) % 5 = 0
+            then extract(day from d.day)::int::text end                          as tick,
+       p.has_orders                                                              as month_has_orders
+  from days d
+  left join by_day bd on bd.day = d.day
+ cross join peak p
+ order by d.day
+`
+
+export const MONTH_DAILY = `${MONEY_CTES},
+${DAILY_FROM_MONEY}`
+
+/**
+ * Окупаемость рекламы — кусок S11, шаг 3 (задачи 3 и 10). Три новых числа рядом с прежней
+ * окупаемостью по обороту: по прибыли, вклад с евро оборота и порог окупаемости.
+ *
+ * **Все определения — наши**, в справочниках их нет; так они и помечены на экране:
+ *   · по прибыли — прибыль ÷ реклама;
+ *   · вклад — (чистая выручка − себестоимость − комиссии) ÷ оборот × 100: сколько с евро оборота
+ *     остаётся на рекламу и постоянные расходы. Реклама и постоянные во вклад не входят нарочно:
+ *     постоянные от рекламы не зависят, а рекламу вклад и должен покрыть (развилка 4, вариант А);
+ *   · порог — 100 ÷ вклад: ниже этой окупаемости по обороту реклама себя не окупает.
+ *
+ * **Порог — от вклада, а не от маржи экрана.** Маржа считается уже после рекламы, и порог от неё
+ * вычитал бы рекламу дважды: на марте вышло бы 9,90 × и вывод «не окупается» вместо 1,75 × и
+ * «окупается». Это решение владельца, и подпись порога на экране называет его базу.
+ *
+ * Как и водопад, запрос берёт строку итогов месяца целиком (`MONTH_TOTALS`) и своих выражений денег
+ * не заводит; прежняя окупаемость по обороту остаётся колонкой итогов и здесь не пересчитывается.
+ * Вклад не положителен — порога нет: никакая окупаемость рекламу не оправдает, и это сказано словами.
+ */
+export const PAYBACK_FROM_TOTALS = `
+parts as (
+  select t.ads::numeric    as ads,
+         t.profit::numeric as profit,
+         (t.net::numeric - t.cogs::numeric - t.fees::numeric) / nullif(t.gross::numeric, 0) * 100
+                           as contribution
+    from totals_row t
+)
+select round(p.profit / nullif(p.ads, 0), 2)::text                         as roas_by_profit,
+       round(p.contribution, 1)::text                                      as contribution_pct,
+       (case when p.contribution > 0 then round(100 / p.contribution, 2) end)::text
+                                                                           as breakeven_roas,
+       case when p.contribution <= 0 then 'вклад не положителен' end       as breakeven_note
+  from parts p
+`
+
+export const MONTH_PAYBACK = `
+with totals_row as (${MONTH_TOTALS}),
+${PAYBACK_FROM_TOTALS}`
+
+/**
+ * Товары — кусок S11, шаг 4 (задачи 4, Д-1, Д-3). Новые колонки строки и строка над таблицей.
+ *
+ * **Своих выражений денег нет.** Запрос берёт готовые строки таблицы товаров — `MONTH_ITEMS`
+ * целиком, как подзапрос, — и считает от их показанных сумм: база долей — сумма прибыли строк,
+ * ровно то, что человек получит, сложив колонку «Прибыль». Текст `MONTH_ITEMS` не тронут.
+ *
+ *   · маржа строки — прибыль строки ÷ чистая выручка строки × 100; выручка ноль — пусто;
+ *   · доля в прибыли товаров — прибыль строки ÷ сумма прибыли строк × 100 (решение владельца:
+ *     делитель — сумма прибыли строк, 11 248,93 € на марте, а не прибыль месяца); сумма не
+ *     положительна — пусто у всех строк разом;
+ *   · сколько артикулов дают 80 % прибыли товаров — по убыванию прибыли, от той же суммы; при
+ *     равной прибыли порядок — по артикулу, чтобы счёт не зависел от случая;
+ *   · в минусе — прибыль строки строго меньше нуля (развилка Д1, вариант А). Счётчик и подсветка
+ *     строки берут **этот один признак**, а не каждый свой.
+ *
+ * Прибыль месяца у таблицы товаров не та же, что сумма прибыли строк: строка — выручка минус
+ * себестоимость, месяц — ещё минус реклама, комиссии и постоянные. На экране это названо у строки
+ * над таблицей числами обеих.
+ */
+export const ITEMS_FROM_ROWS = `
+base as (
+  select sum(r.profit::numeric) as total, count(*) as skus from items_row r
+),
+ranked as (
+  select r.sku, r.net::numeric as net, r.profit::numeric as profit,
+         r.profit::numeric < 0 as loss,
+         sum(r.profit::numeric) over (order by r.profit::numeric desc, r.sku
+                                      rows between unbounded preceding and 1 preceding) as before
+    from items_row r
+)
+select k.sku,
+       round(k.profit / nullif(k.net, 0) * 100, 1)::text                     as margin_pct,
+       (case when b.total > 0 then round(k.profit / b.total * 100, 1) end)::text
+                                                                             as profit_share_pct,
+       k.loss                                                                as loss,
+       b.total::text                                                         as products_profit,
+       b.skus::int                                                           as skus_total,
+       (case when b.total > 0
+             then count(*) filter (where coalesce(k.before, 0) < 0.8 * b.total) over () end)::int
+                                                                             as skus_for_80,
+       (count(*) filter (where k.loss) over ())::int                         as negative_count
+  from ranked k
+ cross join base b
+`
+
+export const MONTH_ITEMS_EXTRA = `
+with items_row as (${MONTH_ITEMS}),
+${ITEMS_FROM_ROWS}`
+
+/**
+ * Время чтения источников — кусок S11, шаг 6 (задача 5): готовой строкой `ГГГГ-ММ-ДД ЧЧ:ММ UTC`.
+ *
+ * **Что это за время — словами, потому что на экране подпись обязана говорить правду.** Это
+ * `meta.fact_freshness.raw_seen_at` — время самого свежего сырья, по которому собраны факты, а не
+ * время разбора: разбор, прогнанный дважды подряд без изменений в источнике, отметку не двигает.
+ * Отсюда подпись «источники прочитаны по состоянию на …» — решение владельца по развилке 5.
+ *
+ * Форматирование — здесь, а не в разметке: это счёт. Пояс — UTC и назван в самой строке, иначе
+ * время читалось бы как местное; `at time zone 'UTC'` снимает зависимость от пояса сеанса. Секунды
+ * отбрасываются, а не округляются: строка не называет время позже настоящего.
+ *
+ * Отметки нет — пусто, и строка ответа всё равно одна. Эпоха — тоже пусто: её пишет сама запись
+ * отметки, когда сырьё пустое (`coalesce(max(updated_at), to_timestamp(0))`), и это не время чтения.
+ */
+export const SOURCES_READ_AT = `
+select (
+  select to_char(f.raw_seen_at at time zone 'UTC', 'YYYY-MM-DD HH24:MI') || ' UTC'
+    from meta.fact_freshness f
+   where f.raw_seen_at > to_timestamp(0)
+) as read_at
+`
+
+/**
+ * Полоса показателей — кусок S11, шаг 7 (задача 1): четыре показателя месяца и их дельты к
+ * предыдущему **календарному** месяцу (решение владельца по развилке 7). Прибыль и чистая выручка —
+ * в евро, маржа и доля рекламы — в процентных пунктах: дельта процентной величины — это разность
+ * пунктов, а не процент от прошлой.
+ *
+ * **Своих выражений денег здесь нет.** Значения — колонки готовой строки итогов (`cur_row`), та же
+ * прибыль и та же маржа, что в «Итоге»; прошлый месяц — такая же строка (`prev_row`). Дельта —
+ * разность **показанных** значений, уже округлённых: напечатанная дельта ровно равна разнице двух
+ * чисел, которые человек увидит на двух месяцах. Доля рекламы — реклама ÷ оборот × 100, то же
+ * выражение, что у доли ступени рекламы в водопаде; равенство утверждает проверка.
+ *
+ * **Пустое — пустое, а не ноль.** Нет предыдущего месяца или в нём нет заказов (`prev_state`) —
+ * дельты пусты у всех четырёх разом, значения при этом стоят. Оборот ноль — доля рекламы пуста. В
+ * прошлом месяце нет ни одной строки рекламы — пуста дельта доли рекламы (контракт, правило «нет
+ * данных — словами»): отсутствие выгрузки — это «данных нет», а не «реклама стоила ноль».
+ *
+ * **То же правило — и для текущего месяца (`cur_state`), и это правка круга проверки кода 1.**
+ * Прежде месяц, для которого файлы рекламы ещё не загружены, показывал долю рекламы 0,0 % и дельту к
+ * прошлому месяцу — то есть ноль вместо «нет данных», да ещё с вердиктом «лучше». Теперь нет ни одной
+ * строки рекламы в границах месяца — доля рекламы пуста и дельта пуста; прочие три показателя стоят.
+ * **Чего эта правка не чинит:** сами итоги месяца (`MONTH_TOTALS`, кусок S5) считают рекламу без
+ * выгрузки нулём, и прибыль такого месяца завышена. Это дефект счёта прежнего куска; он назван в
+ * `docs/ОТЧЁТ.md`, «Где не уверен».
+ *
+ * Признак «рост — это хорошо» заведён здесь, у числа: прибыль, маржа, выручка — да, доля рекламы —
+ * нет. Отсюда и вывод `verdict` — «лучше», «хуже», «без изменений»; разметка знак с нулём не
+ * сравнивает. Знак плюс у дельты ставится здесь же: разметка его не выводит.
+ *
+ * Переход между «нет базы» и «есть база» — от данных и только от них: появился прошлый месяц с
+ * заказами — дельты считаются, исчез — снова пусто. Ни флага, ни настройки.
+ */
+export const DELTAS_FROM_ROWS = `
+kpi as (
+  select k.ord, k.key, k.unit, k.good_when_up, k.value, k.cur, k.prev,
+         s.month as prev_month, s.has_orders
+    from cur_row c
+   cross join prev_row p
+   cross join prev_state s
+   cross join cur_state cs
+   cross join lateral (values
+     (1, 'profit',   'eur', true,  c.profit,     c.profit::numeric,     p.profit::numeric),
+     (2, 'margin',   'pp',  true,  c.margin_pct, c.margin_pct::numeric, p.margin_pct::numeric),
+     (3, 'net',      'eur', true,  c.net,        c.net::numeric,        p.net::numeric),
+     (4, 'ad_share', 'pp',  false,
+         case when cs.has_ads then round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1) end::text,
+         case when cs.has_ads then round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1) end,
+         case when s.has_ads then round(p.ads::numeric / nullif(p.gross::numeric, 0) * 100, 1) end)
+   ) as k(ord, key, unit, good_when_up, value, cur, prev)
+),
+diff as (
+  select k.*, case when k.has_orders then k.cur - k.prev end as d
+    from kpi k
+)
+select key, unit, good_when_up, value,
+       (case when d > 0 then '+' else '' end || d::text) as delta,
+       case when d is null then null
+            when d = 0 then 'без изменений'
+            when (d > 0) = good_when_up then 'лучше'
+            else 'хуже'
+       end                                                as verdict,
+       prev_month,
+       has_orders                                         as has_base
+  from diff
+ order by ord
+`
+
+/**
+ * Итоги предыдущего календарного месяца — **тот же текст `MONTH_TOTALS`**, у которого граница
+ * месяца сдвинута на месяц назад. Параметр месяца в нём стоит ровно дважды, оба раза как
+ * `$1::date` в границах месяца, и замена трогает только их. Равенство этих итогов итогам
+ * `MONTH_TOTALS`, спрошенным за прошлый месяц напрямую, утверждает проверка — на фактах, где оба
+ * месяца не пусты. Второго выражения итогов нет: сам текст `MONTH_TOTALS` не тронут.
+ */
+export const PREVIOUS_MONTH_TOTALS = MONTH_TOTALS.replaceAll('$1::date', "($1::date - interval '1 month')::date")
+
+/**
+ * Боевой запрос полосы. Есть ли у прошлого месяца заказы — по тому же определению, что у
+ * переключателя месяцев (`ALL_MONTHS`, `has_orders`), второго определения нет.
+ */
+export const MONTH_DELTAS = `
+with cur_row as (${MONTH_TOTALS}),
+prev_row as (${PREVIOUS_MONTH_TOTALS}),
+cur_state as (${ЕСТЬ_РЕКЛАМА}),
+prev_state as (
+  select to_char($1::date - interval '1 month', 'YYYY-MM') as month,
+         exists(select 1 from (${ALL_MONTHS}) m
+                 where m.month = to_char($1::date - interval '1 month', 'YYYY-MM')
+                   and m.has_orders)                                   as has_orders,
+         (${ЕСТЬ_РЕКЛАМА.replaceAll('$1::date', "($1::date - interval '1 month')::date")})  as has_ads
+),
+${DELTAS_FROM_ROWS}`

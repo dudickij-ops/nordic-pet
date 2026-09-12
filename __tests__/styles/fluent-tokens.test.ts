@@ -130,24 +130,39 @@ const ЦВЕТА: Record<string, [string, string]> = {
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:166 `brand[80]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:166 `brand[100]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:13 brandWeb[100]
   colorBrandStroke1: ['#0f6cbd', '#479ef5'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:167 `brand[140]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:17 brandWeb[140]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:167 `brand[50]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:8 brandWeb[50]
+  colorBrandStroke2: ['#b4d6fa', '#0e4775'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:87 `grey[90]` → packages/tokens/src/global/colors.ts:51 grey[90]
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:87 `grey[20]` → packages/tokens/src/global/colors.ts:16 grey[20]
   colorNeutralBackground6: ['#e6e6e6', '#333333'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:128 `brand[80]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:128 `brand[100]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:13 brandWeb[100]
   colorCompoundBrandBackground: ['#0f6cbd', '#479ef5'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:171 `brand[80]` → packages/tokens/src/themes/web/lightTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:11 brandWeb[80]
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:171 `brand[100]` → packages/tokens/src/themes/web/darkTheme.ts:5 brand = brandWeb → packages/tokens/src/global/brandColors.ts:13 brandWeb[100]
+  colorCompoundBrandStroke: ['#0f6cbd', '#479ef5'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColor.ts:183 `black` → packages/tokens/src/global/colors.ts:126 black
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColor.ts:183 `white` → packages/tokens/src/global/colors.ts:124 white
   colorStrokeFocus2: ['#000000', '#ffffff'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:14 формула Background1 → .tint60 → packages/tokens/src/global/colors.ts:201 red.tint60
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:16 формула Background1 → .shade40 → packages/tokens/src/global/colors.ts:191 red.shade40
   colorPaletteRedBackground1: ['#fdf6f6', '#3f1011'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:15 формула Background2 → .tint40 → packages/tokens/src/global/colors.ts:199 red.tint40
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:17 формула Background2 → .shade30 → packages/tokens/src/global/colors.ts:192 red.shade30
+  colorPaletteRedBackground2: ['#f1bbbc', '#751d1f'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:22 формула Border2 → .primary → packages/tokens/src/global/colors.ts:195 red.primary
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:32 заплатка red.tint30 → packages/tokens/src/global/colors.ts:198 red.tint30
   colorPaletteRedBorder2: ['#d13438', '#e37d80'],
   // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:17 формула Foreground1 → .shade10 → packages/tokens/src/global/colors.ts:194 red.shade10
   // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:19 формула Foreground1 → .tint30 → packages/tokens/src/global/colors.ts:198 red.tint30
   colorPaletteRedForeground1: ['#bc2f32', '#e37d80'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:19 формула Foreground3 → .primary → packages/tokens/src/global/colors.ts:195 red.primary
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:31 заплатка red.tint30 → packages/tokens/src/global/colors.ts:198 red.tint30
+  colorPaletteRedForeground3: ['#d13438', '#e37d80'],
+  // fluentui@43665d5 светлая: packages/tokens/src/alias/lightColorPalette.ts:17 формула Foreground1 → .shade10 → packages/tokens/src/global/colors.ts:434 green.shade10
+  // fluentui@43665d5 тёмная: packages/tokens/src/alias/darkColorPalette.ts:19 формула Foreground1 → .tint30 → packages/tokens/src/global/colors.ts:438 green.tint30
+  colorPaletteGreenForeground1: ['#0e700e', '#54b054'],
   // fluentui@43665d5 светлая: packages/tokens/src/utils/shadows.ts:10 shadow8 → packages/tokens/src/alias/lightColor.ts:184 ambient → packages/tokens/src/alias/lightColor.ts:185 key
   // fluentui@43665d5 тёмная: packages/tokens/src/utils/shadows.ts:10 shadow8 → packages/tokens/src/alias/darkColor.ts:184 ambient → packages/tokens/src/alias/darkColor.ts:185 key
   shadow8: [
@@ -192,6 +207,8 @@ const ШКАЛЫ: Record<string, string> = {
   strokeWidthThin: '1px',
   // fluentui@43665d5: packages/tokens/src/global/strokeWidths.ts:5 strokeWidthThick
   strokeWidthThick: '2px',
+  // fluentui@43665d5: packages/tokens/src/global/strokeWidths.ts:6 strokeWidthThicker
+  strokeWidthThicker: '3px',
   // fluentui@43665d5: packages/tokens/src/global/spacings.ts:21 → spacings.xs → packages/tokens/src/global/spacings.ts:7 xs
   spacingHorizontalXS: '4px',
   // fluentui@43665d5: packages/tokens/src/global/spacings.ts:23 → spacings.s → packages/tokens/src/global/spacings.ts:9 s
@@ -259,7 +276,7 @@ const ИСКЛЮЧЕНИЯ: Record<string, { значение: string; дово�
 /**
  * Длины в правилах экрана, которых нет ни в одной шкале Fluent, — каждая с доводом.
  *
- * Их четыре, и список закрыт: всё, что не здесь и не в шкалах, красит закрывающее утверждение.
+ * Их пять, и список закрыт: всё, что не здесь и не в шкалах, красит закрывающее утверждение.
  * Каждая строка — сознательное решение, а не место, куда сметают неудобное.
  *
  * **Три строки удалены как мёртвые, и это делает проверку строже.** `8px` уже есть в шкале
@@ -274,6 +291,11 @@ const ИСКЛЮЧЕНИЯ_ПРАВИЛ: Record<string, string> = {
     'наименьшая ширина колонки списка неполноты: при ней самая длинная строка умещается в одну',
   '22rem': 'ширина карточки входа: форма из двух полей не должна растягиваться на весь монитор',
   '12vh': 'отступ карточки входа сверху: она стоит чуть выше середины',
+  '8rem':
+    'высота области столбиков ряда по дням, кусок S11, решение владельца по развилке Ж3: шкалы высот ' +
+    'графика у Fluent 2 нет, а самая большая длина его шкал — высота строки lineHeightHero1000, 92px ' +
+    '(fluentui@43665d5 packages/tokens/src/global/fonts.ts:28), отступы кончаются на 32px ' +
+    '(global/spacings.ts:15); 128px — наше число: при нём процент доли — около 1,3 пикселя высоты',
 }
 
 /** Свойства, у которых значение способно нести цвет. Всё прочее проверка не читает. */
@@ -535,4 +557,53 @@ test('отключённый вид назван и для главной кно
       'файле ниже — значит без отдельного `button.primary:disabled` отключённый вид не доходит ' +
       `до главной кнопки, а её только и отключают. Сейчас селектор такой: «${селектор}»`,
   ).toContain('button.primary:disabled')
+})
+
+/**
+ * Граница зелёного — решение владельца по развилке Ж4, 11 сентября 2026 года: зелёный живёт только в
+ * строке дельты полосы показателей, вердикт «лучше», и больше нигде на экране. Утверждение закрывает
+ * это не словами: величина зелёного встречается ровно в одном правиле, и это правило — то самое.
+ *
+ * **Что здесь считается зелёным — и чего этот разбор не понимает.** Зелёная величина — та, чьё имя
+ * содержит `Green` или `Success`; та, чьё значение в любой теме совпадает со значением такой
+ * величины; и та, что ссылается на любую из них через `var()`, сколько бы звеньев ни было. Так
+ * ловится и зелёный, спрятанный под другим именем, — утверждения выше этого не ловят: они про
+ * значения, а не про имена. Зелёный Fluent под другим именем палитры (`Forest`, `Lime`, `Seafoam`,
+ * `LightGreen` ловится, эти — нет) и значение, записанное прямо в правило, этот разбор не узнает;
+ * второе закрывает утверждение «цвет приходит ссылкой на величину».
+ */
+test('зелёный — только в строке дельты «лучше» полосы показателей: ровно одно правило', () => {
+  const темы = [светлыеВеличины, тёмныеВеличины]
+  const зелёные = new Set<string>()
+  for (const набор of темы) for (const имя of набор.keys()) if (/Green|Success/.test(имя)) зелёные.add(имя)
+  expect(зелёные.size, 'зелёная величина в таблице стилей есть').toBeGreaterThan(0)
+
+  let прибавилось = true
+  while (прибавилось) {
+    прибавилось = false
+    const значенияЗелёных = new Set(
+      [...зелёные].flatMap((имя) => темы.map((набор) => набор.get(имя)).filter((з): з is string => з !== undefined)),
+    )
+    for (const набор of темы) {
+      for (const [имя, значение] of набор) {
+        if (зелёные.has(имя)) continue
+        const ссылка = значение.match(/^var\(--([\w-]+)\)$/)?.[1]
+        if (значенияЗелёных.has(значение) || (ссылка !== undefined && зелёные.has(ссылка))) {
+          зелёные.add(имя)
+          прибавилось = true
+        }
+      }
+    }
+  }
+
+  const селекторы: string[] = []
+  for (const м of правила.matchAll(/var\(--([\w-]+)\)/g)) {
+    if (!зелёные.has(м[1])) continue
+    const открывающая = правила.lastIndexOf('{', м.index)
+    селекторы.push(правила.slice(правила.lastIndexOf('}', открывающая) + 1, открывающая).trim())
+  }
+  expect(
+    селекторы,
+    `зелёные величины (${[...зелёные].join(', ')}) стоят в правилах: ${селекторы.join(' | ')}`,
+  ).toEqual([".kpi[data-verdict='лучше'] .kpi-delta"])
 })

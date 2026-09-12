@@ -29,6 +29,15 @@
 exit=0
 ```
 
+**Раздел 8 — кусок S11, 11 сентября 2026 года**, тот же способ одноразовым разбором по выписанным
+блокам вкладки. Первый прогон нашёл одну не упомянутую строку — 313, начало блока фокуса; диапазон
+её строки таблицы расширен, второй прогон:
+
+```
+раздел 8: строк-свойств 88, не упомянуто 0
+exit=0
+```
+
 **Чего этот вывод не доказывает.** Разбор не исполняет TypeScript; открывающие строки блоков
 (`root: {`, `'::before': {`) свойствами не считает; номера засчитывает только из строк таблиц, не из
 заголовков и абзацев; утверждает, что номер строки упомянут, а не что итог у строки верен. Что
@@ -48,6 +57,20 @@ $ grep -o 'use[A-Z][a-zA-Z]*Styles\.styles\.ts' app/globals.css | sort | uniq -c
    1 useDividerStyles.styles.ts
    1 useInputStyles.styles.ts
    1 useProgressBarStyles.styles.ts
+   1 useTableCellStyles.styles.ts
+   1 useTableHeaderCellStyles.styles.ts
+   1 useTableRowStyles.styles.ts
+```
+
+**Кусок S11, 11 сентября 2026 года, тот же поиск — восемь файлов:** добавилась вкладка, раздел 8.
+
+```
+$ grep -o 'use[A-Z][a-zA-Z]*Styles\.styles\.ts' app/globals.css | sort | uniq -c
+   4 useButtonStyles.styles.ts
+   1 useDividerStyles.styles.ts
+   1 useInputStyles.styles.ts
+   1 useProgressBarStyles.styles.ts
+   1 useTabStyles.styles.ts
    1 useTableCellStyles.styles.ts
    1 useTableHeaderCellStyles.styles.ts
    1 useTableRowStyles.styles.ts
@@ -284,6 +307,57 @@ $ grep -o 'use[A-Z][a-zA-Z]*Styles\.styles\.ts' app/globals.css | sort | uniq -c
 
 ---
 
+## 8. Вкладка — `react-tabs/library/src/components/Tab/useTabStyles.styles.ts`
+
+Кусок S11, шаг вкладок. Наши правила: `.tabs a` — вкладка, `.tabs a[aria-current='page']` — текущая,
+`.tabs a[aria-current='page']::after` — указатель. Вкладка у нас — ссылка в `<nav>`, а не кнопка в
+списке вкладок (довод в контракте S11: роль вкладки обещала бы переход стрелками). Вид Fluent —
+средний размер, горизонтально, `transparent`. Выписанные блоки источника: строки 31–60, 73–76,
+91–117, 158–177, 313–326, 346–367, 400–407, 435–464, 486–493, 569–595.
+
+| Строка | Свойство Fluent | Наше | Итог |
+|---|---|---|---|
+| 32–39 | корень: `alignItems`, `display: grid`, `flexShrink`, `gridAutoFlow`, `gridTemplateColumns`, `gridTemplateRows`, `outlineStyle`, `position` | — | не применимо: корень Fluent — обёртка кнопки; у нас ссылка стоит в `li` полосы |
+| 42 | `alignItems: center` | одна строка текста в `inline-block` | совпало по действию |
+| 43 | `border: none` | у ссылки рамки нет | совпало по действию |
+| 44 | `borderRadius: borderRadiusMedium` | то же | совпало |
+| 45 | `cursor: pointer` | у ссылки указатель по умолчанию | совпало по действию |
+| 46–50 | `display: grid`, `flexShrink: 0`, `gridAutoFlow: column`, `gridTemplateColumns`, `gridTemplateRows` | `inline-block` | совпало по действию: у нас один узел текста, без значка |
+| 51 | `fontFamily: fontFamilyBase` | шрифт страницы | совпало по действию |
+| 52 | `lineHeight: lineHeightBase300` | то же | совпало |
+| 53 | `outlineStyle: none` | — | **отступление** — фокус у нас общий `:focus-visible`, решение владельца S10 |
+| 54 | `position: relative` | то же | совпало |
+| 55 | `overflow: hidden` | — | не взято; довода в коде нет |
+| 56 | `textTransform: none` | ссылка регистр не меняет | совпало по действию |
+| 59 | горизонтально: `justifyContent: center` | — | не применимо: один узел |
+| 74 | средний размер: `columnGap: spacingHorizontalSNudge` | — | не применимо: значка нет |
+| 75 | средний размер: `padding: spacingVerticalM spacingHorizontalMNudge` | `spacingVerticalM spacingHorizontalM` | совпало по действию: 10 у кнопки плюс 2 у текста (строка 573) — те же 12, на которые отстоит указатель; величин с `Nudge` в выписке нет |
+| 92 | `backgroundColor: colorTransparentBackground` | фона нет | совпало по действию |
+| 93–98 | фон при наведении и нажатии: `colorTransparentBackgroundHover`, `…Pressed` | фона нет | совпало по действию: у Fluent и эти фоны прозрачны |
+| 99–107 | цвет значка | — | не применимо: значка нет |
+| 108–110 | текст: `colorNeutralForeground2` | то же | совпало |
+| 111–116 | текст при наведении и нажатии: `colorNeutralForeground2Hover`, `…Pressed` | — | не взято; довода в коде нет |
+| 159–167 | текущая: цвет значка | — | не применимо: значка нет |
+| 168–170 | текущая: текст `colorNeutralForeground1` | то же | совпало |
+| 171–176 | текущая: текст при наведении и нажатии | — | не взято; довода в коде нет |
+| 313–325 | фокус: прозрачная рамка, прозрачная обводка `strokeWidthThick`, тень `shadow4` и кольцо `strokeWidthThick colorStrokeFocus2`, `zIndex: 1` | общий `:focus-visible`: обводка `strokeWidthThick colorStrokeFocus2` с отступом | **отступление** — фокус общий для всех органов управления, решение владельца S10 |
+| 347–366 | указатель наведения и нажатия `::before`: `colorNeutralStroke1Hover`, `…Pressed`, скругление, режим принудительных цветов | — | не взято: величин наведения нет в выписке, а просьба П3 разрешила две величины — указатель текущей и его толщину |
+| 400–407 | средний размер, горизонтально: геометрия указателя наведения | — | не взято — вместе с указателем наведения |
+| 436–441 | указатель `::after` у всех: `colorTransparentStroke`, скругление, `content`, `position: absolute` | указателя у нетекущей нет | совпало по действию: прозрачный указатель — то же, что отсутствующий |
+| 444–446 | текущая: указатель `colorCompoundBrandStroke` | то же | совпало |
+| 447–452 | текущая: указатель при наведении и нажатии | — | не взято; довода в коде нет |
+| 453–463 | режим принудительных цветов: указатель `ButtonText` | — | не взято, общее для всех; сверх того проверка чисел таблицы стилей не пропускает системных слов цвета |
+| 487–492 | средний размер, горизонтально: указатель `bottom: 0`, `height: strokeWidthThicker`, `left` и `right` — `spacingHorizontalM` | то же, скругление `borderRadiusCircular` | совпало |
+| 570 | текст: `body1` — `fontSizeBase300`, `lineHeightBase300`, `fontWeightRegular` | то же | совпало |
+| 571 | текст: `overflow: hidden` | — | не взято; довода в коде нет |
+| 573 | текст: `padding: spacingVerticalNone spacingHorizontalXXS` | в отступе ссылки | совпало по действию — см. строку 75 |
+| 575–577 | текущая: `body1Strong` — `fontWeightSemibold` | то же | совпало |
+| 578–583 | крупный размер | — | не применимо: размер средний |
+| 584–591 | положение текста при значке и без | — | не применимо: значка нет |
+| 592–594 | запасное место под полужирный текст: `visibility: hidden` | — | не взято: место не резервируется, и ширина вкладки при выборе чуть меняется; довода в коде нет |
+
+---
+
 ## Итог сверки — посчитан командой по строкам таблиц этого файла
 
 Одноразовый счёт (в репозиторий не кладётся) берёт каждую строку таблиц разделов 1–7 — с номером
@@ -298,6 +372,19 @@ $ grep -o 'use[A-Z][a-zA-Z]*Styles\.styles\.ts' app/globals.css | sort | uniq -c
 отступление: 17
 не применимо: 29
 всего: 119
+без итога: 0
+exit=0
+```
+
+**Раздел 8 — кусок S11**, тем же счётом, 11 сентября 2026 года:
+
+```
+совпало по действию: 11
+совпало: 9
+не взято: 9
+отступление: 2
+не применимо: 7
+всего: 38
 без итога: 0
 exit=0
 ```
