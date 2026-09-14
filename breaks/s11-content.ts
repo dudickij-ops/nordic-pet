@@ -1877,6 +1877,15 @@ export const BREAKS: Break[] = [
     tests: 'все',
   },
   {
+    id: 'frame-guard-off-for-stale-numbers',
+    claim: 'снять сторож кадра у снимка «числа отстали» — вернуть его к состоянию до круга проверки кода 3',
+    mustRedden: 'опись картинок: сторож кадра стоит у всех снимков «Главного»',
+    file: 'docs/screens/generate.tsx',
+    find: "  { файл: '04-chisla-otstali.png', состояние: 'chisla-otstali', тёмная: false, ширина: 1280, высота: 1300, кадр: true },",
+    replace: "  { файл: '04-chisla-otstali.png', состояние: 'chisla-otstali', тёмная: false, ширина: 1280, высота: 760 },",
+    tests: 'все',
+  },
+  {
     id: 'frame-measure-guard-body',
     claim: 'выесть тело сторожа замера кадра',
     mustRedden: 'замер кадра без ответа — отказ замера, а не ноль',
