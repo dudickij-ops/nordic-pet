@@ -39,6 +39,25 @@ vi.mock('@/lib/metrics/refresh', () => ({ refreshEverything: () => refreshEveryt
 const revalidatePath = vi.fn()
 vi.mock('next/cache', () => ({ revalidatePath }))
 
+/**
+ * Круг проверки кода 3. Утверждение «действие не уводит со страницы» держалось на том, что вызов
+ * не бросил исключения, — то есть краснело на любой ошибке, а не на уходе. Уйти со страницы
+ * действие может ровно одним способом — переходом, и теперь он под наблюдением поимённо.
+ * Настоящее поведение перехода сохранено: подставка записывает вызов и зовёт настоящий `redirect`,
+ * который в Next останавливает работу броском.
+ */
+const переход = vi.fn()
+vi.mock('next/navigation', async (importOriginal) => {
+  const настоящий = await importOriginal<typeof import('next/navigation')>()
+  return {
+    ...настоящий,
+    redirect: (путь: string) => {
+      переход(путь)
+      return настоящий.redirect(путь)
+    },
+  }
+})
+
 const { default: HomePage } = await import('@/app/page')
 const { refreshAction } = await import('@/app/refresh-action')
 
@@ -47,6 +66,7 @@ beforeEach(() => {
   monthlyReport.mockClear()
   refreshEverything.mockClear()
   revalidatePath.mockClear()
+  переход.mockClear()
 })
 
 async function страница(адрес: { m?: string | string[]; tab?: string | string[] }): Promise<string> {
@@ -110,4 +130,6 @@ test('после «Обновить данные» действие не уво�
   // наблюдается живым проходом по четырём вкладкам (задача 18).
   await expect(refreshAction()).resolves.toEqual({ ok: true })
   expect(revalidatePath.mock.calls).toEqual([['/']])
+  // Свой отказ, а не любой: уход со страницы — это переход, и он не состоялся ни разу.
+  expect(переход).not.toHaveBeenCalled()
 })
