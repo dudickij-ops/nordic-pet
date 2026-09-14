@@ -1900,7 +1900,7 @@ export const BREAKS: Break[] = [
   {
     id: 'head-match-guard-no-early-exit',
     claim: 'убрать ранний выход сверки головы по совпадению голов',
-    mustRedden: 'сверка головы: голова прогона совпала с нынешней — молчит',
+    mustRedden: 'сверка головы: голова прогона совпала с нынешней — молчит, что бы ни лежало в списке',
     file: 'scripts/head-match.ts',
     find: '  if (сейчас === головаПрогона) return null\n',
     replace: '',
