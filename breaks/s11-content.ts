@@ -1765,18 +1765,27 @@ export const BREAKS: Break[] = [
     tests: 'все',
   },
   {
-    id: 'ads-sum-zero-instead-of-no-data',
-    claim: 'вернуть сумме рекламы обычные деньги: печатать её всегда, не спрашивая, была ли выгрузка',
-    mustRedden: 'месяц без выгрузки рекламы: сумма рекламы — слова, а не ноль',
+    id: 'ads-report-zero-instead-of-no-data',
+    claim: 'в слое отчёта отдавать сумму рекламы всегда, не спрашивая, была ли выгрузка',
+    mustRedden: 'месяц без выгрузки рекламы: сумма рекламы в отчёте пуста, а не ноль',
     alsoRedden: [
       {
         name: 'при нулевой рекламе окупаемость — нет данных',
-        why: 'она с круга проверки кода 3 утверждает, что сумма рекламы на таком месяце пуста, а не «0.00»',
+        why: 'она с круга проверки кода 3 утверждает на том же месяце, что сумма рекламы пуста, а не «0.00»',
       },
     ],
     file: 'lib/metrics/report.ts',
     find: '        ads: totalsResult.rows[0]?.has_ads === true ? (totals.ads as string) : null,',
     replace: '        ads: totals.ads as string,',
+    tests: 'все',
+  },
+  {
+    id: 'ads-screen-zero-instead-of-no-data',
+    claim: 'подставить на экране ноль вместо пустой суммы рекламы',
+    mustRedden: 'месяц без выгрузки рекламы: сумма рекламы — слова, а не ноль',
+    file: 'app/page.tsx',
+    find: '            {moneyMaybe(report.costs.ads)}',
+    replace: "            {moneyMaybe(report.costs.ads ?? '0.00')}",
     tests: 'все',
   },
   {
