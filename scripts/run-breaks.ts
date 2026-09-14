@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import type { Break, BreakResult, BreakVerdict } from '../breaks/types.ts'
+import { разрывВремени } from '../breaks/time-gap.ts'
 
 /**
  * Прогон списка сломов.
@@ -153,6 +154,20 @@ function applyBreak(one: Break): BreakVerdict | null {
 
 const results: BreakResult[] = []
 
+/**
+ * Местное время «ГГГГ-ММ-ДД ЧЧ:ММ:СС» — **с датой**: без неё прогон с 23:50 до 00:29 читается как
+ * тридцать девять минут вместо суток с лишним, и разрыв прячется ровно там, где он опаснее всего.
+ */
+function время(): string {
+  const t = new Date()
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')} ${t.toTimeString().slice(0, 8)}`
+}
+
+const началоПрогона = время()
+
+/** Длительности уже сделанных сломов; по ним считается порог разрыва времени (`breaks/time-gap.ts`). */
+const длительности: number[] = []
+
 requireCleanTree()
 
 let catalogue: string[] = []
@@ -214,9 +229,21 @@ try {
     if (one.resetDb === true) resetDatabase()
     if (one.clearCache === true) clearDurationCache()
 
+    const началоСлома = Date.now()
     const { exitCode, failed } = runTests(one.tests)
+    const секунды = (Date.now() - началоСлома) / 1000
     writeFileSync(one.file, originals.get(one.file) as string)
     if (one.resetDb === true) resetDatabase()
+
+    const разрыв = разрывВремени(секунды, длительности)
+    if (разрыв !== null) {
+      restoreAll()
+      console.error(`прогон прерван: ${разрыв}.`)
+      console.error(`слом: «${one.claim}»; начало прогона ${началоПрогона}, сейчас ${время()}.`)
+      console.error('Такой прогон недействителен целиком: гоните заново на свежей базе, не усыпляя машину.')
+      process.exit(1)
+    }
+    длительности.push(секунды)
 
     const own = failed.filter((name) => name.includes(one.mustRedden))
     // Лишнее красное — то, чего слом не объявлял. Оно означает, что он ломает шире, чем
@@ -256,7 +283,12 @@ const mark: Record<BreakVerdict, string> = {
   'ломает больше обещанного': '**ломает больше, чем объявлено**',
 }
 
+// Время начала и конца печатает сам прибор — правило владельца после куска S11: прогон, переживший
+// сон машины, недействителен целиком, и отличить его от настоящего можно только по времени. Разрыв
+// обязан быть виден в выводе, а не в догадке задним числом.
 console.log(`# Прогон сломов: ${list}\n`)
+console.log(`Начало ${началоПрогона}, конец ${время()}.\n`)
+console.log(`Разрывов времени прибор не нашёл: самый долгий слом — ${Math.round(Math.max(...длительности, 0))} с, середина — ${Math.round([...длительности].sort((a, b) => a - b)[Math.floor(длительности.length / 2)] ?? 0)} с.\n`)
 console.log('| № | Что ломаем | Что обязано покраснеть | Итог |')
 console.log('|---|---|---|---|')
 results.forEach((result, index) => {

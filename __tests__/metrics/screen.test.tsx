@@ -84,7 +84,7 @@ function baseReport(overrides: Partial<MonthReport> = {}): MonthReport {
 
 describe('экран /', () => {
   test('экран печатает поля отчёта, а не свои числа', () => {
-    const html = renderToStaticMarkup(<Dashboard report={ОТЧЁТ} />)
+    const html = (['dengi', 'tovary', 'kachestvo'] as const).map((tab) => renderToStaticMarkup(<Dashboard report={ОТЧЁТ} tab={tab} />)).join('')
     // Каждое денежное поле отчёта обязано появиться на экране своим числом. Ни одно из них
     // не выводится из соседей, поэтому досчитанное в разметке число сюда не подойдёт.
     for (const ожидание of [
@@ -105,35 +105,35 @@ describe('экран /', () => {
     // «оборот больше рекламы в 4,23 раза» превращалось в «реклама вернула 4,23 %» — смысл,
     // противоположный настоящему. Проверка точная, а не подстрочная: знак процента рядом
     // с тем же числом эту проверку не пройдёт.
-    const html = renderToStaticMarkup(<Dashboard report={ОТЧЁТ} />)
+    const html = renderToStaticMarkup(<Dashboard report={ОТЧЁТ} tab="dengi" />)
     expect(html).toContain('1,23 ×')
     expect(html).not.toContain('1,23 %')
   })
 
   test('окупаемость подписана словом «по обороту»', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} />)
+    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="dengi" />)
     expect(html).toMatch(/окупаемость рекламы[^<]*по обороту/i)
   })
 
   test('доля подписана словами «от чистой выручки»', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} />)
+    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="kachestvo" />)
     expect(html).toMatch(/от чистой выручки/i)
   })
 
   test('блок неполноты виден, даже когда все нули', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} />)
+    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="kachestvo" />)
     expect(html).toContain('пустых ячеек')
     expect(html).toContain('скидки: 0')
   })
 
   test('нет данных печатается словами, а не как 0 и не как NaN', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} />)
+    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="dengi" />)
     expect(html).toContain('нет данных')
     expect(html).not.toContain('NaN')
   })
 
   test('таблица товаров идёт в порядке отчёта', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} />)
+    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="tovary" />)
     expect(html.indexOf('NP-001')).toBeLessThan(html.indexOf('NP-012'))
   })
 
@@ -143,13 +143,13 @@ describe('экран /', () => {
         i === 0 ? gap(kind, 2, ['3', '7']) : gap(kind),
       ),
     })
-    const html = renderToStaticMarkup(<Dashboard report={отчёт} />)
+    const html = renderToStaticMarkup(<Dashboard report={отчёт} tab="kachestvo" />)
     expect(html).toContain('скидки: 2')
     expect(html).toContain('3, 7')
   })
 
   test('экран называет товары без цены поставщика', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} />)
+    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="kachestvo" />)
     expect(html).toContain('NP-011')
     expect(html).toContain('NP-012')
   })
