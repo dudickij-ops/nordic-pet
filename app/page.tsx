@@ -291,6 +291,10 @@ export function Dashboard({
   // было бы вторым источником правды, и однажды они разъехались бы молча.
   const доля = report.honesty.sharePct
   const полоса = report.kpis
+  // Кусок S12, задача 2: адрес вкладки «Качество данных» строится от месяца отчёта — пометка
+  // подставленной себестоимости обязана вести туда, где лежит её размер.
+  const месяц = report.month
+
   // Переключатель месяцев помнит вкладку (решение владельца по В3). У «Главного» хвоста нет: адрес без
   // вкладки и есть «Главное».
   const хвостВкладки = tab === 'glavnoe' ? '' : `&tab=${tab}`
@@ -639,7 +643,18 @@ export function Dashboard({
                 <td>{item.sku}</td>
                 <td>{count(item.units)}</td>
                 <td>{money(item.net)}</td>
-                <td>{money(item.cogs)}</td>
+                <td>
+                  {money(item.cogs)}
+                  {item.подстановка !== undefined && (
+                    <a
+                      className="substituted"
+                      href={месяц === null ? '/?tab=kachestvo' : `/?m=${месяц}&tab=kachestvo`}
+                    >
+                      {item.подстановка === 'вся' ? 'подставлена' : 'подставлена частью'} — см.
+                      «Качество данных»
+                    </a>
+                  )}
+                </td>
                 <td>{money(item.profit)}</td>
                 {report.itemsSummary !== undefined && <td>{percent(item.marginPct ?? null)}</td>}
                 {report.itemsSummary !== undefined && (

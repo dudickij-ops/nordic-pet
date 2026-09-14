@@ -171,6 +171,14 @@ export type MonthReport = {
     profitSharePct?: Maybe
     /** Прибыль строки строго меньше нуля — тот же признак берёт счётчик над таблицей. */
     loss?: boolean
+    /**
+     * Себестоимость строки подставлена запасными процентами — кусок S12, задача 2.
+     *
+     * Три состояния, а не два: `undefined` — сказать нечего (так отчёт видят принятые проверки
+     * прежних кусков), `'вся'` — цены не нашлось ни одной продаже артикула, `'часть'` — нашлась
+     * не всем. Слово, а не доля: числа на экране этот кусок не меняет.
+     */
+    подстановка?: 'вся' | 'часть'
   }>
   honesty: { sharePct: Maybe; skusWithoutPrice: string[] }
   gaps: Array<{ kind: string; count: number; at: string[] }>
@@ -362,6 +370,21 @@ export const ТЕКСТ_ДАННЫЕ_НЕ_ЧИТАЮТСЯ =
   'старые как свежие хуже, чем не показать никаких. Обновите страницу через минуту; если ' +
   'повторится, скажите разработчику.'
 
+/**
+ * Какое слово говорит строка товара о подставленной себестоимости — кусок S12, задача 2.
+ *
+ * Ни одной продаже цены не нашлось — «вся»; нашлась не всем — «часть»; нашлась всем — сказать
+ * нечего. Ноль продаж в строке невозможен по построению запроса (строка появляется от продажи),
+ * но случай назван явно: «нет продаж» — не «вся подставлена».
+ */
+export function подстановкаСтроки(
+  подставлено: number,
+  всего: number,
+): 'вся' | 'часть' | undefined {
+  if (всего === 0 || подставлено === 0) return undefined
+  return подставлено === всего ? 'вся' : 'часть'
+}
+
 export async function monthlyReport(
   month?: string,
   deps: Partial<MetricsDeps> = {},
@@ -439,6 +462,9 @@ export async function monthlyReport(
       net: row.net as string,
       cogs: row.cogs as string,
       profit: row.profit as string,
+      // Кусок S12, задача 2. Слово выводится **здесь**, из двух чисел запроса, и разметка его
+      // только показывает: сравнение в разметке было бы счётом на экране.
+      подстановка: подстановкаСтроки(row.rows_substituted as number, row.rows_counted as number),
     }))
     const gaps = gapsResult.rows.map((row) => ({
       kind: row.kind as string,
@@ -470,6 +496,7 @@ export async function monthlyReport(
       },
       items: items.map((item) => ({
         ...item,
+        подстановка: item.подстановка,
         marginPct: (itemsExtra.get(item.sku)?.margin_pct ?? null) as string | null,
         profitSharePct: (itemsExtra.get(item.sku)?.profit_share_pct ?? null) as string | null,
         loss: itemsExtra.get(item.sku)?.loss === true,
