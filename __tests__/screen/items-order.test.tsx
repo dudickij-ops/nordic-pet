@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { Dashboard, ОтказПорядка, адресПорядка } from '@/app/page'
 import { ПОРЯДКИ_ТОВАРОВ } from '@/lib/metrics/sql'
 import { ПЕРЕПИСЬ } from './fixture.ts'
-import { текстПоПорядку } from './census.test.tsx'
+import { текстПоПорядку } from './census-text.ts'
 
 /**
  * Выбор порядка таблицы товаров — кусок S12, задача 1.

@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 
 import { Dashboard } from '@/app/page'
 import { ПЕРЕПИСЬ } from './fixture.ts'
-import { текстПоПорядку } from './census.test.tsx'
+import { текстПоПорядку } from './census-text.ts'
 
 /**
  * Пометка подставленной себестоимости в строке товара — кусок S12, задача 2.

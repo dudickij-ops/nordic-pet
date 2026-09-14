@@ -1291,20 +1291,6 @@ button.primary:active:not(:disabled) {
   font-weight: var(--fontWeightSemibold);
 }
 
-/* База окупаемости по прибыли — под числом, в той же ячейке: мелко и приглушённо, строкой ниже. */
-.payback-why {
-  display: block;
-  margin-top: var(--spacingVerticalXS);
-  color: var(--colorNeutralForeground3);
-  font-size: var(--fontSizeBase200);
-  line-height: var(--lineHeightBase200);
-  font-weight: var(--fontWeightRegular);
-  /*
-   * Фраза — текст, а не значение: запрет переноса у `dd` к ней не относится. Найдено снимком шага
-   * вкладок: в ряду из четырёх чисел фраза без переноса уезжала за край карточки.
-   */
-  white-space: normal;
-}
 
 /* Строка об определениях — пояснение к числам, а не число: мелко и приглушённо, как у водопада. */
 .payback-note {
