@@ -1810,6 +1810,12 @@ export const BREAKS: Break[] = [
     id: 'kpis-real-path-other-month',
     claim: 'спросить полосу показателей про другой месяц, чем итоги',
     mustRedden: 'отчёт несёт полосу показателей: значения — те же, что в итогах и в водопаде',
+    alsoRedden: [
+      {
+        name: 'появился предыдущий месяц — дельты считаются; исчез — снова слова',
+        why: 'она тоже идёт настоящим путём и смотрит на базу сравнения; спрошенный про февраль запрос сравнивает февраль с январём',
+      },
+    ],
     file: 'lib/metrics/report.ts',
     find: '    const deltasResult = await client.query(MONTH_DELTAS, [dayParam])',
     replace: "    const deltasResult = await client.query(MONTH_DELTAS, [dayParam === null ? null : '2026-02-01'])",
