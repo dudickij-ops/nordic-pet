@@ -1156,24 +1156,32 @@ button.primary:active:not(:disabled) {
 /* ——— «Деньги»: «Выручка» и «Затраты» рядом ——— */
 
 /*
- * Решение по макету, задача В-5: на широком экране два раздела стоят рядом, без обёртки разделов. На
- * узком экране — одна под другой (ниже, в медиазапросе). Раскладку сторожат только снимки — проверки у
- * неё нет.
+ * «Выручка» и «Затраты» — свой ряд, кусок S12, задача 4.
  *
- * **Строчными блоками, а не сеткой у родителя — и это найдено снимком.** Первая редакция делала `main`
- * сеткой. Сетка открывает свой блочный поток, а такой блок не заходит под плавающую кнопку «Обновить
- * данные» и сжимается рядом с ней: на черновике все разделы всех вкладок стали уже на ширину кнопки.
- * Строчный блок ширину родителя не меняет. Цена — высота: карточки рядом не выравниваются по высоте.
+ * **Что было и почему поменялось.** Прежде обе карточки были строчными блоками у `main`, и высоты
+ * у них не совпадали: строчные блоки друг с другом не равняются, и ряд выглядел рваным. Цена была
+ * названа в этом же файле прошлым куском. Сетку у `main` тот кусок отверг по снимку: её блок
+ * открывает свой поток форматирования, не заходит под плавающую полосу действия и сжимается рядом
+ * с ней — узкими становились разделы всех вкладок разом.
+ *
+ * **Почему обёртка этого не наследует.** Она начинается ниже плавающей полосы: между ними целая
+ * шапка — название, месяцы, время чтения и полоса вкладок. Плавающее сжимает только то, что стоит
+ * с ним вровень. Проверено снимком заново, а не принято на веру, и сжатие разделов сторожится
+ * своей проверкой со сломом.
+ *
+ * `align-items: stretch` — умолчание флексбокса, и высоты равняются им. `min-width: 0` у карточек
+ * обязателен: без него длинная подпись внутри не даёт колонке ужаться, и ряд уезжает за край.
  */
-.report > .revenue,
-.report > .costs {
-  display: inline-block;
-  width: calc((100% - var(--gap)) / 2);
-  vertical-align: top;
+.row-two {
+  display: flex;
+  gap: var(--gap);
+  margin: 0 0 var(--gap);
 }
 
-.report > .revenue {
-  margin-right: var(--gap);
+.row-two > .block {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-bottom: 0;
 }
 
 /* ——— Полоса показателей ——— */
@@ -1293,20 +1301,6 @@ button.primary:active:not(:disabled) {
   font-weight: var(--fontWeightSemibold);
 }
 
-/* База окупаемости по прибыли — под числом, в той же ячейке: мелко и приглушённо, строкой ниже. */
-.payback-why {
-  display: block;
-  margin-top: var(--spacingVerticalXS);
-  color: var(--colorNeutralForeground3);
-  font-size: var(--fontSizeBase200);
-  line-height: var(--lineHeightBase200);
-  font-weight: var(--fontWeightRegular);
-  /*
-   * Фраза — текст, а не значение: запрет переноса у `dd` к ней не относится. Найдено снимком шага
-   * вкладок: в ряду из четырёх чисел фраза без переноса уезжала за край карточки.
-   */
-  white-space: normal;
-}
 
 /* Строка об определениях — пояснение к числам, а не число: мелко и приглушённо, как у водопада. */
 .payback-note {
@@ -1314,6 +1308,38 @@ button.primary:active:not(:disabled) {
   color: var(--colorNeutralForeground3);
   font-size: var(--fontSizeBase200);
   line-height: var(--lineHeightBase200);
+}
+
+/*
+ * Пометка подставленной себестоимости в строке товара — кусок S12, задача 2.
+ *
+ * Отдельной строкой под числом, а не рядом с ним: рядом она растянула бы столбец и увела бы числа
+ * от правого края, а числа у нас стоят справа. Цвет — приглушённый текст, тот же, что у пояснения
+ * окупаемости: это оговорка, а не тревога, и красный ей не положен — красный в этом проекте
+ * означает отказ и плохое значение, и потраченный на оговорку он перестал бы значить это.
+ *
+ * Размер — Caption 1 (12 / 16), как у прочих пояснений экрана. Своих величин строка не заводит.
+ */
+.substituted {
+  display: block;
+  /*
+   * Ширина ограничена, и перенос возвращён: без этого пометка держала бы колонку
+   * «Себестоимость» шире себя самой, а на узком экране уезжала бы за правый край вместе с
+   * половиной таблицы: на узком снимке «Товаров» она не читалась целиком вовсе.
+   *
+   * **11rem — наш выбор, а не выписка из Fluent:** справочник ширины подписи в ячейке не называет.
+   * Взято по снимку узких «Товаров» — при мартовском тексте пометка укладывается в две строки и не
+   * делает колонку шире соседних. Денежного значения в пометке нет, поэтому возврат переноса
+   * ничего не рвёт; место со снятой защитой названо в списке проверки, как и положено.
+   */
+  max-width: 11rem;
+  margin-left: auto;
+  white-space: normal;
+  margin-top: var(--spacingVerticalXS);
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  font-weight: var(--fontWeightRegular);
 }
 
 /* ——— Выручка по дням ——— */
@@ -1635,9 +1661,28 @@ button.primary:active:not(:disabled) {
  * четыре колонки. Исключениями в проверке величин они больше не названы: условий медиазапросов
  * проверка не читает вовсе, и эти числа не проверяются ничем. Сказано здесь, а не спрятано.
  */
+/*
+ * Признак скрытых колонок — кусок S12, задача 6.
+ *
+ * На широком экране колонки видны все, и строка о прокрутке соврала бы: поэтому по умолчанию её
+ * нет вовсе. Появляется она там же, где таблица начинает прокручиваться, — одним и тем же
+ * запросом, чтобы признак и причина не разъехались.
+ */
+.items-scroll {
+  display: none;
+}
+
 @media (max-width: 48rem) {
   .items {
     overflow-x: auto;
+  }
+
+  .items-scroll {
+    display: block;
+    margin: 0 0 var(--spacingVerticalM);
+    color: var(--colorNeutralForeground3);
+    font-size: var(--fontSizeBase200);
+    line-height: var(--lineHeightBase200);
   }
 }
 
@@ -1646,8 +1691,26 @@ button.primary:active:not(:disabled) {
     padding: var(--spacingVerticalL) var(--spacingHorizontalL) var(--spacingVerticalXXL);
   }
 
+  /*
+   * Разделение блоков на узком экране — кусок S12, задача 5.
+   *
+   * Посторонний человек назвал это первым, что мешает. Причина в том, что зазор между карточками
+   * совпадал с внутренним отступом карточки — и то и другое 16 пикселей, — а холст отличается от
+   * карточки всего на 1,14 : 1 в светлой теме и 1,36 : 1 в тёмной (наш счёт по формуле контраста,
+   * не выписка). Одинаковый шаг снаружи и внутри читается сплошной белой полосой.
+   *
+   * Разделяет **зазор**, а не рамка: решение владельца. Рамке понадобился бы свой якорь в чужой
+   * системе оформления, а зазор берётся из уже выписанной шкалы отступов — 32 пикселя, вдвое
+   * больше внутреннего отступа карточки. Ни нового цвета, ни новой величины.
+   */
   section {
     padding: var(--spacingVerticalL) var(--spacingHorizontalL);
+    margin-bottom: var(--spacingVerticalXXXL);
+  }
+
+  .row-two {
+    gap: var(--spacingVerticalXXXL);
+    margin-bottom: var(--spacingVerticalXXXL);
   }
 
   /*
@@ -1685,11 +1748,8 @@ button.primary:active:not(:disabled) {
   }
 
   /* «Выручка» и «Затраты» на узком экране — одна под другой. */
-  .report > .revenue,
-  .report > .costs {
-    display: block;
-    width: auto;
-    margin-right: 0;
+  .row-two {
+    flex-direction: column;
   }
 
   /* Полоса показателей на узком экране — по две карточки в ряд. */
@@ -1777,4 +1837,4 @@ button.primary:active:not(:disabled) {
     --colorPaletteGreenForeground1: #54b054;
 
                                                                           
-    --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><div data-stale="false" class="numbers"><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01&amp;tab=tovary" data-empty="true">2026-01</a></li><li><a href="/?m=2026-02&amp;tab=tovary">2026-02</a></li><li><a href="/?m=2026-03&amp;tab=tovary" aria-current="page">2026-03</a></li></ul></nav><p class="report-read-at">Источники прочитаны по состоянию на 2026-09-11 07:47 UTC</p></header><nav class="tabs" aria-label="Разделы отчёта"><ul><li><a href="/?m=2026-03&amp;tab=glavnoe">Главное</a></li><li><a href="/?m=2026-03&amp;tab=dengi">Деньги</a></li><li><a href="/?m=2026-03&amp;tab=tovary" aria-current="page">Товары</a></li><li><a href="/?m=2026-03&amp;tab=kachestvo">Качество данных</a></li></ul></nav><section class="block items"><h2>Товары</h2><p class="items-summary">80 % прибыли товаров дают 8 из 12 артикулов; в минусе — 0. Прибыль товаров — выручка минус себестоимость, 11 248,93 €; это не прибыль месяца, 1 738,53 €.</p><table><thead><tr><th>Артикул</th><th>Продано за вычетом возвратов</th><th>Чистая выручка</th><th>Себестоимость</th><th>Прибыль</th><th>Маржа от чистой выручки</th><th>Доля в прибыли товаров</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td><td>59,1 %</td><td>14,6 %</td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €</td><td>1 251,90 €</td><td>60,0 %</td><td>11,1 %</td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td><td>62,8 %</td><td>11,6 %</td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td><td>79,8 %</td><td>11,9 %</td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td><td>66,4 %</td><td>9,3 %</td></tr><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td><td>64,4 %</td><td>8,3 %</td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €</td><td>793,44 €</td><td>60,0 %</td><td>7,1 %</td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td><td>63,7 %</td><td>6,3 %</td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td><td>69,8 %</td><td>5,6 %</td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td><td>64,9 %</td><td>4,9 %</td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td><td>73,4 %</td><td>4,7 %</td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td><td>71,6 %</td><td>4,6 %</td></tr></tbody></table></section></main></div></div><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>
+    --shadow8: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><div data-stale="false" class="numbers"><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01&amp;tab=tovary" data-empty="true">2026-01</a></li><li><a href="/?m=2026-02&amp;tab=tovary">2026-02</a></li><li><a href="/?m=2026-03&amp;tab=tovary" aria-current="page">2026-03</a></li></ul></nav><p class="report-read-at">Источники прочитаны по состоянию на 2026-09-11 07:47 UTC</p></header><nav class="tabs" aria-label="Разделы отчёта"><ul><li><a href="/?m=2026-03&amp;tab=glavnoe">Главное</a></li><li><a href="/?m=2026-03&amp;tab=dengi">Деньги</a></li><li><a href="/?m=2026-03&amp;tab=tovary" aria-current="page">Товары</a></li><li><a href="/?m=2026-03&amp;tab=kachestvo">Качество данных</a></li></ul></nav><section class="block items"><h2>Товары</h2><p class="items-summary">80 % прибыли товаров дают 8 из 12 артикулов; в минусе — 0. Прибыль товаров — выручка минус себестоимость, 11 248,93 €; это не прибыль месяца, 1 738,53 €.</p><p class="items-scroll">Таблица прокручивается вбок: за правым краем есть ещё колонки.</p><table><thead><tr><th>Артикул</th><th>Продано за вычетом возвратов</th><th scope="col"><a href="/?m=2026-03&amp;tab=tovary&amp;sort=net-desc">Чистая выручка</a></th><th scope="col"><a href="/?m=2026-03&amp;tab=tovary&amp;sort=cogs-desc">Себестоимость</a></th><th scope="col" aria-sort="descending"><a href="/?m=2026-03&amp;tab=tovary&amp;sort=profit-asc">Прибыль</a></th><th>Маржа от чистой выручки</th><th>Доля в прибыли товаров</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td><td>59,1 %</td><td>14,6 %</td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td><td>79,8 %</td><td>11,9 %</td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td><td>62,8 %</td><td>11,6 %</td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €<a class="substituted" href="/?m=2026-03&amp;tab=kachestvo">подставлена — см. «Качество данных»</a></td><td>1 251,90 €</td><td>60,0 %</td><td>11,1 %</td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td><td>66,4 %</td><td>9,3 %</td></tr><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td><td>64,4 %</td><td>8,3 %</td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €<a class="substituted" href="/?m=2026-03&amp;tab=kachestvo">подставлена — см. «Качество данных»</a></td><td>793,44 €</td><td>60,0 %</td><td>7,1 %</td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td><td>63,7 %</td><td>6,3 %</td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td><td>69,8 %</td><td>5,6 %</td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td><td>64,9 %</td><td>4,9 %</td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td><td>73,4 %</td><td>4,7 %</td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td><td>71,6 %</td><td>4,6 %</td></tr></tbody></table></section></main></div></div><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>
