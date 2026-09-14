@@ -77,7 +77,10 @@ export const BREAKS: Break[] = [
   {
     id: 'items-second-key-off',
     claim: 'снять второй ключ порядка — артикул',
-    mustRedden: 'при равных значениях столбца порядок решается артикулом, а не случаем',
+    // Круг проверки кода 1. Обещать здесь проверку поведения нельзя: на двух строках с равной
+    // прибылью база и без второго ключа отдаёт их в нужном порядке, и проверка остаётся
+    // зелёной. Сторожит второй ключ разбор текста запроса — слабо, и названо слабым.
+    mustRedden: 'порядков ровно шесть, и другого текста в запрос не попадает',
     file: 'lib/metrics/sql.ts',
     find: "  'profit-desc': 'order by sum(net) - sum(cogs) desc, sku',",
     replace: "  'profit-desc': 'order by sum(net) - sum(cogs) desc',",
@@ -92,7 +95,13 @@ export const BREAKS: Break[] = [
   {
     id: 'items-unknown-order-silent',
     claim: 'молча подставлять умолчание вместо отказа на незнакомый порядок',
-    mustRedden: 'отказ на незнакомый порядок называет имя и перечисляет все шесть',
+    mustRedden: 'незнакомый порядок — отказ словами, а не молчаливое умолчание',
+    alsoRedden: [
+      {
+        name: 'отказ называет все шесть порядков ссылками и сохраняет месяц',
+        why: 'отказа не остаётся вовсе, и перечислять нечего',
+      },
+    ],
     file: 'app/page.tsx',
     find: '  if (порядок === undefined) {\n',
     replace: '  if (false) {\n',
@@ -113,7 +122,7 @@ export const BREAKS: Break[] = [
   {
     id: 'substituted-marks-everyone',
     claim: 'помечать подставленной каждую строку товара',
-    mustRedden: 'строка с настоящей ценой не помечена ничем',
+    mustRedden: 'слово выводится из двух чисел, а не из ровной маржи',
     file: 'lib/metrics/report.ts',
     find: '  if (всего === 0 || подставлено === 0) return undefined',
     replace: '  if (всего === 0) return undefined',
@@ -133,7 +142,7 @@ export const BREAKS: Break[] = [
   {
     id: 'substituted-part-as-whole',
     claim: 'выдавать частичную подстановку за полную',
-    mustRedden: 'подставленная целиком и подставленная частью названы разными словами',
+    mustRedden: 'три состояния различаются на настоящих строках продаж',
     file: 'lib/metrics/report.ts',
     find: "  return подставлено === всего ? 'вся' : 'часть'",
     replace: "  return 'вся'",
@@ -175,6 +184,53 @@ export const BREAKS: Break[] = [
     find: "                      href={месяц === null ? '/?tab=kachestvo' : `/?m=${месяц}&tab=kachestvo`}",
     replace: '                      href="/"',
     alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе()],
+    tests: 'все',
+  },
+
+  {
+    id: 'substituted-markup-always',
+    claim: 'рисовать пометку в каждой строке, не спрашивая слова',
+    mustRedden: 'строка с настоящей ценой не помечена ничем',
+    file: 'app/page.tsx',
+    find: '                  {item.подстановка !== undefined && (',
+    replace: '                  {true && (',
+    alsoRedden: [
+      { name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА },
+      {
+        name: 'помечена ровно та строка, у которой подстановка, а не соседняя',
+        why: 'помечены обе строки, и первая пометка встаёт раньше второго артикула',
+      },
+      ...генВсе(),
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'substituted-markup-one-word',
+    claim: 'печатать в разметке одно слово на оба состояния подстановки',
+    mustRedden: 'подставленная целиком и подставленная частью названы разными словами',
+    file: 'app/page.tsx',
+    find: "                      {item.подстановка === 'вся' ? 'подставлена' : 'подставлена частью'} — см.",
+    replace: "                      {'подставлена'} — см.",
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе()],
+    tests: 'все',
+  },
+  {
+    id: 'substituted-wrap-guard-off',
+    claim: 'снять у пометки возврат переноса, вернув ей запрет родителя',
+    mustRedden: 'возврат переноса в таблице стилей перечислен в списке снятой защиты',
+    file: 'app/globals.css',
+    find: '  white-space: normal;\n  margin-top: var(--spacingVerticalXS);',
+    replace: '  margin-top: var(--spacingVerticalXS);',
+    tests: 'все',
+  },
+  {
+    id: 'items-summary-silent-on-other-order',
+    claim: 'молчать о том, что счёт идёт по прибыли, когда таблица упорядочена иначе',
+    mustRedden:
+      'утверждение над таблицей говорит, что счёт идёт по прибыли, когда порядок другой',
+    file: 'app/page.tsx',
+    find: "артикулов${поПрибыли ? '' : ' — считая по убыванию прибыли, а таблица сейчас упорядочена иначе'}",
+    replace: 'артикулов',
     tests: 'все',
   },
 
@@ -335,6 +391,15 @@ export const BREAKS: Break[] = [
     file: 'app/globals.css',
     find: '.items-scroll {\n  display: none;\n}',
     replace: '.items-scroll {\n  display: block;\n}',
+    tests: 'все',
+  },
+  {
+    id: 'items-scroll-hint-unconditional',
+    claim: 'говорить о скрытых колонках и там, где их нет: без товаров и без новых колонок',
+    mustRedden: 'без товаров и без новых колонок строки нет: сказать было бы нечего',
+    file: 'app/page.tsx',
+    find: '        {report.items.length > 0 && report.itemsSummary !== undefined && (',
+    replace: '        {true && (',
     tests: 'все',
   },
   {

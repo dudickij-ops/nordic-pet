@@ -25,6 +25,19 @@ describe('признак скрытых колонок', () => {
     expect(renderToStaticMarkup(<Dashboard report={ПЕРЕПИСЬ} tab="tovary" />)).toContain(СТРОКА)
   })
 
+  /**
+   * Круг проверки кода 1. Строка — утверждение о состоянии, и говорить его можно только там, где
+   * оно верно. У месяца без единого товара тело таблицы пусто и прокручиваться нечему; у отчёта без
+   * новых колонок их нет за краем вовсе.
+   */
+  test('без товаров и без новых колонок строки нет: сказать было бы нечего', () => {
+    const безТоваров = { ...ПЕРЕПИСЬ, items: [] }
+    expect(renderToStaticMarkup(<Dashboard report={безТоваров} tab="tovary" />)).not.toContain(СТРОКА)
+
+    const безКолонок = { ...ПЕРЕПИСЬ, itemsSummary: undefined }
+    expect(renderToStaticMarkup(<Dashboard report={безКолонок} tab="tovary" />)).not.toContain(СТРОКА)
+  })
+
   test('по умолчанию строки не видно: на широком экране колонки видны все', () => {
     expect(СТИЛИ).toMatch(/\.items-scroll \{\s*display: none;\s*\}/)
   })

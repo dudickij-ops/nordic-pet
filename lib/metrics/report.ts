@@ -496,7 +496,6 @@ export async function monthlyReport(
       },
       items: items.map((item) => ({
         ...item,
-        подстановка: item.подстановка,
         marginPct: (itemsExtra.get(item.sku)?.margin_pct ?? null) as string | null,
         profitSharePct: (itemsExtra.get(item.sku)?.profit_share_pct ?? null) as string | null,
         loss: itemsExtra.get(item.sku)?.loss === true,
