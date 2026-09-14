@@ -251,10 +251,16 @@ async function положитьМарт(): Promise<void> {
   )
 }
 
+/**
+ * Уборка — устройством, а не аккуратностью: зовётся перед вставкой (след оборвавшегося прошлого
+ * прогона лечится сам), в `finally` самой проверки и в `afterAll` файла.
+ */
 async function убратьМарт(): Promise<void> {
   await pool.query('delete from fact.orders where row_no = $1', [МАРТ_ПРОВЕРКИ.номер])
   await pool.query('delete from raw.orders where row_no = $1', [МАРТ_ПРОВЕРКИ.номер])
 }
+
+afterAll(убратьМарт)
 
 describe('водопад в отчёте — настоящим путём', () => {
   test('отчёт несёт водопад из девяти ступеней, прочитанный тем же снимком', async () => {

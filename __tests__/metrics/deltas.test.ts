@@ -287,6 +287,8 @@ async function полоса() {
  */
 const МАРТ_ПРОВЕРКИ = { номер: 9712, день: '2026-03-11', заказ: 'T-9712' }
 
+const ФАЙЛ_ПРОВЕРКИ = 'проверка-дельт.csv'
+
 async function положитьМартПроверки(): Promise<void> {
   await убратьМартПроверки()
   await pool.query(
@@ -299,12 +301,44 @@ async function положитьМартПроверки(): Promise<void> {
      values ($1, $2::date, $3, 'NP-T', 1, 300.00, 0, 'EUR', 'card')`,
     [МАРТ_ПРОВЕРКИ.номер, МАРТ_ПРОВЕРКИ.день, МАРТ_ПРОВЕРКИ.заказ],
   )
+  // Круг проверки кода 4: реклама и курс тоже кладутся. Без них доля рекламы в полосе и доля
+  // ступени были пустотой против пустоты — сличение, зелёное при любом коде.
+  await pool.query(
+    `insert into raw.fx (row_no, date, usd_per_eur) values ($1, $2, '2.000000')`,
+    [МАРТ_ПРОВЕРКИ.номер, МАРТ_ПРОВЕРКИ.день],
+  )
+  await pool.query(
+    `insert into fact.fx (row_no, date, usd_per_eur) values ($1, $2::date, 2.000000)`,
+    [МАРТ_ПРОВЕРКИ.номер, МАРТ_ПРОВЕРКИ.день],
+  )
+  await pool.query(
+    `insert into raw.ads (file_name, row_no, date, campaign, spend_usd)
+     values ($1, $2, $3, 'проверка', '120.00')`,
+    [ФАЙЛ_ПРОВЕРКИ, МАРТ_ПРОВЕРКИ.номер, МАРТ_ПРОВЕРКИ.день],
+  )
+  await pool.query(
+    `insert into fact.ads (file_name, row_no, date, campaign, platform, spend, currency)
+     values ($1, $2, $3::date, 'проверка', 'проверка', 120.00, 'USD')`,
+    [ФАЙЛ_ПРОВЕРКИ, МАРТ_ПРОВЕРКИ.номер, МАРТ_ПРОВЕРКИ.день],
+  )
 }
 
+/**
+ * Уборка — устройством, а не аккуратностью. Она зовётся трижды: перед вставкой (тогда след
+ * оборвавшегося прошлого прогона лечится сам, без чьей-либо памяти), в `finally` самой проверки и
+ * в `afterAll` файла. Обрыв между вставкой и `finally` случается: прибор сломов в этом куске
+ * обрывался не раз.
+ */
 async function убратьМартПроверки(): Promise<void> {
+  await pool.query('delete from fact.ads where file_name = $1', [ФАЙЛ_ПРОВЕРКИ])
+  await pool.query('delete from raw.ads where file_name = $1', [ФАЙЛ_ПРОВЕРКИ])
+  await pool.query('delete from fact.fx where row_no = $1', [МАРТ_ПРОВЕРКИ.номер])
+  await pool.query('delete from raw.fx where row_no = $1', [МАРТ_ПРОВЕРКИ.номер])
   await pool.query('delete from fact.orders where row_no = $1', [МАРТ_ПРОВЕРКИ.номер])
   await pool.query('delete from raw.orders where row_no = $1', [МАРТ_ПРОВЕРКИ.номер])
 }
+
+afterAll(убратьМартПроверки)
 
 async function убратьФевраль(): Promise<void> {
   await pool.query('delete from fact.orders where row_no = $1', [ФЕВРАЛЬ_В_БАЗЕ.номер])
@@ -358,6 +392,8 @@ describe('полоса показателей в отчёте', () => {
       expect(отчёт.revenue.net, 'заказ проверки доехал до чистой выручки').toBe('300.00')
       expect(отчёт.bottom.profit, 'прибыль не ноль, иначе сличать нечего').not.toBe('0.00')
       expect(отчёт.bottom.marginPct, 'маржа посчитана, иначе сличать нечего').not.toBeNull()
+      const доляРекламы = отчёт.waterfall?.steps.find((с) => с.key === 'ads')?.sharePct
+      expect(доляРекламы, 'доля рекламы — число, иначе четвёртая пара сличает пустоту с пустотой').not.toBeNull()
       const значения = Object.fromEntries((отчёт.kpis?.items ?? []).map((к) => [к.key, к.value]))
       expect(значения).toEqual({
         profit: отчёт.bottom.profit,
