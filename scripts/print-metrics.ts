@@ -1,4 +1,4 @@
-import { count, money, percent, ratio } from '../lib/metrics/format.ts'
+import { count, money, moneyMaybe, percent, ratio } from '../lib/metrics/format.ts'
 import { monthlyReport, type MetricsDeps, type MonthReport } from '../lib/metrics/report.ts'
 
 /**
@@ -38,7 +38,7 @@ function printReport(report: MonthReport, announce: (line: string) => void): voi
   announce('')
   announce('затраты')
   announce(`  себестоимость проданного: ${money(report.costs.cogs)}`)
-  announce(`  реклама: ${money(report.costs.ads)}`)
+  announce(`  реклама: ${moneyMaybe(report.costs.ads)}`)
   announce(`  комиссии платёжных систем: ${money(report.costs.fees)}`)
   announce(`  постоянные расходы: ${money(report.costs.fixed)}`)
 

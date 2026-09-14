@@ -149,7 +149,13 @@ export type MonthReport = {
   month: string | null
   months: Array<{ month: string; hasOrders: boolean }>
   revenue: { gross: Money; discounts: Money; refunds: Money; net: Money }
-  costs: { cogs: Money; ads: Money; fees: Money; fixed: Money }
+  /**
+   * Кусок S11, круг проверки кода 3. Сумма рекламы — `Maybe`, а не `Money`: месяца без единой
+   * строки выгрузки не бывает «с рекламой за ноль евро». Тип здесь и есть починка класса дефекта:
+   * `money()` принимает только `Money`, поэтому новое место, где эту сумму напечатают обычными
+   * деньгами, не соберётся — вместо четвёртого круга про ноль будет ошибка типов.
+   */
+  costs: { cogs: Money; ads: Maybe; fees: Money; fixed: Money }
   bottom: { profit: Money; marginPct: Maybe; roasByGross: Maybe }
   items: Array<{
     sku: string
@@ -445,7 +451,7 @@ export async function monthlyReport(
       },
       costs: {
         cogs: totals.cogs as string,
-        ads: totals.ads as string,
+        ads: totalsResult.rows[0]?.has_ads === true ? (totals.ads as string) : null,
         fees: totals.fees as string,
         fixed: totals.fixed as string,
       },

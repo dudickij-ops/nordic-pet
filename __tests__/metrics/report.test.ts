@@ -233,7 +233,7 @@ describe('месячный отчёт', () => {
 
   test('при нулевой рекламе окупаемость — нет данных', async () => {
     const о = await reportOn({ ...РАСКЛАДКА, extras: { ...РАСКЛАДКА.extras, ads: [], fx: [] } }, '2026-03')
-    expect(о.costs.ads).toBe('0.00')
+    expect(о.costs.ads).toBeNull() // круг проверки кода 3: месяца «с рекламой за ноль евро» не бывает
     expect(о.bottom.roasByGross).toBeNull()
   })
 

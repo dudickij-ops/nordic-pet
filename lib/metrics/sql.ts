@@ -181,7 +181,19 @@ money as (
     from counted c
 )`
 
+/**
+ * Есть ли в месяце хоть одна строка рекламы. **Выражение одно**, и о прошлом месяце оно спрашивается
+ * тем же сдвигом `$1::date`, каким сдвигаются итоги (`PREVIOUS_MONTH_TOTALS`): второго определения
+ * «месяц без рекламы» в коде нет. Поправлено в круге проверки кода 2 — прежде текущий месяц брал
+ * границы через `date_trunc`, а прошлый через вычитание месяца, и совпадали они, только пока `$1` —
+ * первое число месяца.
+ */
+export const ЕСТЬ_РЕКЛАМА = `select exists(select 1 from fact.ads a
+                 where a.date >= $1::date
+                   and a.date < ($1::date + interval '1 month')::date) as has_ads`
+
 export const MONTH_TOTALS = `${MONEY_CTES},
+ads_state as (${ЕСТЬ_РЕКЛАМА}),
 ads_eur as (
   select coalesce(sum(a.spend / nullif(f.usd_per_eur, 0)), 0) as total
     from fact.ads a
@@ -252,7 +264,8 @@ select round(coalesce(gross, 0), 2)::text     as gross,
        round((coalesce(net,0) - coalesce(cogs,0) - ads - fees - fixed)
              / nullif(net, 0) * 100, 1)::text                                  as margin_pct,
        round(coalesce(gross, 0) / nullif(ads, 0), 2)::text                     as roas_by_gross,
-       round(coalesce(net_real, 0) / nullif(net, 0) * 100, 1)::text            as honest_pct
+       round(coalesce(net_real, 0) / nullif(net, 0) * 100, 1)::text            as honest_pct,
+       (select has_ads from ads_state)                                         as has_ads
   from totals
 `
 
@@ -486,17 +499,6 @@ select am.month as month,
   from all_months am
  order by am.month desc
 `
-
-/**
- * Есть ли в месяце хоть одна строка рекламы. **Выражение одно**, и о прошлом месяце оно спрашивается
- * тем же сдвигом `$1::date`, каким сдвигаются итоги (`PREVIOUS_MONTH_TOTALS`): второго определения
- * «месяц без рекламы» в коде нет. Поправлено в круге проверки кода 2 — прежде текущий месяц брал
- * границы через `date_trunc`, а прошлый через вычитание месяца, и совпадали они, только пока `$1` —
- * первое число месяца.
- */
-export const ЕСТЬ_РЕКЛАМА = `select exists(select 1 from fact.ads a
-                 where a.date >= $1::date
-                   and a.date < ($1::date + interval '1 month')::date) as has_ads`
 
 /**
  * Водопад «куда ушли деньги» — кусок S11, шаг 1. Девять ступеней: оборот → скидки → возвраты →

@@ -1765,6 +1765,21 @@ export const BREAKS: Break[] = [
     tests: 'все',
   },
   {
+    id: 'ads-sum-zero-instead-of-no-data',
+    claim: 'вернуть сумме рекламы обычные деньги: печатать её всегда, не спрашивая, была ли выгрузка',
+    mustRedden: 'месяц без выгрузки рекламы: сумма рекламы — слова, а не ноль',
+    alsoRedden: [
+      {
+        name: 'при нулевой рекламе окупаемость — нет данных',
+        why: 'она с круга проверки кода 3 утверждает, что сумма рекламы на таком месяце пуста, а не «0.00»',
+      },
+    ],
+    file: 'lib/metrics/report.ts',
+    find: '        ads: totalsResult.rows[0]?.has_ads === true ? (totals.ads as string) : null,',
+    replace: '        ads: totals.ads as string,',
+    tests: 'все',
+  },
+  {
     id: 'frame-measure-guard-body',
     claim: 'выесть тело сторожа замера кадра',
     mustRedden: 'замер кадра без ответа — отказ замера, а не ноль',

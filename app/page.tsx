@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 
 import { проверитьДоступ } from '@/lib/auth/guard'
-import { count, money, percent, points, ratio } from '@/lib/metrics/format'
+import { count, money, moneyMaybe, percent, points, ratio } from '@/lib/metrics/format'
 import { monthlyReport, type MonthReport } from '@/lib/metrics/report'
 import { LogoutButton } from './logout-button'
 import { RefreshPanel } from './refresh-panel'
@@ -420,7 +420,7 @@ export function Dashboard({ report, tab = 'glavnoe' }: { report: MonthReport; ta
           </dd>
           <dt>Реклама</dt>
           <dd>
-            {money(report.costs.ads)}
+            {moneyMaybe(report.costs.ads)}
             <ДоляСтатьи report={report} ключ="ads" />
           </dd>
           <dt>Комиссии платёжных систем</dt>
