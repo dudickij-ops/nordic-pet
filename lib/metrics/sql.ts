@@ -699,12 +699,19 @@ export const PAYBACK_FROM_TOTALS = `
 parts as (
   select t.ads::numeric    as ads,
          t.profit::numeric as profit,
-         (t.net::numeric - t.cogs::numeric - t.fees::numeric) / nullif(t.gross::numeric, 0) * 100
+         -- Круг проверки кода 3: округление здесь, до того как от вклада что-либо считают.
+         -- Порог считается от **показанного** вклада, а не от неокруглённого: подпись на экране
+         -- велит человеку поделить сто на напечатанное число, и он обязан получить напечатанный
+         -- порог. Прежде вклад 12,3499 % печатался как «12,3 %» рядом с порогом 8,10 ×, а сто,
+         -- делённые на 12,3, дают 8,13 ×. То же правило, что у долей водопада: считаем от чисел,
+         -- которые стоят на экране.
+         round((t.net::numeric - t.cogs::numeric - t.fees::numeric)
+                 / nullif(t.gross::numeric, 0) * 100, 1)
                            as contribution
     from totals_row t
 )
 select round(p.profit / nullif(p.ads, 0), 2)::text                         as roas_by_profit,
-       round(p.contribution, 1)::text                                      as contribution_pct,
+       p.contribution::text                                                as contribution_pct,
        (case when p.contribution > 0 then round(100 / p.contribution, 2) end)::text
                                                                            as breakeven_roas,
        case when p.contribution <= 0 then 'вклад не положителен' end       as breakeven_note

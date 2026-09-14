@@ -1789,6 +1789,15 @@ export const BREAKS: Break[] = [
     tests: 'все',
   },
   {
+    id: 'breakeven-from-unrounded-contribution',
+    claim: 'считать порог от неокруглённого вклада, оставив на экране округлённый',
+    mustRedden: 'порог — ровно сто, делённые на показанный вклад, а не на неокруглённый',
+    file: 'lib/metrics/sql.ts',
+    find: 'parts as (\n  select t.ads::numeric    as ads,\n         t.profit::numeric as profit,\n         -- Круг проверки кода 3: округление здесь, до того как от вклада что-либо считают.\n         -- Порог считается от **показанного** вклада, а не от неокруглённого: подпись на экране\n         -- велит человеку поделить сто на напечатанное число, и он обязан получить напечатанный\n         -- порог. Прежде вклад 12,3499 % печатался как «12,3 %» рядом с порогом 8,10 ×, а сто,\n         -- делённые на 12,3, дают 8,13 ×. То же правило, что у долей водопада: считаем от чисел,\n         -- которые стоят на экране.\n         round((t.net::numeric - t.cogs::numeric - t.fees::numeric)\n                 / nullif(t.gross::numeric, 0) * 100, 1)\n                           as contribution\n    from totals_row t\n)\nselect round(p.profit / nullif(p.ads, 0), 2)::text                         as roas_by_profit,\n       p.contribution::text                                                as contribution_pct,',
+    replace: 'parts as (\n  select t.ads::numeric    as ads,\n         t.profit::numeric as profit,\n         (t.net::numeric - t.cogs::numeric - t.fees::numeric) / nullif(t.gross::numeric, 0) * 100\n                           as contribution\n    from totals_row t\n)\nselect round(p.profit / nullif(p.ads, 0), 2)::text                         as roas_by_profit,\n       round(p.contribution, 1)::text                                      as contribution_pct,',
+    tests: 'все',
+  },
+  {
     id: 'frame-measure-guard-body',
     claim: 'выесть тело сторожа замера кадра',
     mustRedden: 'замер кадра без ответа — отказ замера, а не ноль',
