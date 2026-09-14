@@ -232,6 +232,9 @@ export const КАРТИНКИ: Картинка[] = [
   { файл: '13-kachestvo-uzkiy-tyomnaya.png', состояние: 'kachestvo', тёмная: true, ширина: 500, высота: 950 },
   { файл: '14-bez-bazy.png', состояние: 'bez-bazy', тёмная: false, ширина: 1280, высота: 1300, кадр: true },
   { файл: '14-bez-bazy-tyomnaya.png', состояние: 'bez-bazy', тёмная: true, ширина: 1280, высота: 1300, кадр: true },
+  // Кусок S12, задача 6: у единственного пути настоящих данных не было узкого снимка вовсе.
+  { файл: '14-bez-bazy-uzkiy.png', состояние: 'bez-bazy', тёмная: false, ширина: 500, высота: 1400, кадр: true },
+  { файл: '14-bez-bazy-uzkiy-tyomnaya.png', состояние: 'bez-bazy', тёмная: true, ширина: 500, высота: 1400, кадр: true },
   { файл: '15-neizvestnaya-vkladka.png', состояние: 'neizvestnaya-vkladka', тёмная: false, ширина: 1280, высота: 380 },
   { файл: '15-neizvestnaya-vkladka-tyomnaya.png', состояние: 'neizvestnaya-vkladka', тёмная: true, ширина: 1280, высота: 380 },
 ]
