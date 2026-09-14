@@ -230,20 +230,54 @@ describe('самое большое вычитание — строка «съе
   })
 })
 
+
+/**
+ * Заказ, который кладётся только на время проверки настоящего пути. Посев не содержит ни одного
+ * заказа, а сличение нуля с нулём зелено при любом коде — поэтому обе стороны обязаны быть числами.
+ */
+const МАРТ_ПРОВЕРКИ = { номер: 9711, день: '2026-03-11', заказ: 'T-9711' }
+
+async function положитьМарт(): Promise<void> {
+  await убратьМарт()
+  await pool.query(
+    `insert into raw.orders (row_no, date, order_id, sku, units, gross_eur, discount_eur, gateway)
+     values ($1, $2, $3, 'NP-T', '1', '300.00', '0', 'card')`,
+    [МАРТ_ПРОВЕРКИ.номер, МАРТ_ПРОВЕРКИ.день, МАРТ_ПРОВЕРКИ.заказ],
+  )
+  await pool.query(
+    `insert into fact.orders (row_no, date, order_id, sku, units, gross, discount, currency, gateway)
+     values ($1, $2::date, $3, 'NP-T', 1, 300.00, 0, 'EUR', 'card')`,
+    [МАРТ_ПРОВЕРКИ.номер, МАРТ_ПРОВЕРКИ.день, МАРТ_ПРОВЕРКИ.заказ],
+  )
+}
+
+async function убратьМарт(): Promise<void> {
+  await pool.query('delete from fact.orders where row_no = $1', [МАРТ_ПРОВЕРКИ.номер])
+  await pool.query('delete from raw.orders where row_no = $1', [МАРТ_ПРОВЕРКИ.номер])
+}
+
 describe('водопад в отчёте — настоящим путём', () => {
   test('отчёт несёт водопад из девяти ступеней, прочитанный тем же снимком', async () => {
+    // Круг проверки кода 3. Прежде сличение шло на посеве, где заказов нет: обе стороны были
+    // «0.00», и перекрещённые колонки остались бы зелёными. Заказ кладётся на время проверки,
+    // и у каждой стороны появляется якорь снаружи — она обязана быть не нулём.
     const прежняя = process.env.NORDIC_PET_DB_TARGET
     process.env.NORDIC_PET_DB_TARGET = 'local'
     try {
+      await положитьМарт()
       const отчёт = await monthlyReport('2026-03')
       expect(отчёт.waterfall?.steps.map((с) => с.key)).toEqual([
         'gross', 'discounts', 'refunds', 'net', 'cogs', 'ads', 'fees', 'fixed', 'profit',
       ])
-      // Какие бы факты ни лежали в местной базе, ступень прибыли обязана совпасть с прибылью
-      // итога того же отчёта, а ступень оборота — с оборотом.
+      expect(отчёт.revenue.gross, 'заказ проверки доехал до оборота').toBe('300.00')
+      expect(отчёт.bottom.profit, 'прибыль не ноль, иначе сличать нечего').not.toBe('0.00')
+      // Ступень прибыли обязана совпасть с прибылью итога того же отчёта, а ступень оборота — с
+      // оборотом. Теперь у обеих пар стороны различны, и перекрёст краснеет.
       expect(отчёт.waterfall?.steps.find((с) => с.key === 'profit')?.amount).toBe(отчёт.bottom.profit)
       expect(отчёт.waterfall?.steps.find((с) => с.key === 'gross')?.amount).toBe(отчёт.revenue.gross)
+      expect(отчёт.waterfall?.steps.find((с) => с.key === 'profit')?.amount).not.toBe(отчёт.revenue.gross)
     } finally {
+      await убратьМарт()
       if (прежняя === undefined) delete process.env.NORDIC_PET_DB_TARGET
       else process.env.NORDIC_PET_DB_TARGET = прежняя
     }

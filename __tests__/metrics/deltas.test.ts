@@ -280,6 +280,32 @@ async function полоса() {
   }
 }
 
+/**
+ * Заказ марта, который кладётся только на время проверки настоящего пути. Круг проверки кода 3:
+ * на посеве заказов нет, и сличение значений полосы с итогами было сличением «0.00» с «0.00» —
+ * зелёным при любом коде. Теперь у каждой стороны есть якорь снаружи: она обязана быть не нулём.
+ */
+const МАРТ_ПРОВЕРКИ = { номер: 9712, день: '2026-03-11', заказ: 'T-9712' }
+
+async function положитьМартПроверки(): Promise<void> {
+  await убратьМартПроверки()
+  await pool.query(
+    `insert into raw.orders (row_no, date, order_id, sku, units, gross_eur, discount_eur, gateway)
+     values ($1, $2, $3, 'NP-T', '1', '300.00', '0', 'card')`,
+    [МАРТ_ПРОВЕРКИ.номер, МАРТ_ПРОВЕРКИ.день, МАРТ_ПРОВЕРКИ.заказ],
+  )
+  await pool.query(
+    `insert into fact.orders (row_no, date, order_id, sku, units, gross, discount, currency, gateway)
+     values ($1, $2::date, $3, 'NP-T', 1, 300.00, 0, 'EUR', 'card')`,
+    [МАРТ_ПРОВЕРКИ.номер, МАРТ_ПРОВЕРКИ.день, МАРТ_ПРОВЕРКИ.заказ],
+  )
+}
+
+async function убратьМартПроверки(): Promise<void> {
+  await pool.query('delete from fact.orders where row_no = $1', [МАРТ_ПРОВЕРКИ.номер])
+  await pool.query('delete from raw.orders where row_no = $1', [МАРТ_ПРОВЕРКИ.номер])
+}
+
 async function убратьФевраль(): Promise<void> {
   await pool.query('delete from fact.orders where row_no = $1', [ФЕВРАЛЬ_В_БАЗЕ.номер])
   await pool.query('delete from raw.orders where row_no = $1', [ФЕВРАЛЬ_В_БАЗЕ.номер])
@@ -327,7 +353,11 @@ describe('полоса показателей в отчёте', () => {
     const прежняя = process.env.NORDIC_PET_DB_TARGET
     process.env.NORDIC_PET_DB_TARGET = 'local'
     try {
+      await положитьМартПроверки()
       const отчёт = await monthlyReport('2026-03')
+      expect(отчёт.revenue.net, 'заказ проверки доехал до чистой выручки').toBe('300.00')
+      expect(отчёт.bottom.profit, 'прибыль не ноль, иначе сличать нечего').not.toBe('0.00')
+      expect(отчёт.bottom.marginPct, 'маржа посчитана, иначе сличать нечего').not.toBeNull()
       const значения = Object.fromEntries((отчёт.kpis?.items ?? []).map((к) => [к.key, к.value]))
       expect(значения).toEqual({
         profit: отчёт.bottom.profit,
@@ -335,8 +365,11 @@ describe('полоса показателей в отчёте', () => {
         net: отчёт.revenue.net,
         ad_share: отчёт.waterfall?.steps.find((с) => с.key === 'ads')?.sharePct,
       })
+      // Стороны различны, значит перепутанные местами показатели краснеют.
+      expect(значения.profit).not.toBe(значения.net)
       expect(отчёт.kpis?.prevMonth).toBe('2026-02')
     } finally {
+      await убратьМартПроверки()
       if (прежняя === undefined) delete process.env.NORDIC_PET_DB_TARGET
       else process.env.NORDIC_PET_DB_TARGET = прежняя
     }
