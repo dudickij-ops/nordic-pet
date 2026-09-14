@@ -7,8 +7,10 @@ import {
   MONTH_DAILY,
   MONTH_DELTAS,
   MONTH_GAPS,
-  MONTH_ITEMS,
   MONTH_ITEMS_EXTRA,
+  ПОРЯДОК_ТОВАРОВ_ПО_УМОЛЧАНИЮ,
+  запросТоваров,
+  type ПорядокТоваров,
   MONTH_PAYBACK,
   MONTH_TOTALS,
   MONTH_WATERFALL,
@@ -363,6 +365,12 @@ export const ТЕКСТ_ДАННЫЕ_НЕ_ЧИТАЮТСЯ =
 export async function monthlyReport(
   month?: string,
   deps: Partial<MetricsDeps> = {},
+  /**
+   * Порядок таблицы товаров — кусок S12, задача 1. Доводом, а не полем отчёта: порядок приходит
+   * из адреса страницы и живёт ровно столько, сколько один заход. Умолчание здесь одно на весь
+   * проект — и экран, и команда метрик берут его отсюда, второго определения нет.
+   */
+  порядокТоваров: ПорядокТоваров = ПОРЯДОК_ТОВАРОВ_ПО_УМОЛЧАНИЮ,
 ): Promise<MonthReport> {
   if (month !== undefined && !MONTH_SHAPE.test(month)) {
     throw new ОтказОтчёта(
@@ -413,7 +421,7 @@ export async function monthlyReport(
     const dayParam = resolvedMonth === null ? null : `${resolvedMonth}-01`
 
     const totalsResult = await client.query(MONTH_TOTALS, [dayParam])
-    const itemsResult = await client.query(MONTH_ITEMS, [dayParam])
+    const itemsResult = await client.query(запросТоваров(порядокТоваров), [dayParam])
     const gapsResult = await client.query(MONTH_GAPS, [dayParam])
     const waterfallResult = await client.query(MONTH_WATERFALL, [dayParam])
     const dailyResult = await client.query(MONTH_DAILY, [dayParam])
