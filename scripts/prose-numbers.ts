@@ -199,7 +199,7 @@ const страницы = снимки.filter((f) => f.endsWith('.html'))
   name: 'страниц снимков с прежней строкой о трёх крупных числах',
   value: String(страницы.filter((f) => прочесть(join('docs/screens', f)).includes('Крупных чисел на экране ровно три')).length),
   source: 'docs/screens/*.html, поиск строки',
-  places: [{ file: ОПИСЬ, anchor: 'Сегодня отстают все ' }],
+  places: [{ file: ОПИСЬ, anchor: 'Сегодня отстают ' }],
 })
 
 // ——— Сверка «до / после» ———
