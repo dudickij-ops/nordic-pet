@@ -40,10 +40,12 @@ export const ПЕРЕПИСЬ: MonthReport = {
   costs: { cogs: '5555.55', ads: '6666.66', fees: '7777.77', fixed: '8888.88' },
   bottom: { profit: '9999.99', marginPct: '12.3', roasByGross: '45.6' },
   items: [
-    { sku: 'NP-101', units: '71', net: '1010.10', cogs: '2020.20', profit: '3030.30', marginPct: '31.3', profitSharePct: '33.4' },
-    { sku: 'NP-202', units: '82', net: '4040.40', cogs: '5050.50', profit: '6060.60', marginPct: '48.8', profitSharePct: '66.6' },
+    // Кусок S12, задача 2: оба состояния подстановки стоят в раскладке, иначе перепись не видела
+    // бы ни одного из них и сторожила бы текст, которого в ней нет.
+    { sku: 'NP-101', units: '71', net: '1010.10', cogs: '2020.20', profit: '3030.30', marginPct: '31.3', profitSharePct: '33.4', подстановка: 'часть' as const },
+    { sku: 'NP-202', units: '82', net: '4040.40', cogs: '5050.50', profit: '6060.60', marginPct: '48.8', profitSharePct: '66.6', подстановка: 'вся' as const },
   ],
-  honesty: { sharePct: '78.9', skusWithoutPrice: ['NP-202'] },
+  honesty: { sharePct: '78.9', skusWithoutPrice: ['NP-101', 'NP-202'] },
   gaps: ОДИННАДЦАТЬ.map((kind, i) => ({ kind, count: i + 1, at: [] })),
   // Кусок S11, шаг 1. Суммы ступеней нарочно не совпадают с итогами выше: разметка, напечатавшая
   // колонку итогов вместо суммы ступени, покраснит перепись. Доли все числами: пустая доля

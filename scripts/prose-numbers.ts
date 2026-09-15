@@ -39,7 +39,7 @@ import { join } from 'node:path'
 const ОТЧЁТ = 'docs/ОТЧЁТ.md'
 const КОНТРАСТ = 'docs/сверка/контраст.md'
 const ОПИСЬ = 'docs/screens/README.md'
-const ПРОГОН = 'docs/сверка/прогон-сломов-s11.md'
+const ПРОГОН = 'docs/сверка/прогон-сломов-s12.md'
 const ЗАЯВКА = '<тело заявки>'
 
 /** `after` — искать якорь только после первого вхождения этого текста: там, где та же строка стоит и в исходной таблице. */
@@ -110,7 +110,6 @@ const худшая = Math.min(...текстовые.map((t) => t.v))
     { file: КОНТРАСТ, anchor: '**Полнота списка пар держится на глазе, а не на механизме.** ' },
     { file: ОТЧЁТ, anchor: '`docs/сверка/контраст.md`: ' },
     { file: ОТЧЁТ, anchor: '**Полнота списка пар держится на глазе, а не на механизме:** ' },
-    { file: ЗАЯВКА, anchor: 'раздел «Кусок S11»: ' },
   ],
 })
 числа.push({
@@ -119,7 +118,6 @@ const худшая = Math.min(...текстовые.map((t) => t.v))
   source: `${КОНТРАСТ}, таблица «Пары цвета к цвету»`,
   places: [
     { file: ОТЧЁТ, anchor: `${пары.length} пар и ` },
-    { file: ЗАЯВКА, anchor: `${пары.length} пар и ` },
   ],
 })
 числа.push({
@@ -129,7 +127,6 @@ const худшая = Math.min(...текстовые.map((t) => t.v))
   places: [
     { file: КОНТРАСТ, anchor: '**Худшая сторона по тексту** — дельта «хуже» в погашенном виде тёмной темы, ' },
     { file: ОТЧЁТ, anchor: 'худшая сторона — ' },
-    { file: ЗАЯВКА, anchor: 'худшая сторона текста — ' },
   ],
 })
 числа.push({
@@ -139,7 +136,6 @@ const худшая = Math.min(...текстовые.map((t) => t.v))
   places: [
     { file: КОНТРАСТ, anchor: '**Ниже порога — ' },
     { file: ОТЧЁТ, anchor: 'Ниже порога — ' },
-    { file: ЗАЯВКА, anchor: 'Ниже порога — ' },
   ],
 })
 for (const г of нижеГрафики) {
@@ -151,7 +147,6 @@ for (const г of нижеГрафики) {
     places: [
       { file: КОНТРАСТ, after: '**Ниже порога — ', anchor: `| ${г.pair} | ` },
       { file: ОТЧЁТ, anchor: `| ${г.pair} | ` },
-      { file: ЗАЯВКА, anchor: `| ${г.pair} | ` },
     ],
   })
 }
@@ -161,7 +156,7 @@ if (хужеКОтказу === undefined) отказ('в таблице цвет
   name: '«хуже» к тексту отказа, светлая',
   value: дробь(ячейкиЧисло(хужеКОтказу[1]) ?? NaN),
   source: `${КОНТРАСТ}, таблица цвета к цвету`,
-  places: [{ file: ЗАЯВКА, anchor: '«Хуже» к тексту отказа — ' }],
+  places: [],
 })
 числа.push({
   name: '«хуже» к тексту отказа, тёмная',
@@ -169,7 +164,6 @@ if (хужеКОтказу === undefined) отказ('в таблице цвет
   source: `${КОНТРАСТ}, таблица цвета к цвету`,
   places: [
     { file: ОТЧЁТ, anchor: '#e37d80, наш замер — ' },
-    { file: ЗАЯВКА, anchor: '«Хуже» к тексту отказа — 1,19 и **' },
   ],
 })
 
@@ -305,7 +299,9 @@ for (const f of правленые) {
 // Счёт по делу, а не по строкам диффа: одна изменённая строка живёт в помощнике трёх проверок, а две
 // другие — внутри одной. Прежде в отчёте стояло число изменённых строк, названное числом проверок.
 const обвязанные: string[] = []
-for (const f of ['__tests__/metrics/screen.test.tsx', '__tests__/metrics/screen-month.test.tsx', '__tests__/screen/honesty-bar.test.tsx', '__tests__/auth/guarded-paths.test.tsx', '__tests__/screen/census.test.tsx']) {
+// Кусок S12: список — принятые файлы проверок, у которых в этом куске есть **удалённые** строки,
+// то есть правленые, а не дописанные рядом. Снят командой `git diff --numstat origin/main -- __tests__/`.
+for (const f of ['__tests__/metrics/report.test.ts', '__tests__/metrics/totals-fixture.ts', '__tests__/screen/census.test.tsx', '__tests__/screen/fixture.ts', '__tests__/screen/no-break-units.test.tsx', '__tests__/screen/payback-view.test.tsx', '__tests__/screens/generator.test.ts', '__tests__/styles/fluent-tokens.test.ts']) {
   const diff = spawnSync('git', ['diff', '-U0', 'origin/main', 'HEAD', '--', f], { encoding: 'utf8' })
   if (diff.status !== 0) отказ(`git diff -U0 вернул ${diff.status}: ${diff.stderr}`)
   const строки = прочесть(f).split('\n')
@@ -327,7 +323,7 @@ for (const f of ['__tests__/metrics/screen.test.tsx', '__tests__/metrics/screen-
   обвязанные.push(...имена)
 }
 const сломы: Array<{ mustRedden: string; alsoRedden?: Array<{ name: string }> }> = []
-for (const l of ['s3-drive', 's4-facts', 's5-metrics', 's6-access', 's8-holes', 's9-screen', 's10-fluent', 's11-content']) {
+for (const l of ['s3-drive', 's4-facts', 's5-metrics', 's6-access', 's8-holes', 's9-screen', 's10-fluent', 's11-content', 's12-reading']) {
   const { BREAKS } = (await import(`${process.cwd()}/breaks/${l}.ts`)) as { BREAKS: typeof сломы }
   сломы.push(...BREAKS)
 }
@@ -340,21 +336,24 @@ const толькоОбъявление = обвязанные.filter(
 числа.push({ name: 'из них доказаны своим сломом', value: String(своиСломы.length), source: 'breaks/*.ts, поле mustRedden', places: [{ file: ОТЧЁТ, anchor: `${обвязанные.length} проверок. **Доказано сломом ` }, { file: ЗАЯВКА, anchor: `${обвязанные.length}; доказано сломом ` }] })
 числа.push({ name: 'держатся только на объявлении «заодно»', value: String(толькоОбъявление.length), source: 'breaks/*.ts, поле alsoRedden', places: [{ file: ОТЧЁТ, anchor: 'держатся только на объявлении «заодно» — ' }, { file: ЗАЯВКА, anchor: 'на объявлении «заодно» — ' }] })
 
-const [s9, s10] = [numstat('breaks/s9-screen.ts')[0], numstat('breaks/s10-fluent.ts')[0]]
-числа.push({ name: 'строк прежних списков с переведённым именем', value: String(s9.removed + s10.removed), source: 'git diff --numstat origin/main -- breaks/s9-screen.ts breaks/s10-fluent.ts', places: [{ file: ЗАЯВКА, anchor: 'Имя проверки генератора переведено в ' }] })
-числа.push({ name: 'из них в s9-screen', value: String(s9.removed), source: 'git diff --numstat origin/main HEAD', places: [{ file: ЗАЯВКА, anchor: 'строках прежних списков: ' }] })
-числа.push({ name: 'из них в s10-fluent', value: String(s10.removed), source: 'git diff --numstat origin/main HEAD', places: [{ file: ЗАЯВКА, anchor: '`breaks/s9-screen.ts`, ' }] })
+// Кусок S12: переведены якоря и имена в списках S5 и S11. Считаются **удалённые** строки: перевод —
+// это замена строки, а дописанное «заодно» переводом не является и в это число не входит.
+const [списокS5, списокS11] = [numstat('breaks/s5-metrics.ts')[0], numstat('breaks/s11-content.ts')[0]]
+числа.push({ name: 'строк прежних списков сломов с переведённым якорем или именем', value: String(списокS5.removed + списокS11.removed), source: 'git diff --numstat origin/main -- breaks/s5-metrics.ts breaks/s11-content.ts', places: [{ file: ЗАЯВКА, anchor: 'Переведено в ' }] })
+числа.push({ name: 'из них в s5-metrics', value: String(списокS5.removed), source: 'git diff --numstat origin/main HEAD', places: [{ file: ЗАЯВКА, anchor: 'строках прежних списков: ' }] })
+числа.push({ name: 'из них в s11-content', value: String(списокS11.removed), source: 'git diff --numstat origin/main HEAD', places: [{ file: ЗАЯВКА, anchor: '`breaks/s5-metrics.ts`, ' }] })
 
 // ——— Вывод прогонов и ворот: файл ветки, а не тело заявки ———
 // Прежде эти числа брались из тела заявки, и сверка замыкалась сама на себя. Теперь источник — файл
 // в той же ветке, который оценивает рецензент; тело сверяется с ним, как и отчёт. Что в файл вставлен
 // вправду вывод команд, а не набранный руками текст, команда по-прежнему не знает — это названо выше.
 const весьПрогон = прочесть(ПРОГОН)
-// Считается только раздел сплошного прогона: ниже в файле лежат ещё восемь выводов — четыре слома
-// переписи S9 до правки и после, — и их «Всего сломов» к итогу восьми списков отношения не имеет.
-const началоРаздела = весьПрогон.indexOf('## Сплошной прогон восьми списков')
-const конецРаздела = весьПрогон.indexOf('## Перепись S9')
-if (началоРаздела < 0 || конецРаздела < 0) отказ(`в ${ПРОГОН} нет разделов сплошного прогона и переписи S9`)
+// Считается только раздел сплошного прогона и выводы списков: ниже, в разделе ворот, лежит вывод
+// `npm test`, и строк «Всего сломов» там нет. Кусок S12: раздел кончается там же, где начинаются
+// ворота, и второго конца у него нет.
+const началоРаздела = весьПрогон.indexOf('## Сплошной прогон девяти списков')
+const конецРаздела = весьПрогон.indexOf('## Ворота на голове заявки')
+if (началоРаздела < 0 || конецРаздела < 0) отказ(`в ${ПРОГОН} нет разделов сплошного прогона и ворот`)
 const прогон = весьПрогон.slice(началоРаздела, конецРаздела)
 const сумма = (re: RegExp) => [...прогон.matchAll(re)].reduce((n, m) => n + Number(m[1]), 0)
 const списков = [...прогон.matchAll(/^Всего сломов: \d+\./gm)].length

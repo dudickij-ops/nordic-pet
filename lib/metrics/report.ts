@@ -7,8 +7,10 @@ import {
   MONTH_DAILY,
   MONTH_DELTAS,
   MONTH_GAPS,
-  MONTH_ITEMS,
   MONTH_ITEMS_EXTRA,
+  ПОРЯДОК_ТОВАРОВ_ПО_УМОЛЧАНИЮ,
+  запросТоваров,
+  type ПорядокТоваров,
   MONTH_PAYBACK,
   MONTH_TOTALS,
   MONTH_WATERFALL,
@@ -169,6 +171,14 @@ export type MonthReport = {
     profitSharePct?: Maybe
     /** Прибыль строки строго меньше нуля — тот же признак берёт счётчик над таблицей. */
     loss?: boolean
+    /**
+     * Себестоимость строки подставлена запасными процентами — кусок S12, задача 2.
+     *
+     * Три состояния, а не два: `undefined` — сказать нечего (так отчёт видят принятые проверки
+     * прежних кусков), `'вся'` — цены не нашлось ни одной продаже артикула, `'часть'` — нашлась
+     * не всем. Слово, а не доля: числа на экране этот кусок не меняет.
+     */
+    подстановка?: 'вся' | 'часть'
   }>
   honesty: { sharePct: Maybe; skusWithoutPrice: string[] }
   gaps: Array<{ kind: string; count: number; at: string[] }>
@@ -360,9 +370,30 @@ export const ТЕКСТ_ДАННЫЕ_НЕ_ЧИТАЮТСЯ =
   'старые как свежие хуже, чем не показать никаких. Обновите страницу через минуту; если ' +
   'повторится, скажите разработчику.'
 
+/**
+ * Какое слово говорит строка товара о подставленной себестоимости — кусок S12, задача 2.
+ *
+ * Ни одной продаже цены не нашлось — «вся»; нашлась не всем — «часть»; нашлась всем — сказать
+ * нечего. Ноль продаж в строке невозможен по построению запроса (строка появляется от продажи),
+ * но случай назван явно: «нет продаж» — не «вся подставлена».
+ */
+export function подстановкаСтроки(
+  подставлено: number,
+  всего: number,
+): 'вся' | 'часть' | undefined {
+  if (всего === 0 || подставлено === 0) return undefined
+  return подставлено === всего ? 'вся' : 'часть'
+}
+
 export async function monthlyReport(
   month?: string,
   deps: Partial<MetricsDeps> = {},
+  /**
+   * Порядок таблицы товаров — кусок S12, задача 1. Доводом, а не полем отчёта: порядок приходит
+   * из адреса страницы и живёт ровно столько, сколько один заход. Умолчание здесь одно на весь
+   * проект — и экран, и команда метрик берут его отсюда, второго определения нет.
+   */
+  порядокТоваров: ПорядокТоваров = ПОРЯДОК_ТОВАРОВ_ПО_УМОЛЧАНИЮ,
 ): Promise<MonthReport> {
   if (month !== undefined && !MONTH_SHAPE.test(month)) {
     throw new ОтказОтчёта(
@@ -413,7 +444,7 @@ export async function monthlyReport(
     const dayParam = resolvedMonth === null ? null : `${resolvedMonth}-01`
 
     const totalsResult = await client.query(MONTH_TOTALS, [dayParam])
-    const itemsResult = await client.query(MONTH_ITEMS, [dayParam])
+    const itemsResult = await client.query(запросТоваров(порядокТоваров), [dayParam])
     const gapsResult = await client.query(MONTH_GAPS, [dayParam])
     const waterfallResult = await client.query(MONTH_WATERFALL, [dayParam])
     const dailyResult = await client.query(MONTH_DAILY, [dayParam])
@@ -431,6 +462,9 @@ export async function monthlyReport(
       net: row.net as string,
       cogs: row.cogs as string,
       profit: row.profit as string,
+      // Кусок S12, задача 2. Слово выводится **здесь**, из двух чисел запроса, и разметка его
+      // только показывает: сравнение в разметке было бы счётом на экране.
+      подстановка: подстановкаСтроки(row.rows_substituted as number, row.rows_counted as number),
     }))
     const gaps = gapsResult.rows.map((row) => ({
       kind: row.kind as string,
