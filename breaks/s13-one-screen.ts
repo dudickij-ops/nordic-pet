@@ -277,4 +277,37 @@ export const BREAKS: Break[] = [
     replace: '  if (report.findings === undefined) return <section className="block findings"><h2>Выводы</h2></section>',
     tests: 'все',
   },
+  {
+    id: 'mean-place-invented',
+    claim: 'ставить пунктир средней не на величину отчёта',
+    mustRedden: 'пунктир средней стоит на той же величине, что в отчёте',
+    file: 'app/page.tsx',
+    find: "'--mean-at': report.daily.avgPct,",
+    replace: "'--mean-at': '50',",
+    tests: 'все',
+  },
+  {
+    id: 'empty-days-note-always',
+    claim: 'писать строку о пустых днях без признака',
+    mustRedden: 'строка о пустых днях — только по признаку',
+    file: 'app/page.tsx',
+    find: '{report.daily.hasEmptyDays === true && (',
+    replace: '{(',
+    tests: 'все',
+  },
+  {
+    id: 'mean-without-value',
+    claim: 'рисовать пунктир, когда средней нет',
+    mustRedden: 'средней нет — пунктира и подписи нет',
+    file: 'app/page.tsx',
+    find: '{report.daily.avgPct != null && report.daily.avgNet != null && (',
+    replace: '{report.daily.hasOrders && (',
+    alsoRedden: [
+      {
+        name: 'денежное значение внутри предложения не бывает без защиты от переноса',
+        why: 'её раскладка «март» из снимков — ряд без полей средней: подпись пунктира рисуется и роняет отрисовку на пустой сумме',
+      },
+    ],
+    tests: 'все',
+  },
 ]

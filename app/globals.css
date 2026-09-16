@@ -1319,6 +1319,48 @@ button.primary:active:not(:disabled) {
   color: var(--colorNeutralForeground3);
 }
 
+/*
+ * Пунктир средней — кусок S13. Место — та же формула, что у края столбика дня, от той же шкалы:
+ * величина приходит из отчёта готовой. Подпись на своём фоне — линия не идёт по тексту.
+ *
+ * Столбики и пунктир лежат в общей области `.daily-plot`: она занимает место списка столбиков в
+ * сетке ряда (колонка графика, строка высоты области), а сама — сетка из одной ячейки, чтобы список
+ * растянулся на всю её высоту, как прежде в сетке ряда. Ось стоит в соседней колонке, поэтому левый
+ * край пунктира — ноль, своей величины не заводится.
+ */
+.daily-plot {
+  position: relative;
+  display: grid;
+  grid-column: 2;
+}
+
+.daily-mean {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc((var(--mean-at) - var(--scale-from)) / (var(--scale-to) - var(--scale-from)) * 100%);
+  border-top: var(--strokeWidthThin) dashed var(--colorBrandStroke1);
+  pointer-events: none;
+}
+
+.daily-mean-label {
+  position: absolute;
+  right: 0;
+  bottom: var(--spacingVerticalXS);
+  padding: 0 var(--spacingHorizontalS);
+  background: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground2);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
+.daily-note {
+  margin: var(--spacingVerticalS) 0 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
 /* ——— Неполнота ——— */
 
 .gaps > p {

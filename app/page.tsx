@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 
 import { проверитьДоступ } from '@/lib/auth/guard'
-import { count, money, percent, points, ratio } from '@/lib/metrics/format'
+import { count, money, moneyMaybe, percent, points, ratio } from '@/lib/metrics/format'
 import { monthlyReport, type MonthReport } from '@/lib/metrics/report'
 import { LogoutButton } from './logout-button'
 import { RefreshPanel } from './refresh-panel'
@@ -326,42 +326,66 @@ export function Dashboard({ report }: { report: MonthReport }) {
               {report.daily.topNet !== null && <span>{money(report.daily.topNet)}</span>}
               {report.daily.bottomNet !== null && <span>{money(report.daily.bottomNet)}</span>}
             </div>
-            <ol
-              className="daily-bars"
-              style={
-                {
-                  '--scale-from': report.daily.scaleLowPct ?? undefined,
-                  '--scale-to': report.daily.scaleHighPct ?? undefined,
-                } as CSSProperties
-              }
-            >
-              {report.daily.days.map((день) => (
-                <li
-                  key={день.day}
-                  data-empty={день.net === null ? 'true' : undefined}
-                  aria-label={
-                    день.net === null
-                      ? `${день.label}: заказов не было`
-                      : `${день.label}: ${money(день.net)}`
+            {/*
+              Кусок S13, задача 11: столбики и пунктир средней — в одной области. Пунктир не может жить
+              внутри `ol` (`div` в `ol`), поэтому он сосед списка; пределы шкалы у него те же поля отчёта,
+              что у списка столбиков, а место — готовая доля средней.
+            */}
+            <div className="daily-plot">
+              <ol
+                className="daily-bars"
+                style={
+                  {
+                    '--scale-from': report.daily.scaleLowPct ?? undefined,
+                    '--scale-to': report.daily.scaleHighPct ?? undefined,
+                  } as CSSProperties
+                }
+              >
+                {report.daily.days.map((день) => (
+                  <li
+                    key={день.day}
+                    data-empty={день.net === null ? 'true' : undefined}
+                    aria-label={
+                      день.net === null
+                        ? `${день.label}: заказов не было`
+                        : `${день.label}: ${money(день.net)}`
+                    }
+                  >
+                    {день.sharePct !== null && день.basePct !== null && (
+                      <span
+                        className="daily-bar"
+                        style={
+                          { '--day-from': день.basePct, '--day-size': день.sharePct } as CSSProperties
+                        }
+                      />
+                    )}
+                  </li>
+                ))}
+              </ol>
+              {report.daily.avgPct != null && report.daily.avgNet != null && (
+                <div
+                  className="daily-mean"
+                  style={
+                    {
+                      '--mean-at': report.daily.avgPct,
+                      '--scale-from': report.daily.scaleLowPct ?? undefined,
+                      '--scale-to': report.daily.scaleHighPct ?? undefined,
+                    } as CSSProperties
                   }
                 >
-                  {день.sharePct !== null && день.basePct !== null && (
-                    <span
-                      className="daily-bar"
-                      style={
-                        { '--day-from': день.basePct, '--day-size': день.sharePct } as CSSProperties
-                      }
-                    />
-                  )}
-                </li>
-              ))}
-            </ol>
+                  <span className="daily-mean-label">{`средняя ${вместе(moneyMaybe(report.daily.avgNet))} ${report.daily.avgBase}`}</span>
+                </div>
+              )}
+            </div>
             <ol className="daily-ticks" aria-hidden="true">
               {report.daily.days.map((день) => (
                 <li key={день.day}>{день.tick}</li>
               ))}
             </ol>
           </div>
+          {report.daily.hasEmptyDays === true && (
+            <p className="daily-note">Пунктир у дня — заказов в этот день не было; в среднюю такой день входит нулём.</p>
+          )}
         </section>
       )}
 
