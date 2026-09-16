@@ -426,4 +426,13 @@ export const BREAKS: Break[] = [
     ],
     tests: 'все',
   },
+  {
+    id: 'expand-count-unguarded',
+    claim: 'принять раскрытый вид, на котором раскрыто не два переключателя',
+    mustRedden: 'отказ: у раскрытого вида раскрыто не два переключателя',
+    file: 'docs/screens/guards.ts',
+    find: '  if (сколько === 2) return\n',
+    replace: '  return\n',
+    tests: 'все',
+  },
 ]
