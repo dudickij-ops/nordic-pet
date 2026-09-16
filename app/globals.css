@@ -872,47 +872,6 @@ button.primary:active:not(:disabled) {
   border-color: var(--on-accent);
 }
 
-/* ——— Главные числа ——— */
-
-/*
- * Крупных чисел единицы, и считаются они на вкладку (уточнение владельца от 11 сентября 2026 года,
- * кусок S11): на «Деньгах» три — прибыль и маржа здесь, окупаемость по обороту в своём блоке, — на
- * «Главном» четыре значения полосы показателей. Прежде здесь стояло: «Крупных чисел на экране ровно
- * три — прибыль, маржа, окупаемость». Остальные показатели идут ровным весом. Экран, где выделено всё,
- * не выделяет ничего.
- *
- * **Отступление, названное вслух.** Справочник, дословно (fluent2.microsoft.design/color): «Apply
- * brand colors to different areas of an interface not only to create visual prominence, but also
- * to anchor people in a specific product experience. Avoid overusing brand colors or using them on
- * large surfaces as they can dilute a hierarchy and make an experience difficult to navigate.»
- * Карточка «Итог» идёт на смысловом цвете — то есть против второй половины этой цитаты. Довод
- * владельца (9 сентября 2026 года, до вкладок): одна карточка из шести, и она главная на экране. С
- * куска S11 она одна из четырёх карточек вкладки «Деньги». Названо здесь, в описи снимков и в теле
- * pull request.
- */
-.bottom-line {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.bottom-line h2,
-.bottom-line dt,
-.bottom-line dd {
-  color: var(--on-accent);
-}
-
-/*
- * Крупные числа «Итога» — Title 2 (28 / 36, 600). Крупные числа считаются на вкладку (уточнение
- * владельца от 11 сентября 2026 года): на «Деньгах» их три — два здесь и окупаемость по обороту в
- * своём блоке. Прежде здесь стояло: «Три крупных числа — Title 2 (28 / 36, 600). Их ровно три, и
- * больше на экране крупного нет.»
- */
-.bottom-line dd {
-  font-size: var(--fontSizeHero700);
-  line-height: var(--lineHeightHero700);
-  font-weight: var(--fontWeightSemibold);
-}
-
 /* ——— Полоса доли честности ——— */
 
 /*
@@ -1094,89 +1053,6 @@ button.primary:active:not(:disabled) {
   line-height: var(--lineHeightBase200);
 }
 
-/* ——— Полоса вкладок ——— */
-
-/*
- * Рецепт вкладки Fluent 2 — `react-tabs/library/src/components/Tab/useTabStyles.styles.ts` на коммите
- * выписки `43665d5`: средний размер, горизонтально, вид `transparent`. Сверка по каждому свойству
- * блоков — `docs/сверка/рецепты-fluent.md`, раздел 8. Признаков текущей вкладки три, и цвет среди них
- * не единственный: `aria-current` в разметке, полоса-указатель под текстом, полужирное начертание.
- *
- * Отступ ссылки по горизонтали — `spacingHorizontalM` (12): у Fluent это `spacingHorizontalMNudge` (10)
- * у кнопки плюс `spacingHorizontalXXS` (2) у текста — **совпало по действию**: текст отстоит от края на
- * те же 12, на которые отстоит указатель. Двух величин с `Nudge` в выписке нет.
- */
-.tabs {
-  margin: 0 0 var(--gap);
-}
-
-.tabs ul {
-  display: flex;
-  flex-wrap: wrap;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tabs a {
-  position: relative;
-  display: inline-block;
-  padding: var(--spacingVerticalM) var(--spacingHorizontalM);
-  border-radius: var(--borderRadiusMedium);
-  color: var(--colorNeutralForeground2);
-  font-size: var(--fontSizeBase300);
-  line-height: var(--lineHeightBase300);
-  font-weight: var(--fontWeightRegular);
-  text-decoration: none;
-}
-
-.tabs a[aria-current='page'] {
-  color: var(--colorNeutralForeground1);
-  font-weight: var(--fontWeightSemibold);
-}
-
-.tabs a[aria-current='page']::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: var(--spacingHorizontalM);
-  right: var(--spacingHorizontalM);
-  height: var(--strokeWidthThicker);
-  border-radius: var(--borderRadiusCircular);
-  background: var(--colorCompoundBrandStroke);
-}
-
-/* ——— «Деньги»: «Выручка» и «Затраты» рядом ——— */
-
-/*
- * «Выручка» и «Затраты» — свой ряд, кусок S12, задача 4.
- *
- * **Что было и почему поменялось.** Прежде обе карточки были строчными блоками у `main`, и высоты
- * у них не совпадали: строчные блоки друг с другом не равняются, и ряд выглядел рваным. Цена была
- * названа в этом же файле прошлым куском. Сетку у `main` тот кусок отверг по снимку: её блок
- * открывает свой поток форматирования, не заходит под плавающую полосу действия и сжимается рядом
- * с ней — узкими становились разделы всех вкладок разом.
- *
- * **Почему обёртка этого не наследует.** Она начинается ниже плавающей полосы: между ними целая
- * шапка — название, месяцы, время чтения и полоса вкладок. Плавающее сжимает только то, что стоит
- * с ним вровень. Проверено снимком заново, а не принято на веру, и сжатие разделов сторожится
- * своей проверкой со сломом.
- *
- * `align-items: stretch` — умолчание флексбокса, и высоты равняются им. `min-width: 0` у карточек
- * обязателен: без него длинная подпись внутри не даёт колонке ужаться, и ряд уезжает за край.
- */
-.row-two {
-  display: flex;
-  gap: var(--gap);
-  margin: 0 0 var(--gap);
-}
-
-.row-two > .block {
-  flex: 1 1 0;
-  min-width: 0;
-  margin-bottom: 0;
-}
-
 /* ——— Полоса показателей ——— */
 
 /*
@@ -1245,28 +1121,6 @@ button.primary:active:not(:disabled) {
 
 .kpi[data-verdict='хуже'] .kpi-delta {
   color: var(--colorPaletteRedForeground3);
-}
-
-/* ——— Окупаемость рекламы ——— */
-
-/*
- * Окупаемость по обороту — крупным числом рядом с порогом, с которым её сравнивают (решение владельца
- * по В7). Title 2 (28 / 36, 600), как числа «Итога»: на вкладке «Деньги» крупных чисел три — прибыль,
- * маржа и она.
- */
-.payback-main {
-  font-size: var(--fontSizeHero700);
-  line-height: var(--lineHeightHero700);
-  font-weight: var(--fontWeightSemibold);
-}
-
-
-/* Строка об определениях — пояснение к числам, а не число: мелко и приглушённо, как у водопада. */
-.payback-note {
-  margin: var(--spacingVerticalM) 0 0;
-  color: var(--colorNeutralForeground3);
-  font-size: var(--fontSizeBase200);
-  line-height: var(--lineHeightBase200);
 }
 
 /*
@@ -1668,11 +1522,6 @@ button.primary:active:not(:disabled) {
     margin-bottom: var(--spacingVerticalXXXL);
   }
 
-  .row-two {
-    gap: var(--spacingVerticalXXXL);
-    margin-bottom: var(--spacingVerticalXXXL);
-  }
-
   /*
    * На узком экране пары разворачиваются в строки: подпись слева, число справа. Это и
    * единственная раскладка, которая тут читается, и ровно то, как владелец просил показывать
@@ -1700,16 +1549,9 @@ button.primary:active:not(:disabled) {
     line-height: var(--lineHeightBase300);
   }
 
-  .bottom-line dd,
-  .payback-main,
   .kpi-value {
     font-size: var(--fontSizeBase600);
     line-height: var(--lineHeightBase600);
-  }
-
-  /* «Выручка» и «Затраты» на узком экране — одна под другой. */
-  .row-two {
-    flex-direction: column;
   }
 
   /* Полоса показателей на узком экране — по две карточки в ряд. */

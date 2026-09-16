@@ -22,7 +22,7 @@ const СТРОКА = 'Таблица прокручивается вбок: за
 
 describe('признак скрытых колонок', () => {
   test('строка стоит в разметке таблицы товаров', () => {
-    expect(renderToStaticMarkup(<Dashboard report={ПЕРЕПИСЬ} tab="tovary" />)).toContain(СТРОКА)
+    expect(renderToStaticMarkup(<Dashboard report={ПЕРЕПИСЬ} />)).toContain(СТРОКА)
   })
 
   /**
@@ -32,10 +32,10 @@ describe('признак скрытых колонок', () => {
    */
   test('без товаров и без новых колонок строки нет: сказать было бы нечего', () => {
     const безТоваров = { ...ПЕРЕПИСЬ, items: [] }
-    expect(renderToStaticMarkup(<Dashboard report={безТоваров} tab="tovary" />)).not.toContain(СТРОКА)
+    expect(renderToStaticMarkup(<Dashboard report={безТоваров} />)).not.toContain(СТРОКА)
 
     const безКолонок = { ...ПЕРЕПИСЬ, itemsSummary: undefined }
-    expect(renderToStaticMarkup(<Dashboard report={безКолонок} tab="tovary" />)).not.toContain(СТРОКА)
+    expect(renderToStaticMarkup(<Dashboard report={безКолонок} />)).not.toContain(СТРОКА)
   })
 
   test('по умолчанию строки не видно: на широком экране колонки видны все', () => {

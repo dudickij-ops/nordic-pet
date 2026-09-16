@@ -99,11 +99,9 @@ test('денежное значение внутри предложения не
   const открытые: string[] = []
   let найдено = 0
   for (const [имя, отчёт] of РАСКЛАДКИ) {
-    for (const tab of ['glavnoe', 'dengi', 'tovary', 'kachestvo'] as const) {
-      for (const { текст, цепочка } of текстыСЦепочкой(renderToStaticMarkup(<Dashboard report={отчёт} tab={tab} />))) {
-        найдено += (текст.match(/\d[ \u00A0][€%]/g) ?? []).length
-        if (/\d [€%]/.test(текст) && !защищено(цепочка)) открытые.push(`${имя}, ${tab}, ${цепочка.join(' > ')}: «${текст.trim()}»`)
-      }
+    for (const { текст, цепочка } of текстыСЦепочкой(renderToStaticMarkup(<Dashboard report={отчёт} />))) {
+      найдено += (текст.match(/\d[ \u00A0][€%]/g) ?? []).length
+      if (/\d [€%]/.test(текст) && !защищено(цепочка)) открытые.push(`${имя}, ${цепочка.join(' > ')}: «${текст.trim()}»`)
     }
   }
   // Разбор, который ничего не нашёл, прошёл бы проверку зелёным: чисел со знаком обязано быть много.

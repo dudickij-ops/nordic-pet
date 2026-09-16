@@ -160,4 +160,23 @@ export const BREAKS: Break[] = [
     replace: "announce(`  месяц в убытке: ${f.loss ? 'нет' : 'да'}`)",
     tests: 'все',
   },
+  {
+    id: 'tabs-come-back',
+    claim: 'вернуть чтение вкладки из адреса и отказ на незнакомую',
+    mustRedden: 'старые адреса со вкладкой и порядком открывают тот же единственный экран',
+    file: 'app/page.tsx',
+    find: "if ((await проверитьДоступ()) === 'отказать') redirect('/login')",
+    replace: "if ((await проверитьДоступ()) === 'отказать') redirect('/login')\n  { const п = await searchParams as { tab?: string }; if (п.tab !== undefined) return <main><p role=\"alert\">Раздела «{п.tab}» в отчёте нет.</p></main> }",
+    tests: 'все',
+  },
+  {
+    id: 'money-cards-come-back',
+    claim: 'вернуть карточку «Итог»',
+    mustRedden: 'карточек «Выручка», «Затраты», «Итог» и блока окупаемости нет',
+    file: 'app/page.tsx',
+    find: '<section className="block waterfall">',
+    replace: '<section className="block waterfall">\n          <section className="block bottom-line"><h2>Итог</h2></section>',
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }],
+    tests: 'все',
+  },
 ]
