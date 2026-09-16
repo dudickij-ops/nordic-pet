@@ -502,7 +502,7 @@ td {
  * честности. Предложения защищены иначе — неразрывным пробелом в самой строке. Сторож обоих способов —
  * проверка «денежное значение внутри предложения не бывает без защиты от переноса».
  */
-.kpi-value,
+.result-profit,
 .waterfall-amount,
 .waterfall-share,
 .daily-axis span,
@@ -564,6 +564,47 @@ tbody tr:last-child td {
 .items tr[data-loss='true'] td {
   background: var(--colorPaletteRedBackground2);
   color: var(--colorNeutralForeground1);
+}
+
+/*
+ * Раскрытие товаров и неполноты — кусок S13. Родной элемент страницы, без клиентского кода.
+ * Вид — как у кнопки без заливки: обводка, скругление, отступы из объявленных токенов.
+ */
+.items-more > summary,
+.gaps-more > summary {
+  display: inline-block;
+  margin-top: var(--spacingVerticalS);
+  padding: var(--spacingVerticalXS) var(--spacingHorizontalM);
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke1);
+  border-radius: var(--borderRadiusMedium);
+  cursor: pointer;
+}
+
+.items table {
+  table-layout: fixed;
+}
+
+/*
+ * Полоска доли в валовой прибыли товаров — кусок S13, задача 12. Устроена как полоса честности
+ * (`.share`, `.share-fill`): значение приходит величиной из разметки, длину делает `clamp`, дорожка и
+ * заливка — те же токены. Толщина — `--strokeWidthThicker` и отступ `--spacingVerticalXS`: наш выбор
+ * из объявленных токенов для малой полоски в ячейке, а не выписка из Fluent.
+ */
+.items-bar {
+  display: block;
+  height: var(--strokeWidthThicker);
+  margin-top: var(--spacingVerticalXS);
+  background: var(--colorNeutralBackground6);
+  border-radius: var(--borderRadiusCircular);
+  overflow: hidden;
+}
+
+.items-bar-fill {
+  display: block;
+  width: clamp(0%, var(--item-share, 0%), 100%);
+  height: 100%;
+  background: var(--colorCompoundBrandBackground);
+  border-radius: var(--borderRadiusCircular);
 }
 
 /* ——— Ссылки и кнопки ——— */
@@ -874,47 +915,6 @@ button.primary:active:not(:disabled) {
   border-color: var(--on-accent);
 }
 
-/* ——— Главные числа ——— */
-
-/*
- * Крупных чисел единицы, и считаются они на вкладку (уточнение владельца от 11 сентября 2026 года,
- * кусок S11): на «Деньгах» три — прибыль и маржа здесь, окупаемость по обороту в своём блоке, — на
- * «Главном» четыре значения полосы показателей. Прежде здесь стояло: «Крупных чисел на экране ровно
- * три — прибыль, маржа, окупаемость». Остальные показатели идут ровным весом. Экран, где выделено всё,
- * не выделяет ничего.
- *
- * **Отступление, названное вслух.** Справочник, дословно (fluent2.microsoft.design/color): «Apply
- * brand colors to different areas of an interface not only to create visual prominence, but also
- * to anchor people in a specific product experience. Avoid overusing brand colors or using them on
- * large surfaces as they can dilute a hierarchy and make an experience difficult to navigate.»
- * Карточка «Итог» идёт на смысловом цвете — то есть против второй половины этой цитаты. Довод
- * владельца (9 сентября 2026 года, до вкладок): одна карточка из шести, и она главная на экране. С
- * куска S11 она одна из четырёх карточек вкладки «Деньги». Названо здесь, в описи снимков и в теле
- * pull request.
- */
-.bottom-line {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.bottom-line h2,
-.bottom-line dt,
-.bottom-line dd {
-  color: var(--on-accent);
-}
-
-/*
- * Крупные числа «Итога» — Title 2 (28 / 36, 600). Крупные числа считаются на вкладку (уточнение
- * владельца от 11 сентября 2026 года): на «Деньгах» их три — два здесь и окупаемость по обороту в
- * своём блоке. Прежде здесь стояло: «Три крупных числа — Title 2 (28 / 36, 600). Их ровно три, и
- * больше на экране крупного нет.»
- */
-.bottom-line dd {
-  font-size: var(--fontSizeHero700);
-  line-height: var(--lineHeightHero700);
-  font-weight: var(--fontWeightSemibold);
-}
-
 /* ——— Полоса доли честности ——— */
 
 /*
@@ -987,7 +987,13 @@ button.primary:active:not(:disabled) {
  */
 /* **Отступление от контракта:** контракт называл строки неполноты Body 1; ненулевая набрана
  * насыщенностью `fontWeightSemibold`, то есть Body 1 Strong. Довод — абзацем выше. */
-.gaps li:not([data-zero='true']) {
+/*
+ * Кусок S13, задача 13: на виду — только виды с дырами, `data-zero` у них нет; под раскрытием признак
+ * ставится по `hasHoles`. `:not(…)` стоит и у списка на виду нарочно: он даёт правилу тот же вес, что
+ * был у прежнего `.gaps li:not(…)`, и оно по-прежнему перебивает общее правило строки ниже по файлу.
+ */
+.gaps-holes li:not([data-zero='true']),
+.gaps-more li:not([data-zero='true']) {
   color: var(--text);
   font-weight: var(--fontWeightSemibold);
 }
@@ -1005,7 +1011,13 @@ button.primary:active:not(:disabled) {
  * Проза остаётся прозой: Body 1, приглушённым цветом. Caption 1 у Fluent — подпись, а не абзац,
  * и загонять в неё связный текст значило бы взять ступень не по роли.
  */
-.honesty > p:nth-of-type(2) {
+/*
+ * Кусок S13, задача 13: блоки качества и неполноты слиты в `.quality`. Абзацев после подписи доли
+ * теперь до трёх — артикулы без цены, пояснение неполноты и «Дыр в данных нет.»; все — прежняя проза
+ * (прежнее `.gaps > p` было тем же Body 1 приглушённым), поэтому правило берёт все абзацы, начиная со
+ * второго, а не второй по счёту: без артикулов без цены «второй» — это уже пояснение неполноты.
+ */
+.quality > p:nth-of-type(n + 2) {
   margin-bottom: 0;
   color: var(--text-dim);
   font-size: var(--fontSizeBase300);
@@ -1088,11 +1100,6 @@ button.primary:active:not(:disabled) {
   background: var(--colorBrandStroke2);
 }
 
-/* «Съедает больше всего» — подпись, а не тревога: цвет текста обычный, свой не заводится. */
-.waterfall-largest {
-  margin: 0 0 var(--spacingVerticalS);
-}
-
 /* Строка о центах округления — пояснение к числам, а не число: мелко и приглушённо. */
 .waterfall-gap {
   margin: var(--spacingVerticalS) 0 0;
@@ -1101,117 +1108,78 @@ button.primary:active:not(:disabled) {
   line-height: var(--lineHeightBase200);
 }
 
-/* ——— Полоса вкладок ——— */
+/* ——— Результат месяца ——— */
 
 /*
- * Рецепт вкладки Fluent 2 — `react-tabs/library/src/components/Tab/useTabStyles.styles.ts` на коммите
- * выписки `43665d5`: средний размер, горизонтально, вид `transparent`. Сверка по каждому свойству
- * блоков — `docs/сверка/рецепты-fluent.md`, раздел 8. Признаков текущей вкладки три, и цвет среди них
- * не единственный: `aria-current` в разметке, полоса-указатель под текстом, полужирное начертание.
- *
- * Отступ ссылки по горизонтали — `spacingHorizontalM` (12): у Fluent это `spacingHorizontalMNudge` (10)
- * у кнопки плюс `spacingHorizontalXXS` (2) у текста — **совпало по действию**: текст отстоит от края на
- * те же 12, на которые отстоит указатель. Двух величин с `Nudge` в выписке нет.
+ * Результат месяца — кусок S13. Прибыль — единственное число кегля Hero700; соседи — Base400
+ * полужирным. Иерархия строится уменьшением соседей, а не новым заимствованным кеглем.
  */
-.tabs {
-  margin: 0 0 var(--gap);
-}
-
-.tabs ul {
-  display: flex;
-  flex-wrap: wrap;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tabs a {
-  position: relative;
-  display: inline-block;
-  padding: var(--spacingVerticalM) var(--spacingHorizontalM);
-  border-radius: var(--borderRadiusMedium);
-  color: var(--colorNeutralForeground2);
-  font-size: var(--fontSizeBase300);
-  line-height: var(--lineHeightBase300);
-  font-weight: var(--fontWeightRegular);
-  text-decoration: none;
-}
-
-.tabs a[aria-current='page'] {
-  color: var(--colorNeutralForeground1);
-  font-weight: var(--fontWeightSemibold);
-}
-
-.tabs a[aria-current='page']::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: var(--spacingHorizontalM);
-  right: var(--spacingHorizontalM);
-  height: var(--strokeWidthThicker);
-  border-radius: var(--borderRadiusCircular);
-  background: var(--colorCompoundBrandStroke);
-}
-
-/* ——— «Деньги»: «Выручка» и «Затраты» рядом ——— */
-
-/*
- * «Выручка» и «Затраты» — свой ряд, кусок S12, задача 4.
- *
- * **Что было и почему поменялось.** Прежде обе карточки были строчными блоками у `main`, и высоты
- * у них не совпадали: строчные блоки друг с другом не равняются, и ряд выглядел рваным. Цена была
- * названа в этом же файле прошлым куском. Сетку у `main` тот кусок отверг по снимку: её блок
- * открывает свой поток форматирования, не заходит под плавающую полосу действия и сжимается рядом
- * с ней — узкими становились разделы всех вкладок разом.
- *
- * **Почему обёртка этого не наследует.** Она начинается ниже плавающей полосы: между ними целая
- * шапка — название, месяцы, время чтения и полоса вкладок. Плавающее сжимает только то, что стоит
- * с ним вровень. Проверено снимком заново, а не принято на веру, и сжатие разделов сторожится
- * своей проверкой со сломом.
- *
- * `align-items: stretch` — умолчание флексбокса, и высоты равняются им. `min-width: 0` у карточек
- * обязателен: без него длинная подпись внутри не даёт колонке ужаться, и ряд уезжает за край.
- */
-.row-two {
-  display: flex;
-  gap: var(--gap);
-  margin: 0 0 var(--gap);
-}
-
-.row-two > .block {
-  flex: 1 1 0;
-  min-width: 0;
-  margin-bottom: 0;
-}
-
-/* ——— Полоса показателей ——— */
-
-/*
- * Четыре показателя в ряд (кусок S11, шаг 7), на узком экране — по два. Значение набрано Title 2
- * (28 / 36, 600), как числа «Итога», — решение владельца на шаге вкладок по паре снимков: «Главное»
- * обязано отвечать за десять секунд, и без крупного числа глаз садится на водопад. Крупных на вкладке
- * четыре. Строка дельты — мелко; смысл в ней несут знак и слово, цвет — второй канал того же смысла.
- */
-.kpi-list {
+.result {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--spacingVerticalM) var(--spacingHorizontalL);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--spacingVerticalM) var(--spacingHorizontalXXL);
+  align-items: start;
 }
 
+.result h2 {
+  margin: 0;
+}
+
+/*
+ * Общие правила `dl` ставят подписи в первую строку сетки, значения — во вторую (`grid-row`). Здесь
+ * пары идут строками — подпись слева, число справа, — и закреплённая строка сетки снимается.
+ */
+.result-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--spacingVerticalS) var(--spacingHorizontalM);
+  margin: 0;
+}
+
+.result-stats dt {
+  grid-row: auto;
+  color: var(--colorNeutralForeground2);
+}
+
+.result-stats dd {
+  font-size: var(--fontSizeBase400);
+  font-weight: var(--fontWeightSemibold);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  grid-row: auto;
+}
+
+.result-verdict {
+  font-size: var(--fontSizeBase200);
+  font-weight: var(--fontWeightRegular);
+}
+
+.result-approx {
+  color: var(--colorPaletteRedForeground3);
+  margin-right: var(--spacingHorizontalS);
+}
+
+.result-base {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--colorNeutralForeground3);
+}
+
+/*
+ * Строка дельты у числа результата — мелко; смысл в ней несут знак и слово, цвет — второй канал того
+ * же смысла. Обёртка `.kpi` несёт признак смысла для правил цвета ниже.
+ */
 .kpi {
   display: flex;
   flex-direction: column;
   gap: var(--spacingVerticalXS);
 }
 
-.kpi-label {
-  color: var(--colorNeutralForeground2);
-}
-
-.kpi-value {
+.result-profit {
   font-size: var(--fontSizeHero700);
   line-height: var(--lineHeightHero700);
   font-weight: var(--fontWeightSemibold);
@@ -1254,57 +1222,33 @@ button.primary:active:not(:disabled) {
   color: var(--colorPaletteRedForeground3);
 }
 
-/* ——— Доли статей затрат ——— */
-
 /*
- * Доля статьи в обороте — под суммой, в той же ячейке: число «… % оборота» и полоска той же длины.
- * Рецепт — тот же, что у полосы доли честности (полоса прогресса Fluent, решение владельца по Г1 в
- * S10): дорожка `colorNeutralBackground6`, заливка `colorCompoundBrandBackground`. Светлый оттенок
- * бренда, как у вычитаний водопада, здесь не годится: к дорожке он дал бы около 1,2 : 1 — наш счёт,
- * та же беда, что у полосы доли во втором круге S10. `clamp` держит длину в пределах дорожки.
+ * Выводы — кусок S13. Смысл строки несут знак и слово; черта слева — второй канал того же смысла.
+ * Красная черта — только у тревоги. У «хорошо» черта нейтральная, как у «обычно»: зелёный на экране —
+ * только у дельты «лучше» (решение владельца Ж4); «хорошо» отличают знак ✓, слово и `data-kind`.
  */
-.cost-share {
-  display: block;
-  margin-top: var(--spacingVerticalXS);
-  color: var(--colorNeutralForeground3);
-  font-size: var(--fontSizeBase200);
-  line-height: var(--lineHeightBase200);
-  font-weight: var(--fontWeightRegular);
+.findings ul {
+  display: grid;
+  gap: var(--spacingVerticalS);
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.cost-bar {
-  display: block;
-  height: var(--spacingVerticalXS);
-  margin-top: var(--spacingVerticalXS);
-  background: var(--colorNeutralBackground6);
-  border-radius: var(--borderRadiusCircular);
-  overflow: hidden;
+.finding {
+  padding-left: var(--spacingHorizontalM);
+  border-left: var(--strokeWidthThick) solid var(--colorNeutralStroke1);
 }
 
-.cost-bar-fill {
-  display: block;
-  width: clamp(0%, calc(var(--cost-share) * 1%), 100%);
-  height: 100%;
-  background: var(--colorCompoundBrandBackground);
+.finding p {
+  margin: 0;
 }
 
-/* ——— Окупаемость рекламы ——— */
-
-/*
- * Окупаемость по обороту — крупным числом рядом с порогом, с которым её сравнивают (решение владельца
- * по В7). Title 2 (28 / 36, 600), как числа «Итога»: на вкладке «Деньги» крупных чисел три — прибыль,
- * маржа и она.
- */
-.payback-main {
-  font-size: var(--fontSizeHero700);
-  line-height: var(--lineHeightHero700);
-  font-weight: var(--fontWeightSemibold);
+.finding[data-kind='тревога'] {
+  border-left-color: var(--colorPaletteRedForeground3);
 }
 
-
-/* Строка об определениях — пояснение к числам, а не число: мелко и приглушённо, как у водопада. */
-.payback-note {
-  margin: var(--spacingVerticalM) 0 0;
+.finding-why {
   color: var(--colorNeutralForeground3);
   font-size: var(--fontSizeBase200);
   line-height: var(--lineHeightBase200);
@@ -1328,8 +1272,9 @@ button.primary:active:not(:disabled) {
    * половиной таблицы: на узком снимке «Товаров» она не читалась целиком вовсе.
    *
    * **11rem — наш выбор, а не выписка из Fluent:** справочник ширины подписи в ячейке не называет.
-   * Взято по снимку узких «Товаров» — при мартовском тексте пометка укладывается в две строки и не
-   * делает колонку шире соседних. Денежного значения в пометке нет, поэтому возврат переноса
+   * Взято по снимку узких «Товаров»: при мартовском тексте пометка ложится в три строки, а колонка
+   * «Себестоимость» перестаёт быть шире всех прочих — на снимке при этом видна и колонка «Прибыль»,
+   * которой прежде за краем не было вовсе. Денежного значения в пометке нет, поэтому возврат переноса
    * ничего не рвёт; место со снятой защитой названо в списке проверки, как и положено.
    */
   max-width: 11rem;
@@ -1429,15 +1374,53 @@ button.primary:active:not(:disabled) {
   color: var(--colorNeutralForeground3);
 }
 
-/* ——— Неполнота ——— */
-
-.gaps > p {
-  color: var(--text-dim);
-  font-size: var(--fontSizeBase300);
-  line-height: var(--lineHeightBase300);
+/*
+ * Пунктир средней — кусок S13. Место — та же формула, что у края столбика дня, от той же шкалы:
+ * величина приходит из отчёта готовой. Подпись на своём фоне — линия не идёт по тексту.
+ *
+ * Столбики и пунктир лежат в общей области `.daily-plot`: она занимает место списка столбиков в
+ * сетке ряда (колонка графика, строка высоты области), а сама — сетка из одной ячейки, чтобы список
+ * растянулся на всю её высоту, как прежде в сетке ряда. Ось стоит в соседней колонке, поэтому левый
+ * край пунктира — ноль, своей величины не заводится.
+ */
+.daily-plot {
+  position: relative;
+  display: grid;
+  grid-column: 2;
 }
 
-.gaps ul {
+.daily-mean {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc((var(--mean-at) - var(--scale-from)) / (var(--scale-to) - var(--scale-from)) * 100%);
+  border-top: var(--strokeWidthThin) dashed var(--colorBrandStroke1);
+  pointer-events: none;
+}
+
+.daily-mean-label {
+  position: absolute;
+  right: 0;
+  bottom: var(--spacingVerticalXS);
+  padding: 0 var(--spacingHorizontalS);
+  background: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground2);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
+.daily-note {
+  margin: var(--spacingVerticalS) 0 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
+/* ——— Неполнота ——— */
+
+/* Кусок S13, задача 13: список на виду и список под раскрытием устроены одинаково. */
+.gaps-holes,
+.gaps-more ul {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1467,7 +1450,8 @@ button.primary:active:not(:disabled) {
  * текст: у однострочных соседей он прижат к верху рослой ячейки, и под ним остаётся дыра. Поэтому
  * текст ставится по середине ячейки, а не по её верху.
  */
-.gaps li {
+.gaps-holes li,
+.gaps-more li {
   display: flex;
   align-items: center;
   padding: var(--spacingVerticalXS) 0;
@@ -1708,11 +1692,6 @@ button.primary:active:not(:disabled) {
     margin-bottom: var(--spacingVerticalXXXL);
   }
 
-  .row-two {
-    gap: var(--spacingVerticalXXXL);
-    margin-bottom: var(--spacingVerticalXXXL);
-  }
-
   /*
    * На узком экране пары разворачиваются в строки: подпись слева, число справа. Это и
    * единственная раскладка, которая тут читается, и ровно то, как владелец просил показывать
@@ -1740,21 +1719,14 @@ button.primary:active:not(:disabled) {
     line-height: var(--lineHeightBase300);
   }
 
-  .bottom-line dd,
-  .payback-main,
-  .kpi-value {
+  .result-profit {
     font-size: var(--fontSizeBase600);
     line-height: var(--lineHeightBase600);
   }
 
-  /* «Выручка» и «Затраты» на узком экране — одна под другой. */
-  .row-two {
-    flex-direction: column;
-  }
-
-  /* Полоса показателей на узком экране — по две карточки в ряд. */
-  .kpi-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Результат месяца на узком экране — прибыль над соседями, в одну колонку. */
+  .result {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /*
