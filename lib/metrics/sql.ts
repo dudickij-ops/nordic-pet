@@ -918,6 +918,11 @@ select (
  * нет. Отсюда и вывод `verdict` — «лучше», «хуже», «без изменений»; разметка знак с нулём не
  * сравнивает. Знак плюс у дельты ставится здесь же: разметка его не выводит.
  *
+ * **Кусок S13, задача 6:** доли рекламы в полосе нет — показатель убран решением владельца
+ * (доля рекламы не входит в состав результата). Четвёртой строки `values` для него, `cur_state`
+ * и `has_ads` в `prev_state` этого запроса больше нет; прежний текст выше про долю рекламы
+ * остаётся историей.
+ *
  * Переход между «нет базы» и «есть база» — от данных и только от них: появился прошлый месяц с
  * заказами — дельты считаются, исчез — снова пусто. Ни флага, ни настройки.
  */
@@ -928,15 +933,10 @@ kpi as (
     from cur_row c
    cross join prev_row p
    cross join prev_state s
-   cross join cur_state cs
    cross join lateral (values
      (1, 'profit',   'eur', true,  c.profit,     c.profit::numeric,     p.profit::numeric),
      (2, 'margin',   'pp',  true,  c.margin_pct, c.margin_pct::numeric, p.margin_pct::numeric),
-     (3, 'net',      'eur', true,  c.net,        c.net::numeric,        p.net::numeric),
-     (4, 'ad_share', 'pp',  false,
-         case when cs.has_ads then round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1) end::text,
-         case when cs.has_ads then round(c.ads::numeric / nullif(c.gross::numeric, 0) * 100, 1) end,
-         case when s.has_ads then round(p.ads::numeric / nullif(p.gross::numeric, 0) * 100, 1) end)
+     (3, 'net',      'eur', true,  c.net,        c.net::numeric,        p.net::numeric)
    ) as k(ord, key, unit, good_when_up, value, cur, prev)
 ),
 diff as (
@@ -972,12 +972,10 @@ export const PREVIOUS_MONTH_TOTALS = MONTH_TOTALS.replaceAll('$1::date', "($1::d
 export const MONTH_DELTAS = `
 with cur_row as (${MONTH_TOTALS}),
 prev_row as (${PREVIOUS_MONTH_TOTALS}),
-cur_state as (${ЕСТЬ_РЕКЛАМА}),
 prev_state as (
   select to_char($1::date - interval '1 month', 'YYYY-MM') as month,
          exists(select 1 from (${ALL_MONTHS}) m
                  where m.month = to_char($1::date - interval '1 month', 'YYYY-MM')
-                   and m.has_orders)                                   as has_orders,
-         (${ЕСТЬ_РЕКЛАМА.replaceAll('$1::date', "($1::date - interval '1 month')::date")})  as has_ads
+                   and m.has_orders)                                   as has_orders
 ),
 ${DELTAS_FROM_ROWS}`

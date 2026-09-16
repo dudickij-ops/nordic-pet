@@ -101,6 +101,7 @@ export const ПЕРЕПИСЬ: MonthReport = {
   sourcesReadAt: '2026-04-02 07:15 UTC',
   // Кусок S11, шаг 7. Значения нарочно не совпадают с итогами и с долей ступени рекламы выше: разметка,
   // напечатавшая колонку итогов вместо значения полосы, покраснит перепись. Смысл дельт — из поля.
+  // Кусок S13, задача 6: показателей в полосе три — доля рекламы уходит с экрана.
   kpis: {
     prevMonth: '2026-02',
     hasBase: true,
@@ -108,7 +109,6 @@ export const ПЕРЕПИСЬ: MonthReport = {
       { key: 'profit', unit: 'eur', value: '2323.23', delta: '+141.41', verdict: 'лучше' },
       { key: 'margin', unit: 'pp', value: '34.5', delta: '-2.7', verdict: 'хуже' },
       { key: 'net', unit: 'eur', value: '2424.24', delta: '+151.51', verdict: 'лучше' },
-      { key: 'ad_share', unit: 'pp', value: '25.6', delta: '+1.9', verdict: 'хуже' },
     ],
   },
 }

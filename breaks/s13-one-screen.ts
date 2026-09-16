@@ -142,4 +142,13 @@ export const BREAKS: Break[] = [
     replace: 'select kind, count, at, count >= 0 as has_holes',
     tests: 'все',
   },
+  {
+    id: 'kpis-keep-ad-share',
+    claim: 'вернуть долю рекламы в полосу показателей',
+    mustRedden: 'показателей в полосе три',
+    file: 'lib/metrics/sql.ts',
+    find: "     (3, 'net',      'eur', true,  c.net,        c.net::numeric,        p.net::numeric)",
+    replace: "     (3, 'net',      'eur', true,  c.net,        c.net::numeric,        p.net::numeric),\n     (4, 'ad_share', 'pp',  false, null::text, null::numeric, null::numeric)",
+    tests: 'все',
+  },
 ]
