@@ -133,6 +133,76 @@ function Выводы({ report, доля }: { report: MonthReport; доля: Mon
   )
 }
 
+/** Ширины колонок таблицы товаров — одни на обе таблицы: видимую пятёрку и раскрытую часть. */
+const КОЛОНКИ_ТОВАРОВ = ['13%', '10%', '15%', '15%', '16%', '10%', '21%']
+
+type СтрокаОтчёта = MonthReport['items'][number]
+type ИтогиТоваров = MonthReport['itemsSummary']
+
+/**
+ * Строка товара — кусок S13, задача 12. Тело — прежняя строка таблицы; пометка подстановки короткая
+ * и ведёт на блок качества. Колонки маржи и доли рисуются только при итогах — у прежних раскладок
+ * их нет (кусок S11).
+ *
+ * Полоска доли — то же условие владельца, что у полосы честности (кусок S9): она получает то самое
+ * значение, что напечатано текстом, и разметка над ним ничего не делает; длину ограничивает `clamp`
+ * в таблице стилей. Нет доли — нет полоски: полоска нулевой длины сказала бы «ноль».
+ */
+function СтрокаТовара({ item, итоги }: { item: СтрокаОтчёта; итоги: ИтогиТоваров }) {
+  return (
+    <tr data-loss={item.loss === true ? 'true' : undefined}>
+      <td>{item.sku}</td>
+      <td>{count(item.units)}</td>
+      <td>{money(item.net)}</td>
+      <td>
+        {money(item.cogs)}
+        {item.подстановка !== undefined && (
+          <a className="substituted" href="#kachestvo">
+            {item.подстановка === 'вся' ? '⚠ подставлена' : '⚠ подставлена частью'}
+          </a>
+        )}
+      </td>
+      <td>{money(item.profit)}</td>
+      {итоги !== undefined && <td>{percent(item.marginPct ?? null)}</td>}
+      {итоги !== undefined && (
+        <td>
+          {percent(item.profitSharePct ?? null)}
+          {item.profitSharePct != null && (
+            <span className="items-bar" aria-hidden="true">
+              <span className="items-bar-fill" style={{ '--item-share': `${item.profitSharePct}%` } as CSSProperties} />
+            </span>
+          )}
+        </td>
+      )}
+    </tr>
+  )
+}
+
+/** Таблица товаров — одна на видимую пятёрку и на раскрытую часть, с одним описанием колонок. */
+function ТаблицаТоваров({ строки, итоги }: { строки: СтрокаОтчёта[]; итоги: ИтогиТоваров }) {
+  return (
+    <table>
+      <colgroup>{КОЛОНКИ_ТОВАРОВ.map((ширина, i) => <col key={i} style={{ width: ширина }} />)}</colgroup>
+      <thead>
+        <tr>
+          <th scope="col">Артикул</th>
+          <th scope="col">Продано за вычетом возвратов</th>
+          <th scope="col">Чистая выручка</th>
+          <th scope="col">Себестоимость</th>
+          <th scope="col">Валовая прибыль</th>
+          {итоги !== undefined && <th>Маржа от чистой выручки</th>}
+          {итоги !== undefined && <th>Доля в валовой прибыли товаров</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {строки.map((item) => (
+          <СтрокаТовара key={item.sku} item={item} итоги={итоги} />
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 /**
  * Разметка экрана — задача 7. Чистый компонент: получает готовый отчёт и только
  * печатает его поля через `money`/`percent`/`count` из `lib/metrics/format.ts`. Ни
@@ -400,7 +470,7 @@ export function Dashboard({ report }: { report: MonthReport }) {
         {report.itemsSummary !== undefined && (
           <p className="items-summary">
             {report.itemsSummary.skusFor80 !== null
-              ? `80\u00A0% прибыли товаров дают ${count(String(report.itemsSummary.skusFor80))} из ${count(String(report.itemsSummary.skusTotal))} артикулов; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Прибыль товаров — выручка минус себестоимость, ${вместе(money(report.itemsSummary.productsProfit))}; это не прибыль месяца, ${вместе(money(report.bottom.profit))}.`
+              ? `80\u00A0% валовой прибыли товаров дают ${count(String(report.itemsSummary.skusFor80))} из ${count(String(report.itemsSummary.skusTotal))} артикулов; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Прибыль товаров — выручка минус себестоимость, ${вместе(money(report.itemsSummary.productsProfit))}; это не прибыль месяца, ${вместе(money(report.bottom.profit))}.`
               : `Прибыль товаров — выручка минус себестоимость, ${вместе(money(report.itemsSummary.productsProfit))} — не положительна: считать 80\u00A0% не от чего; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Это не прибыль месяца, ${вместе(money(report.bottom.profit))}.`}
           </p>
         )}
@@ -423,45 +493,19 @@ export function Dashboard({ report }: { report: MonthReport }) {
             Таблица прокручивается вбок: за правым краем есть ещё колонки.
           </p>
         )}
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Артикул</th>
-              <th scope="col">Продано за вычетом возвратов</th>
-              <th scope="col">Чистая выручка</th>
-              <th scope="col">Себестоимость</th>
-              <th scope="col">Прибыль</th>
-              {report.itemsSummary !== undefined && <th>Маржа от чистой выручки</th>}
-              {report.itemsSummary !== undefined && <th>Доля в прибыли товаров</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {report.items.map((item) => (
-              <tr key={item.sku} data-loss={item.loss === true ? 'true' : undefined}>
-                <td>{item.sku}</td>
-                <td>{count(item.units)}</td>
-                <td>{money(item.net)}</td>
-                <td>
-                  {money(item.cogs)}
-                  {item.подстановка !== undefined && (
-                    <a
-                      className="substituted"
-                      href="#kachestvo"
-                    >
-                      {item.подстановка === 'вся' ? 'подставлена' : 'подставлена частью'} — см.
-                      «Качество данных»
-                    </a>
-                  )}
-                </td>
-                <td>{money(item.profit)}</td>
-                {report.itemsSummary !== undefined && <td>{percent(item.marginPct ?? null)}</td>}
-                {report.itemsSummary !== undefined && (
-                  <td>{percent(item.profitSharePct ?? null)}</td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ТаблицаТоваров строки={report.items.filter((item) => item.inTop !== false)} итоги={report.itemsSummary} />
+        {/*
+          Кусок S13, задача 12 (решение владельца Э4). Пятёрку выбирает слой метрик признаком; разметка
+          раскладывает по признаку и не сравнивает чисел. Прежние раскладки без поля остаются целиком в
+          первой таблице. Число в переключателе — поле отчёта, а не счёт строк. Родной элемент страницы,
+          без клиентского кода.
+        */}
+        {report.items.some((item) => item.inTop === false) && report.itemsSummary !== undefined && (
+          <details className="items-more">
+            <summary>{`Показать все артикулы месяца — ${count(String(report.itemsSummary.skusTotal))}`}</summary>
+            <ТаблицаТоваров строки={report.items.filter((item) => item.inTop === false)} итоги={report.itemsSummary} />
+          </details>
+        )}
       </section>
 
       <section id="kachestvo" className="block honesty">

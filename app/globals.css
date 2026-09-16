@@ -564,6 +564,47 @@ tbody tr:last-child td {
   color: var(--colorNeutralForeground1);
 }
 
+/*
+ * Раскрытие товаров и неполноты — кусок S13. Родной элемент страницы, без клиентского кода.
+ * Вид — как у кнопки без заливки: обводка, скругление, отступы из объявленных токенов.
+ */
+.items-more > summary,
+.gaps-more > summary {
+  display: inline-block;
+  margin-top: var(--spacingVerticalS);
+  padding: var(--spacingVerticalXS) var(--spacingHorizontalM);
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke1);
+  border-radius: var(--borderRadiusMedium);
+  cursor: pointer;
+}
+
+.items table {
+  table-layout: fixed;
+}
+
+/*
+ * Полоска доли в валовой прибыли товаров — кусок S13, задача 12. Устроена как полоса честности
+ * (`.share`, `.share-fill`): значение приходит величиной из разметки, длину делает `clamp`, дорожка и
+ * заливка — те же токены. Толщина — `--strokeWidthThicker` и отступ `--spacingVerticalXS`: наш выбор
+ * из объявленных токенов для малой полоски в ячейке, а не выписка из Fluent.
+ */
+.items-bar {
+  display: block;
+  height: var(--strokeWidthThicker);
+  margin-top: var(--spacingVerticalXS);
+  background: var(--colorNeutralBackground6);
+  border-radius: var(--borderRadiusCircular);
+  overflow: hidden;
+}
+
+.items-bar-fill {
+  display: block;
+  width: clamp(0%, var(--item-share, 0%), 100%);
+  height: 100%;
+  background: var(--colorCompoundBrandBackground);
+  border-radius: var(--borderRadiusCircular);
+}
+
 /* ——— Ссылки и кнопки ——— */
 
 a {
