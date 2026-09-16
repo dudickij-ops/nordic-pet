@@ -80,7 +80,14 @@ test('приблизительная: ниже 100 % — да, ровно 100 % 
 })
 
 test('признаки доезжают до отчёта настоящим путём', async () => {
-  const отчёт = await monthlyReport()
-  expect(отчёт.findings).toBeDefined()
-  expect(typeof отчёт.findings?.loss).toBe('boolean')
+  const прежняя = process.env.NORDIC_PET_DB_TARGET
+  process.env.NORDIC_PET_DB_TARGET = 'local'
+  try {
+    const отчёт = await monthlyReport()
+    expect(отчёт.findings).toBeDefined()
+    expect(typeof отчёт.findings?.loss).toBe('boolean')
+  } finally {
+    if (прежняя === undefined) delete process.env.NORDIC_PET_DB_TARGET
+    else process.env.NORDIC_PET_DB_TARGET = прежняя
+  }
 })
