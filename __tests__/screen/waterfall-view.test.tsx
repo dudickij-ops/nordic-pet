@@ -91,7 +91,11 @@ test('нет строк рекламы — у ступени «Реклама» 
     ...ПЕРЕПИСЬ.waterfall!,
     steps: ПЕРЕПИСЬ.waterfall!.steps.map((с) => (с.key === 'ads' ? { ...с, amount: null, sharePct: null } : с)),
   })
-  const строки = разметка.split('<li ')
+  // Кусок S13, задача 10: строки режутся только внутри блока водопада — строка вывода о рекламе тоже
+  // говорит «Реклама» и стоит выше. Утверждения не тронуты: изменено только, где ищется ступень.
+  const начало = разметка.indexOf('<section class="block waterfall"')
+  if (начало < 0) throw new Error('блока водопада в разметке нет')
+  const строки = разметка.slice(начало, разметка.indexOf('</section>', начало)).split('<li ')
   const реклама = строки.find((строка) => строка.includes('Реклама')) ?? ''
   expect(реклама).toContain('<span class="waterfall-amount">нет данных</span>')
   expect(реклама).toContain('<span class="waterfall-share">нет данных</span>')

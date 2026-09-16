@@ -66,6 +66,74 @@ function строкаПоказателя(полоса: Полоса | undefined
 }
 
 /**
+ * Выводы — кусок S13, задача 10. До трёх строк в порядке договора: реклама → постоянные →
+ * приблизительная. Слово, знак и вид строки выбираются по готовым признакам отчёта (`findings`);
+ * разметка ничего не сравнивает. Тексты — из таблицы задачи буквально. Доля по настоящей цене
+ * приходит из единственного чтения в `Dashboard`, а не читается здесь второй раз.
+ *
+ * Знак процента в постоянных частях текста («100 %», «40 %») стоит за неразрывным пробелом: сторож
+ * переноса требует защиты у каждого числа со знаком внутри предложения.
+ */
+function Выводы({ report, доля }: { report: MonthReport; доля: MonthReport['honesty']['sharePct'] }) {
+  if (report.findings === undefined) return null
+  const порог = report.payback?.breakevenRoas ?? null
+  const вклад = report.payback?.contributionPct ?? null
+
+  const строкаРекламы = report.findings.adsVerdict !== null && (
+    <li className="finding" data-kind={report.findings.adsVerdict === 'окупается' ? 'хорошо' : 'тревога'}>
+      {report.findings.adsVerdict === 'порога нет' ? (
+        <>
+          <p>{`⚠ Порога окупаемости нет: вклад с евро оборота не положителен, ${вместе(percent(вклад))}.`}</p>
+          <p className="finding-why">Вклад — наш счёт: (чистая выручка − себестоимость − комиссии) ÷ оборот.</p>
+        </>
+      ) : (
+        <>
+          <p>
+            {report.findings.adsVerdict === 'окупается'
+              ? `✓ Реклама окупается: ${ratio(report.bottom.roasByGross)} при пороге ${ratio(порог)}.`
+              : `⚠ Реклама не окупается: ${ratio(report.bottom.roasByGross)} при пороге ${ratio(порог)}.`}
+          </p>
+          <p className="finding-why">
+            {`Порог — наш счёт: 100 ÷ вклад с евро оборота, ${вместе(percent(вклад))}. Это итог по всей рекламе месяца, а не отдача от следующего вложенного евро.`}
+          </p>
+        </>
+      )}
+    </li>
+  )
+
+  const строкаПостоянных = (
+    <li className="finding" data-kind={report.findings.loss ? 'тревога' : 'обычно'}>
+      <p>
+        {report.findings.loss
+          ? report.findings.fixedSharePct !== null
+            ? `⚠ Месяц в убытке: постоянные расходы ${вместе(money(report.costs.fixed))} — ${вместе(percent(report.findings.fixedSharePct))} маржинального дохода.`
+            : `⚠ Месяц в убытке: маржинальный доход ${вместе(money(report.findings.marginIncome))} не положителен.`
+          : `Постоянные расходы ${вместе(money(report.costs.fixed))} съедают ${вместе(percent(report.findings.fixedSharePct))} маржинального дохода.`}
+      </p>
+      <p className="finding-why">
+        {`Маржинальный доход — наш счёт: чистая выручка − себестоимость − реклама − комиссии, ${вместе(money(report.findings.marginIncome))}. Тревога — от 100\u00A0%.`}
+      </p>
+    </li>
+  )
+
+  const строкаПриблизительной = report.findings.approximate && (
+    <li className="finding" data-kind="тревога">
+      <p>{`⚠ Прибыль приблизительная: у ${report.honesty.skusWithoutPrice.join(', ')} нет цены поставщика.`}</p>
+      <p className="finding-why">
+        {`Их себестоимость подставлена запасными 40\u00A0%; по настоящей цене посчитано ${вместе(percent(доля))} чистой выручки.`}
+      </p>
+    </li>
+  )
+
+  return (
+    <section className="block findings">
+      <h2>Выводы</h2>
+      <ul>{строкаРекламы}{строкаПостоянных}{строкаПриблизительной}</ul>
+    </section>
+  )
+}
+
+/**
  * Разметка экрана — задача 7. Чистый компонент: получает готовый отчёт и только
  * печатает его поля через `money`/`percent`/`count` из `lib/metrics/format.ts`. Ни
  * сложения, ни деления, ни округления здесь нет — это сделано в SQL (`lib/metrics/sql.ts`)
@@ -77,7 +145,7 @@ function строкаПоказателя(полоса: Полоса | undefined
 export function Dashboard({ report }: { report: MonthReport }) {
   // Доля честности читается **один раз, в одну величину**, и дальше её берут все показы: строка
   // доли под прибылью в блоке результата (кусок S13), напечатанное число и длина полосы в блоке
-  // качества. Это условие владельца, а не удобство: пока значение одно, ни полоса, ни строка под
+  // качества, пояснение строки о приблизительной прибыли в выводах (задача 10). Это условие владельца, а не удобство: пока значение одно, ни полоса, ни строка под
   // прибылью не могут разойтись с числом. Второе чтение того же поля рядом с первым
   // было бы вторым источником правды, и однажды они разъехались бы молча.
   const доля = report.honesty.sharePct
@@ -161,6 +229,8 @@ export function Dashboard({ report }: { report: MonthReport }) {
           </p>
         )}
       </section>
+
+      <Выводы report={report} доля={доля} />
 
       {report.waterfall !== undefined && (
         <section className="block waterfall">

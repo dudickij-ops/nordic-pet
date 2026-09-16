@@ -1168,6 +1168,38 @@ button.primary:active:not(:disabled) {
 }
 
 /*
+ * Выводы — кусок S13. Смысл строки несут знак и слово; черта слева — второй канал того же смысла.
+ * Красная черта — только у тревоги. У «хорошо» черта нейтральная, как у «обычно»: зелёный на экране —
+ * только у дельты «лучше» (решение владельца Ж4); «хорошо» отличают знак ✓, слово и `data-kind`.
+ */
+.findings ul {
+  display: grid;
+  gap: var(--spacingVerticalS);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.finding {
+  padding-left: var(--spacingHorizontalM);
+  border-left: var(--strokeWidthThick) solid var(--colorNeutralStroke1);
+}
+
+.finding p {
+  margin: 0;
+}
+
+.finding[data-kind='тревога'] {
+  border-left-color: var(--colorPaletteRedForeground3);
+}
+
+.finding-why {
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
+/*
  * Пометка подставленной себестоимости в строке товара — кусок S12, задача 2.
  *
  * Отдельной строкой под числом, а не рядом с ним: рядом она растянула бы столбец и увела бы числа
