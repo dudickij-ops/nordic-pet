@@ -133,4 +133,13 @@ export const BREAKS: Break[] = [
     alsoRedden: [{ name: ПЕРЕПИСЬ, why: 'раскладка переписи идёт через отчёт, а не через запрос; строка объявлена на случай, если прогон покажет иное' }],
     tests: 'все',
   },
+  {
+    id: 'holes-on-zero',
+    claim: 'ставить признак дыр и нулевому виду',
+    mustRedden: 'у каждого вида неполноты признак «есть дыры» совпадает с ненулевым счётом',
+    file: 'lib/metrics/sql.ts',
+    find: 'select kind, count, at, count > 0 as has_holes',
+    replace: 'select kind, count, at, count >= 0 as has_holes',
+    tests: 'все',
+  },
 ]

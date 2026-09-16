@@ -182,7 +182,13 @@ export type MonthReport = {
     подстановка?: 'вся' | 'часть'
   }>
   honesty: { sharePct: Maybe; skusWithoutPrice: string[] }
-  gaps: Array<{ kind: string; count: number; at: string[] }>
+  gaps: Array<{
+    kind: string
+    count: number
+    at: string[]
+    /** Признак «есть дыры» — кусок S13, задача 5: то же самое `count > 0`, готовое из SQL. */
+    hasHoles?: boolean
+  }>
   /**
    * Сырьё новее фактов — числа на экране отстали (задача 5 куска S8).
    *
@@ -490,6 +496,7 @@ export async function monthlyReport(
       kind: row.kind as string,
       count: row.count as number,
       at: row.at as string[],
+      hasHoles: row.has_holes === true,
     }))
     const skusWithoutPrice = gaps.find((g) => g.kind === NO_PRICE_GAP)?.at ?? []
 

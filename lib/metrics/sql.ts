@@ -319,6 +319,10 @@ export const MONTH_ITEMS = `${ТОВАРЫ_БЕЗ_ПОРЯДКА} order by sum(n
  * `__tests__/metrics/report.test.ts`; `ord` в подзапросе держит этот порядок явно, а не
  * доверяет тому, что `union all` сохранит порядок веток сам.
  *
+ * **Признак «есть дыры» — кусок S13, задача 5.** `has_holes` — то же самое `count > 0`,
+ * снятое здесь же, одним выражением: второго места, где решается, есть ли у вида дыра,
+ * в коде нет.
+ *
  * Своя, не общая с `MONEY_CTES`, цепочка CTE — по одной причине: строки «скидки» и
  * «оборот» считаются **по строке источника**, до свёртки пары «заказ + артикул»
  * (контракт: «отсев обязан идти по строке источника»), а `MONEY_CTES.lines` уже свёрнута.
@@ -407,7 +411,7 @@ missing_refunds as (
     left join lines l on l.order_id = mr.order_id and l.sku = mr.sku
    where l.order_id is null
 )
-select kind, count, at
+select kind, count, at, count > 0 as has_holes
   from (
     select 1 as ord, 'скидки' as kind,
            (select count(*) from month_orders where discount is null)::int as count,
