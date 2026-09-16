@@ -470,8 +470,8 @@ export function Dashboard({ report }: { report: MonthReport }) {
         {report.itemsSummary !== undefined && (
           <p className="items-summary">
             {report.itemsSummary.skusFor80 !== null
-              ? `80\u00A0% валовой прибыли товаров дают ${count(String(report.itemsSummary.skusFor80))} из ${count(String(report.itemsSummary.skusTotal))} артикулов; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Прибыль товаров — выручка минус себестоимость, ${вместе(money(report.itemsSummary.productsProfit))}; это не прибыль месяца, ${вместе(money(report.bottom.profit))}.`
-              : `Прибыль товаров — выручка минус себестоимость, ${вместе(money(report.itemsSummary.productsProfit))} — не положительна: считать 80\u00A0% не от чего; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Это не прибыль месяца, ${вместе(money(report.bottom.profit))}.`}
+              ? `80\u00A0% валовой прибыли товаров дают ${count(String(report.itemsSummary.skusFor80))} из ${count(String(report.itemsSummary.skusTotal))} артикулов; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Валовая прибыль товаров — выручка минус себестоимость, ${вместе(money(report.itemsSummary.productsProfit))}; это не прибыль месяца, ${вместе(money(report.bottom.profit))}.`
+              : `Валовая прибыль товаров — выручка минус себестоимость, ${вместе(money(report.itemsSummary.productsProfit))} — не положительна: считать 80\u00A0% не от чего; в минусе — ${count(String(report.itemsSummary.negativeCount))}. Это не прибыль месяца, ${вместе(money(report.bottom.profit))}.`}
           </p>
         )}
         {/*
