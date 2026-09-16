@@ -11,6 +11,7 @@ import {
   ПОРЯДОК_ТОВАРОВ_ПО_УМОЛЧАНИЮ,
   запросТоваров,
   type ПорядокТоваров,
+  MONTH_FINDINGS,
   MONTH_PAYBACK,
   MONTH_TOTALS,
   MONTH_WATERFALL,
@@ -267,6 +268,19 @@ export type MonthReport = {
     breakevenNote: string | null
   }
   /**
+   * Признаки выводов — кусок S13. Готовыми из SQL (`MONTH_FINDINGS`); экран выбирает слова по ним и
+   * ничего не сравнивает. Необязательное по той же причине, что `устарели`.
+   */
+  findings?: {
+    /** Пусто — рекламы за месяц нет, или окупаемость не посчитана, или нет оборота. */
+    adsVerdict: 'окупается' | 'не окупается' | 'порога нет' | null
+    marginIncome: Money
+    /** Пусто, когда маржинальный доход не положителен. */
+    fixedSharePct: Maybe
+    loss: boolean
+    approximate: boolean
+  }
+  /**
    * Время чтения источников — кусок S11, шаг 6: готовой строкой `ГГГГ-ММ-ДД ЧЧ:ММ UTC` из SQL
    * (`SOURCES_READ_AT`). `null` — отметки нет, и на экране слова; поля нет вовсе — строка не
    * рисуется (прежние раскладки о нём не знают, как и об `устарели`).
@@ -451,6 +465,7 @@ export async function monthlyReport(
     const paybackResult = await client.query(MONTH_PAYBACK, [dayParam])
     const itemsExtraResult = await client.query(MONTH_ITEMS_EXTRA, [dayParam])
     const deltasResult = await client.query(MONTH_DELTAS, [dayParam])
+    const findingsResult = await client.query(MONTH_FINDINGS, [dayParam])
     // Новые колонки строки — по артикулу; слой метрик их не считает, а только прикладывает.
     const itemsExtra = new Map(itemsExtraResult.rows.map((row) => [row.sku as string, row]))
     const itemsFirst = itemsExtraResult.rows[0]
@@ -557,6 +572,17 @@ export async function monthlyReport(
         contributionPct: (paybackResult.rows[0]?.contribution_pct ?? null) as string | null,
         breakevenRoas: (paybackResult.rows[0]?.breakeven_roas ?? null) as string | null,
         breakevenNote: (paybackResult.rows[0]?.breakeven_note ?? null) as string | null,
+      },
+      findings: {
+        adsVerdict: (findingsResult.rows[0]?.ads_verdict ?? null) as
+          | 'окупается'
+          | 'не окупается'
+          | 'порога нет'
+          | null,
+        marginIncome: findingsResult.rows[0]?.margin_income as string,
+        fixedSharePct: (findingsResult.rows[0]?.fixed_share_pct ?? null) as string | null,
+        loss: findingsResult.rows[0]?.loss === true,
+        approximate: findingsResult.rows[0]?.approximate === true,
       },
     }
   }, { ...deps, announce })

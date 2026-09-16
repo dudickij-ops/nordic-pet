@@ -772,6 +772,50 @@ with totals_row as (${MONTH_TOTALS}),
 ${PAYBACK_FROM_TOTALS}`
 
 /**
+ * Признаки выводов — кусок S13. Экран выбирает по ним слова и ничего не сравнивает.
+ *
+ *   · реклама: «окупается» — окупаемость по обороту не ниже порога; «не окупается» — ниже;
+ *     «порога нет» — вклад не положителен. Пусто — нет строк рекламы, окупаемость пуста (сумма
+ *     рекламы ноль) или вклад не посчитан (нет оборота): сказать нечего. Порог — тот же, что у
+ *     блока окупаемости: `PAYBACK_FROM_TOTALS` вложен целиком, второго выражения порога нет.
+ *     Сравниваются показанные числа;
+ *   · доля постоянных в маржинальном доходе — от показанных сумм; «убыток» — доля от 100 % или
+ *     маржинальный доход не положителен (решение владельца Э5);
+ *   · «приблизительная» — доля, посчитанная по настоящей цене, ниже 100 %.
+ */
+export const FINDINGS_FROM_TOTALS = `
+payback_row as (with ${PAYBACK_FROM_TOTALS}),
+finding_parts as (
+  select ${МАРЖИНАЛЬНЫЙ_ДОХОД}      as mi,
+         t.fixed::numeric         as fixed,
+         t.roas_by_gross::numeric as roas,
+         t.honest_pct::numeric    as honest
+    from totals_row t
+),
+finding_shares as (
+  select f.*, case when f.mi > 0 then round(f.fixed / f.mi * 100, 1) end as fixed_share
+    from finding_parts f
+)
+select case when not cs.has_ads or s.roas is null or pb.contribution_pct is null then null
+            when pb.breakeven_roas is null then 'порога нет'
+            when s.roas >= pb.breakeven_roas::numeric then 'окупается'
+            else 'не окупается'
+       end                                        as ads_verdict,
+       s.mi::text                                 as margin_income,
+       s.fixed_share::text                        as fixed_share_pct,
+       (s.mi <= 0 or s.fixed_share >= 100)        as loss,
+       coalesce(s.honest < 100, false)            as approximate
+  from finding_shares s
+ cross join cur_state cs
+ cross join payback_row pb
+`
+
+export const MONTH_FINDINGS = `
+with totals_row as (${MONTH_TOTALS}),
+cur_state as (${ЕСТЬ_РЕКЛАМА}),
+${FINDINGS_FROM_TOTALS}`
+
+/**
  * Товары — кусок S11, шаг 4 (задачи 4, Д-1, Д-3). Новые колонки строки и строка над таблицей.
  *
  * **Своих выражений денег нет.** Запрос берёт готовые строки таблицы товаров — `MONTH_ITEMS`
