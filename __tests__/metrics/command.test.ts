@@ -88,4 +88,29 @@ describe('команда метрик', () => {
   test('месяц не в форме ГГГГ-ММ — отказ, называющий, что написать', async () => {
     await expect(printMetrics(['март'], подставки)).rejects.toThrow(/ГГГГ-ММ/)
   })
+
+  test('в конце вывода — выводы и средняя по дням, прежние строки на своих местах', async () => {
+    const строки: string[] = []
+    const сВыводами: MonthReport = {
+      ...ОТЧЁТ,
+      findings: { adsVerdict: 'окупается', marginIncome: '6291.44', fixedSharePct: '72.4', loss: false, approximate: true },
+      daily: {
+        days: [], scaleLowPct: null, scaleHighPct: null, topNet: null, bottomNet: null, hasOrders: true,
+        avgNet: '557.32', avgPct: null, avgBase: 'по 31 дню месяца', hasEmptyDays: false,
+      },
+    }
+    await printMetrics(['2026-03'], { announce: (l) => строки.push(l), report: async () => сВыводами })
+    expect(строки.slice(-10)).toEqual([
+      '',
+      'выводы',
+      '  маржинальный доход: 6 291,44 €',
+      '  постоянные расходы в маржинальном доходе: 72,4 %',
+      '  реклама: окупается',
+      '  месяц в убытке: нет',
+      '  прибыль приблизительная: да',
+      '',
+      'чистая выручка по дням',
+      '  средняя по 31 дню месяца: 557,32 €',
+    ])
+  })
 })

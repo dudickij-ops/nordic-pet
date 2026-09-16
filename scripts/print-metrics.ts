@@ -72,6 +72,22 @@ function printReport(report: MonthReport, announce: (line: string) => void): voi
     const at = gap.at.length > 0 ? ` (${gap.at.join(', ')})` : ''
     announce(`  ${gap.kind}: ${count(String(gap.count))}${at}`)
   }
+
+  if (report.findings !== undefined) {
+    const f = report.findings
+    announce('')
+    announce('выводы')
+    announce(`  маржинальный доход: ${money(f.marginIncome)}`)
+    announce(`  постоянные расходы в маржинальном доходе: ${percent(f.fixedSharePct)}`)
+    announce(`  реклама: ${f.adsVerdict ?? 'признака нет'}`)
+    announce(`  месяц в убытке: ${f.loss ? 'да' : 'нет'}`)
+    announce(`  прибыль приблизительная: ${f.approximate ? 'да' : 'нет'}`)
+  }
+  if (report.daily?.avgNet !== undefined) {
+    announce('')
+    announce('чистая выручка по дням')
+    announce(`  средняя ${report.daily.avgBase}: ${moneyMaybe(report.daily.avgNet)}`)
+  }
 }
 
 /**

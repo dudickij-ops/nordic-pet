@@ -151,4 +151,13 @@ export const BREAKS: Break[] = [
     replace: "     (3, 'net',      'eur', true,  c.net,        c.net::numeric,        p.net::numeric),\n     (4, 'ad_share', 'pp',  false, null::text, null::numeric, null::numeric)",
     tests: 'все',
   },
+  {
+    id: 'command-verdict-swapped',
+    claim: 'печатать «месяц в убытке: да» у месяца в плюсе',
+    mustRedden: 'в конце вывода — выводы и средняя по дням',
+    file: 'scripts/print-metrics.ts',
+    find: "announce(`  месяц в убытке: ${f.loss ? 'да' : 'нет'}`)",
+    replace: "announce(`  месяц в убытке: ${f.loss ? 'нет' : 'да'}`)",
+    tests: 'все',
+  },
 ]
