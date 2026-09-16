@@ -310,4 +310,13 @@ export const BREAKS: Break[] = [
     ],
     tests: 'все',
   },
+  {
+    id: 'mean-scale-foreign',
+    claim: 'дать пунктиру средней свой нижний предел шкалы, а не предел ряда',
+    mustRedden: 'пунктир средней берёт те же пределы шкалы, что столбики ряда',
+    file: 'app/page.tsx',
+    find: "'--mean-at': report.daily.avgPct,\n                      '--scale-from': report.daily.scaleLowPct ?? undefined,",
+    replace: "'--mean-at': report.daily.avgPct,\n                      '--scale-from': '0',",
+    tests: 'все',
+  },
 ]

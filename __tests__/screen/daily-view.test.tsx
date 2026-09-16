@@ -129,3 +129,18 @@ test('средней нет — пунктира и подписи нет', () =
   const html = renderToStaticMarkup(<Dashboard report={{ ...ПЕРЕПИСЬ, daily: { ...ПЕРЕПИСЬ.daily!, avgNet: null, avgPct: null } }} />)
   expect(html).not.toContain('daily-mean')
 })
+
+/**
+ * Пределы шкалы у пунктира — кусок S13, задача 11, решение контролёра. Переменные шкалы стоят и на списке
+ * столбиков, и на пунктире (пунктир не может жить внутри `ol`): это обход, и сторожится он здесь. Пределы
+ * ряда отличаются от пределов водопада и от нуля, средняя — от обоих краёв.
+ */
+test('пунктир средней берёт те же пределы шкалы, что столбики ряда', () => {
+  const ряд = блок(
+    сРядом({ ...РЯД, scaleLowPct: '-20.0', scaleHighPct: '80.0', avgPct: '30.0', avgNet: '123.45' }),
+  ).replace(/\s/g, '')
+  const пунктир = ряд.match(/<divclass="daily-mean"style="([^"]*)"/)?.[1]
+  const столбики = ряд.match(/<olclass="daily-bars"style="([^"]*)"/)?.[1]
+  expect(пунктир).toBe('--mean-at:30.0;--scale-from:-20.0;--scale-to:80.0')
+  expect(столбики).toBe('--scale-from:-20.0;--scale-to:80.0')
+})
