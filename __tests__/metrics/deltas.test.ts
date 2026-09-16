@@ -101,11 +101,6 @@ describe('полоса показателей: счёт дельт', () => {
     return (rows.find((с) => с.key === 'ads')?.share_pct ?? null) as string | null
   }
 
-  test('доля рекламы полосы — та же, что у ступени рекламы в водопаде', async () => {
-    const п = await показатели(МАРТ, ФЕВРАЛЬ, ЕСТЬ_БАЗА)
-    expect(await доляСтупениРекламы(true)).toBe(п.ad_share.value)
-  })
-
   test('месяц без строк рекламы: пусто и в полосе, и у ступени водопада — обе стороны разом', async () => {
     const п = await показатели({ ...МАРТ, ads: '0.00' }, ФЕВРАЛЬ, { ...ЕСТЬ_БАЗА, has_ads_cur: false })
     expect([п.ad_share.value, await доляСтупениРекламы(false)]).toEqual([null, null])

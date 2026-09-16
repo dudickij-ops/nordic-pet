@@ -592,44 +592,42 @@ select am.month as month,
  * `WATERFALL_FROM_TOTALS` читает строку итогов из `totals_row` и сам итогов не считает; боевой
  * запрос — `MONTH_WATERFALL` — подставляет туда `MONTH_TOTALS`. Проверки подставляют выдуманную
  * строку итогов, чтобы ступени можно было сличить с числами, которые нарочно не сходятся.
+ *
+ * **Кусок S13:** база — чистая выручка, семь ступеней; прежний текст про оборот остаётся выше
+ * как история.
  */
+
+/**
+ * Маржинальный доход — кусок S13. Наше определение: чистая выручка − себестоимость − реклама −
+ * комиссии, то есть то, что остаётся на постоянные расходы. Выражение одно на весь проект: его берут
+ * и каскад, и признаки выводов. Слагаемые — показанные суммы строки итогов, поэтому своего
+ * расхождения округления у маржинального дохода нет. Псевдоним строки итогов — `t`.
+ */
+export const МАРЖИНАЛЬНЫЙ_ДОХОД =
+  '(t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric)'
+
 export const WATERFALL_FROM_TOTALS = `
 steps as (
   select s.ord, s.key, s.kind, s.amount, s.edge_from, s.edge_to
     from totals_row t
    cross join cur_state cs
+   cross join lateral (select ${МАРЖИНАЛЬНЫЙ_ДОХОД} as mi) m
    cross join lateral (values
-     (1, 'gross',     'итог',      t.gross::numeric,     0::numeric,
-                                   t.gross::numeric),
-     (2, 'discounts', 'вычитание', t.discounts::numeric, t.gross::numeric,
-                                   t.gross::numeric - t.discounts::numeric),
-     (3, 'refunds',   'вычитание', t.refunds::numeric,   t.gross::numeric - t.discounts::numeric,
-                                   t.gross::numeric - t.discounts::numeric - t.refunds::numeric),
-     (4, 'net',       'итог',      t.net::numeric,       0::numeric,
-                                   t.net::numeric),
-     (5, 'cogs',      'вычитание', t.cogs::numeric,      t.net::numeric,
-                                   t.net::numeric - t.cogs::numeric),
-     (6, 'ads',       'вычитание', case when cs.has_ads then t.ads::numeric end,
-                                   t.net::numeric - t.cogs::numeric,
-                                   t.net::numeric - t.cogs::numeric - t.ads::numeric),
-     (7, 'fees',      'вычитание', t.fees::numeric,
-                                   t.net::numeric - t.cogs::numeric - t.ads::numeric,
-                                   t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric),
-     (8, 'fixed',     'вычитание', t.fixed::numeric,
-                                   t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric,
-                                   t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric
-                                     - t.fixed::numeric),
-     (9, 'profit',    'итог',      t.profit::numeric,    0::numeric,
-                                   t.profit::numeric)
+     (1, 'net',           'итог',      t.net::numeric,   0::numeric,      t.net::numeric),
+     (2, 'cogs',          'вычитание', t.cogs::numeric,  t.net::numeric,  t.net::numeric - t.cogs::numeric),
+     (3, 'ads',           'вычитание', case when cs.has_ads then t.ads::numeric end,
+                                       t.net::numeric - t.cogs::numeric,
+                                       t.net::numeric - t.cogs::numeric - t.ads::numeric),
+     (4, 'fees',          'вычитание', t.fees::numeric,
+                                       t.net::numeric - t.cogs::numeric - t.ads::numeric,
+                                       m.mi),
+     (5, 'margin_income', 'итог',      m.mi,             0::numeric,      m.mi),
+     (6, 'fixed',         'вычитание', t.fixed::numeric, m.mi,            m.mi - t.fixed::numeric),
+     (7, 'profit',        'итог',      t.profit::numeric, 0::numeric,     t.profit::numeric)
    ) as s(ord, key, kind, amount, edge_from, edge_to)
 ),
--- Расхождения цепочек — решение владельца по развилке Ж2. Каждая сумма итогов округлена до цента
--- отдельно, а чистая выручка и прибыль считаются из неокруглённых слагаемых и округляются один раз:
--- показанные ступени, сложенные глазами, могут разойтись с показанным итогом на центы (на марте
--- 2026 — 1 738,54 против 1 738,53). Здесь — ровно разница показанных чисел, без порога и без
--- округления: слагаемые уже в центах. Нет расхождения — пусто, и строки под водопадом нет.
 base as (
-  select t.gross::numeric as gross,
+  select case when t.net::numeric > 0 then t.net::numeric end as denom,
          nullif(t.gross::numeric - t.discounts::numeric - t.refunds::numeric - t.net::numeric, 0)
            as net_gap,
          nullif(t.net::numeric - t.cogs::numeric - t.ads::numeric - t.fees::numeric
@@ -639,22 +637,15 @@ base as (
 )
 select s.key,
        s.kind,
-       s.amount::text                                                            as amount,
-       round(s.amount / nullif(b.gross, 0) * 100, 1)::text                       as share_pct,
-       round(least(s.edge_from, s.edge_to) / nullif(b.gross, 0) * 100, 1)::text  as base_pct,
-       round(least(0, min(least(s.edge_from, s.edge_to)) over ())
-             / nullif(b.gross, 0) * 100, 1)::text                                as scale_low_pct,
-       round(greatest(b.gross, max(greatest(s.edge_from, s.edge_to)) over ())
-             / nullif(b.gross, 0) * 100, 1)::text                                as scale_high_pct,
-       b.net_gap::text                                                           as net_gap,
-       b.profit_gap::text                                                        as profit_gap,
-       -- «Съедает больше всего» — решение владельца: самое большое вычитание, признаком в той же
-       -- строке, что и ступень; второго определения «самого большого» разметка не заводит. Равенство
-       -- до цента помечает все равные ступени — строка назовёт их поровну, а не выберет одну наугад.
-       -- Все вычитания ноль — не помечено ничего: «съедает больше всего ничто» — не подпись.
-       (s.kind = 'вычитание'
-        and s.amount > 0
-        and s.amount = max(s.amount) filter (where s.kind = 'вычитание') over ())  as largest
+       s.amount::text                                                          as amount,
+       round(s.amount / b.denom * 100, 1)::text                                as share_pct,
+       round(least(s.edge_from, s.edge_to) / b.denom * 100, 1)::text           as base_pct,
+       round(least(0, min(least(s.edge_from, s.edge_to)) over ()) / b.denom * 100, 1)::text
+                                                                               as scale_low_pct,
+       round(greatest(b.denom, max(greatest(s.edge_from, s.edge_to)) over ()) / b.denom * 100, 1)::text
+                                                                               as scale_high_pct,
+       b.net_gap::text                                                         as net_gap,
+       b.profit_gap::text                                                      as profit_gap
   from steps s
  cross join base b
  order by s.ord

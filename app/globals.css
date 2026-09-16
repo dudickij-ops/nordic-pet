@@ -1086,11 +1086,6 @@ button.primary:active:not(:disabled) {
   background: var(--colorBrandStroke2);
 }
 
-/* «Съедает больше всего» — подпись, а не тревога: цвет текста обычный, свой не заводится. */
-.waterfall-largest {
-  margin: 0 0 var(--spacingVerticalS);
-}
-
 /* Строка о центах округления — пояснение к числам, а не число: мелко и приглушённо. */
 .waterfall-gap {
   margin: var(--spacingVerticalS) 0 0;
@@ -1250,40 +1245,6 @@ button.primary:active:not(:disabled) {
 
 .kpi[data-verdict='хуже'] .kpi-delta {
   color: var(--colorPaletteRedForeground3);
-}
-
-/* ——— Доли статей затрат ——— */
-
-/*
- * Доля статьи в обороте — под суммой, в той же ячейке: число «… % оборота» и полоска той же длины.
- * Рецепт — тот же, что у полосы доли честности (полоса прогресса Fluent, решение владельца по Г1 в
- * S10): дорожка `colorNeutralBackground6`, заливка `colorCompoundBrandBackground`. Светлый оттенок
- * бренда, как у вычитаний водопада, здесь не годится: к дорожке он дал бы около 1,2 : 1 — наш счёт,
- * та же беда, что у полосы доли во втором круге S10. `clamp` держит длину в пределах дорожки.
- */
-.cost-share {
-  display: block;
-  margin-top: var(--spacingVerticalXS);
-  color: var(--colorNeutralForeground3);
-  font-size: var(--fontSizeBase200);
-  line-height: var(--lineHeightBase200);
-  font-weight: var(--fontWeightRegular);
-}
-
-.cost-bar {
-  display: block;
-  height: var(--spacingVerticalXS);
-  margin-top: var(--spacingVerticalXS);
-  background: var(--colorNeutralBackground6);
-  border-radius: var(--borderRadiusCircular);
-  overflow: hidden;
-}
-
-.cost-bar-fill {
-  display: block;
-  width: clamp(0%, calc(var(--cost-share) * 1%), 100%);
-  height: 100%;
-  background: var(--colorCompoundBrandBackground);
 }
 
 /* ——— Окупаемость рекламы ——— */

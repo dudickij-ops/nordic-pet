@@ -6,7 +6,8 @@ import { monthlyReport } from '@/lib/metrics/report'
 import { WATERFALL_FROM_TOTALS } from '@/lib/metrics/sql'
 
 /**
- * Водопад — кусок S11, шаг 1.
+ * Водопад — кусок S11, шаг 1; кусок S13, задача 1 — семь ступеней от чистой выручки с
+ * маржинальным доходом, `largest` и ступени оборота/скидок/возвратов убраны.
  *
  * Ступени не считают денег сами: они раскладывают строку итогов месяца. Поэтому проверки ниже
  * подставляют **выдуманную строку итогов** и сличают ступени с ней — тем же приёмом, что у
@@ -40,6 +41,8 @@ type Ступень = {
   base_pct: string | null
   scale_low_pct: string | null
   scale_high_pct: string | null
+  net_gap: string | null
+  profit_gap: string | null
 }
 
 /**
@@ -90,79 +93,57 @@ const НЕСХОДЯЩИЕСЯ: Итоги = {
 }
 
 describe('водопад', () => {
-  test('в водопаде ровно девять ступеней, в названном порядке', async () => {
-    const все = await ступени(СХОДЯЩИЕСЯ)
-    expect(все.map((с) => с.key)).toEqual([
-      'gross', 'discounts', 'refunds', 'net', 'cogs', 'ads', 'fees', 'fixed', 'profit',
-    ])
-    expect(все.map((с) => с.kind)).toEqual([
-      'итог', 'вычитание', 'вычитание', 'итог', 'вычитание', 'вычитание', 'вычитание', 'вычитание', 'итог',
+  test('ступеней семь, от чистой выручки до прибыли, маржинальный доход пятым', async () => {
+    expect((await ступени(СХОДЯЩИЕСЯ)).map((с) => с.key)).toEqual([
+      'net', 'cogs', 'ads', 'fees', 'margin_income', 'fixed', 'profit',
     ])
   })
 
-  test('каждая ступень печатает свою колонку итогов, прибыль — та же колонка, что прибыль итога', async () => {
+  test('доли и края ступеней — от чистой выручки', async () => {
+    const все = await ступени(СХОДЯЩИЕСЯ)
+    expect(ступень(все, 'net').share_pct).toBe('100.0')
+    expect(ступень(все, 'cogs').share_pct).toBe('35.3')
+    expect(ступень(все, 'cogs').base_pct).toBe('64.7')
+    expect(ступень(все, 'ads').base_pct).toBe('41.2')
+    expect(ступень(все, 'margin_income').share_pct).toBe('35.3')
+    expect(ступень(все, 'fixed').base_pct).toBe('23.5')
+    expect(ступень(все, 'profit').share_pct).toBe('23.5')
+  })
+
+  test('маржинальный доход — разность показанных сумм, а не своё выражение прибыли', async () => {
     const все = await ступени(НЕСХОДЯЩИЕСЯ)
-    // Прибыль 9,99 не равна ни одной разности слагаемых: второе выражение прибыли дало бы
-    // 444,44 − 55,55 − 66,66 − 7,77 − 88,88 = 225,58.
-    expect(Object.fromEntries(все.map((с) => [с.key, с.amount]))).toEqual(НЕСХОДЯЩИЕСЯ)
+    expect(ступень(все, 'margin_income').amount).toBe('314.46')
+    expect(ступень(все, 'margin_income').kind).toBe('итог')
   })
 
-  test('доли ступеней отданы процентами, а не долями единицы', async () => {
-    // Оборот равен чистой выручке: база доли здесь не влияет на ответ, влияет только масштаб.
-    const все = await ступени({ ...СХОДЯЩИЕСЯ, discounts: '0.00', refunds: '0.00', net: '1000.00' })
-    expect(ступень(все, 'cogs').share_pct).toBe('30.0')
-    expect(ступень(все, 'gross').share_pct).toBe('100.0')
+  test('расхождения цепочки остаются у чистой выручки и у прибыли', async () => {
+    const [первая] = await ступени(НЕСХОДЯЩИЕСЯ)
+    expect(первая.net_gap).toBe('611.12')
+    expect(первая.profit_gap).toBe('215.59')
   })
 
-  test('доли ступеней считаются от оборота, а не от чистой выручки', async () => {
-    const все = await ступени(СХОДЯЩИЕСЯ)
-    // От оборота 100 / 1000 = 10,0 %; от чистой выручки было бы 100 / 850 = 11,8 %.
-    expect(ступень(все, 'discounts').share_pct).toBe('10.0')
-    expect(ступень(все, 'cogs').share_pct).toBe('30.0')
+  test('чистая выручка не положительна — долей и краёв нет, суммы стоят', async () => {
+    for (const net of ['0.00', '-10.00']) {
+      const все = await ступени({ ...СХОДЯЩИЕСЯ, net })
+      expect(все.every((с) => с.share_pct === null && с.base_pct === null)).toBe(true)
+      expect(ступень(все, 'net').amount).toBe(net)
+    }
   })
 
-  test('ступени водопада сходятся: вычитания висят от остатка и кончаются на итоге', async () => {
-    const все = await ступени(СХОДЯЩИЕСЯ)
-    const края = Object.fromEntries(все.map((с) => [с.key, с.base_pct]))
-    expect(края).toEqual({
-      gross: '0.0',
-      discounts: '90.0',
-      refunds: '85.0',
-      net: '0.0',
-      cogs: '55.0',
-      ads: '35.0',
-      fees: '30.0',
-      fixed: '20.0',
-      profit: '0.0',
-    })
-    // Нижний край последнего вычитания — это прибыль, нижний край «возвратов» — чистая выручка.
-    expect(ступень(все, 'fixed').base_pct).toBe(ступень(все, 'profit').share_pct)
-    expect(ступень(все, 'refunds').base_pct).toBe(ступень(все, 'net').share_pct)
+  test('без строк рекламы ступень рекламы пуста, маржинальный доход считается с нулём', async () => {
+    const все = await ступени({ ...СХОДЯЩИЕСЯ, ads: '0.00' }, false)
+    expect(ступень(все, 'ads').amount).toBeNull()
+    expect(ступень(все, 'margin_income').amount).toBe('500.00')
   })
 
   test('три итога водопада — от нуля; отрицательная прибыль идёт вниз, и шкала опускается под ноль', async () => {
     const все = await ступени({ ...СХОДЯЩИЕСЯ, fixed: '400.00', profit: '-100.00' })
-    expect(ступень(все, 'gross').base_pct).toBe('0.0')
     expect(ступень(все, 'net').base_pct).toBe('0.0')
-    expect(ступень(все, 'profit').share_pct).toBe('-10.0')
-    expect(ступень(все, 'profit').base_pct).toBe('-10.0')
-    expect(new Set(все.map((с) => с.scale_low_pct))).toEqual(new Set(['-10.0']))
+    expect(ступень(все, 'margin_income').base_pct).toBe('0.0')
+    expect(ступень(все, 'profit').share_pct).toBe('-11.8')
+    expect(ступень(все, 'profit').base_pct).toBe('-11.8')
+    expect(new Set(все.map((с) => с.scale_low_pct))).toEqual(new Set(['-11.8']))
     expect(new Set(все.map((с) => с.scale_high_pct))).toEqual(new Set(['100.0']))
-  })
-
-  test('оборот ноль — доли, края и шкала пусты, а не нули', async () => {
-    const нули: Итоги = {
-      gross: '0.00', discounts: '0.00', refunds: '0.00', net: '0.00', cogs: '0.00',
-      ads: '12.00', fees: '0.00', fixed: '30.00', profit: '-42.00',
-    }
-    const все = await ступени(нули)
-    for (const с of все) {
-      expect(с.share_pct, с.key).toBeNull()
-      expect(с.base_pct, с.key).toBeNull()
-      expect(с.scale_low_pct, с.key).toBeNull()
-      expect(с.scale_high_pct, с.key).toBeNull()
-    }
-    expect(ступень(все, 'profit').amount).toBe('-42.00')
   })
 })
 
@@ -193,10 +174,12 @@ describe('расхождение цепочки с итогом — решени
     ]
     for (const итоги of наборы) {
       const все = await ступени(итоги)
+      // «Оборот», «скидки» и «возвраты» больше не ступени водопада (кусок S13) — их центы берутся
+      // из самой подставленной строки итогов, а не из раскладки ступеней.
       const с = Object.fromEntries(все.map((ступ) => [ступ.key, центы(ступ.amount)]))
-      const строка = все[0] as Ступень & { net_gap: string | null; profit_gap: string | null }
+      const [строка] = все
       expect(строка.net_gap, `чистая выручка, ${JSON.stringify(итоги)}`).toBe(
-        деньгиИлиПусто(с.gross - с.discounts - с.refunds - с.net),
+        деньгиИлиПусто(центы(итоги.gross) - центы(итоги.discounts) - центы(итоги.refunds) - центы(итоги.net)),
       )
       expect(строка.profit_gap, `прибыль, ${JSON.stringify(итоги)}`).toBe(
         деньгиИлиПусто(с.net - с.cogs - с.ads - с.fees - с.fixed - с.profit),
@@ -204,32 +187,6 @@ describe('расхождение цепочки с итогом — решени
     }
   })
 })
-
-describe('самое большое вычитание — строка «съедает больше всего»', () => {
-  function помечены(все: Ступень[]): string[] {
-    return все.filter((с) => (с as Ступень & { largest: boolean }).largest).map((с) => с.key)
-  }
-
-  test('самое большое вычитание помечено среди вычитаний, итоги не помечаются', async () => {
-    // Оборот 1000 больше любого вычитания, но он итог; из вычитаний больше всех себестоимость, 300.
-    expect(помечены(await ступени(СХОДЯЩИЕСЯ))).toEqual(['cogs'])
-  })
-
-  test('при равенстве двух вычитаний до цента помечены оба', async () => {
-    expect(помечены(await ступени({ ...СХОДЯЩИЕСЯ, ads: '300.00' }))).toEqual(['cogs', 'ads'])
-    // Цент разницы — уже не равенство.
-    expect(помечены(await ступени({ ...СХОДЯЩИЕСЯ, ads: '299.99' }))).toEqual(['cogs'])
-  })
-
-  test('все вычитания ноль — не помечено ничего', async () => {
-    const нулевые: Итоги = {
-      gross: '500.00', discounts: '0.00', refunds: '0.00', net: '500.00', cogs: '0.00',
-      ads: '0.00', fees: '0.00', fixed: '0.00', profit: '500.00',
-    }
-    expect(помечены(await ступени(нулевые))).toEqual([])
-  })
-})
-
 
 /**
  * Заказ, который кладётся только на время проверки настоящего пути. Посев не содержит ни одного
@@ -263,7 +220,7 @@ async function убратьМарт(): Promise<void> {
 afterAll(убратьМарт)
 
 describe('водопад в отчёте — настоящим путём', () => {
-  test('отчёт несёт водопад из девяти ступеней, прочитанный тем же снимком', async () => {
+  test('отчёт несёт водопад из семи ступеней, прочитанный тем же снимком', async () => {
     // Круг проверки кода 3. Прежде сличение шло на посеве, где заказов нет: обе стороны были
     // «0.00», и перекрещённые колонки остались бы зелёными. Заказ кладётся на время проверки,
     // и у каждой стороны появляется якорь снаружи — она обязана быть не нулём.
@@ -273,37 +230,19 @@ describe('водопад в отчёте — настоящим путём', () 
       await положитьМарт()
       const отчёт = await monthlyReport('2026-03')
       expect(отчёт.waterfall?.steps.map((с) => с.key)).toEqual([
-        'gross', 'discounts', 'refunds', 'net', 'cogs', 'ads', 'fees', 'fixed', 'profit',
+        'net', 'cogs', 'ads', 'fees', 'margin_income', 'fixed', 'profit',
       ])
-      expect(отчёт.revenue.gross, 'заказ проверки доехал до оборота').toBe('300.00')
+      expect(отчёт.revenue.net, 'заказ проверки доехал до чистой выручки').not.toBe('0.00')
       expect(отчёт.bottom.profit, 'прибыль не ноль, иначе сличать нечего').not.toBe('0.00')
-      // Ступень прибыли обязана совпасть с прибылью итога того же отчёта, а ступень оборота — с
-      // оборотом. Теперь у обеих пар стороны различны, и перекрёст краснеет.
+      // Ступень прибыли обязана совпасть с прибылью итога того же отчёта, а ступень чистой
+      // выручки — с чистой выручкой итога. У обеих пар стороны различны, и перекрёст краснеет.
       expect(отчёт.waterfall?.steps.find((с) => с.key === 'profit')?.amount).toBe(отчёт.bottom.profit)
-      expect(отчёт.waterfall?.steps.find((с) => с.key === 'gross')?.amount).toBe(отчёт.revenue.gross)
-      expect(отчёт.waterfall?.steps.find((с) => с.key === 'profit')?.amount).not.toBe(отчёт.revenue.gross)
+      expect(отчёт.waterfall?.steps.find((с) => с.key === 'net')?.amount).toBe(отчёт.revenue.net)
+      expect(отчёт.waterfall?.steps.find((с) => с.key === 'profit')?.amount).not.toBe(отчёт.revenue.net)
     } finally {
       await убратьМарт()
       if (прежняя === undefined) delete process.env.NORDIC_PET_DB_TARGET
       else process.env.NORDIC_PET_DB_TARGET = прежняя
     }
   })
-})
-
-/**
- * Месяц без единой строки рекламы — круг проверки кода 2. Прежде ступень «Реклама» печатала
- * «0,00 € · 0,0 % оборота» на том же экране, где карточка полосы показателей уже говорила «нет
- * данных»: одно число, два разных ответа. Теперь пусты и сумма, и доля, а «съедает больше всего»
- * такую ступень не выбирает — суммы у неё нет. Края столбиков при этом считаются от нуля рекламы,
- * как и прибыль в итогах: этот дефект счёта прежнего куска назван в отчёте и здесь не чинится.
- */
-test('месяц без строк рекламы: у ступени «Реклама» пусты сумма и доля, «съедает больше всего» её не берёт', async () => {
-  // Реклама в подставленных итогах нарочно крупная: пустота приходит от признака «выгрузки нет», а
-  // не от нулевой суммы, и это видно по тому, что 900,00 € на экран не попадают.
-  const все = await ступени({ ...СХОДЯЩИЕСЯ, ads: '900.00' }, false)
-  const реклама = ступень(все, 'ads')
-  expect([реклама.amount, реклама.share_pct]).toEqual([null, null])
-  expect((реклама as Ступень & { largest: boolean }).largest, 'ступень без суммы не может быть самой большой').not.toBe(true)
-  expect(ступень(все, 'cogs').amount, 'прочие ступени не тронуты').toBe('300.00')
-  expect(реклама.base_pct, 'край столбика считается по-прежнему — от нуля рекламы в итогах').not.toBeNull()
 })

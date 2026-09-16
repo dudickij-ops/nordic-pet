@@ -195,8 +195,10 @@ export type MonthReport = {
    */
   устарели?: boolean
   /**
-   * Водопад «куда ушли деньги» — кусок S11, шаг 1: девять ступеней из строки итогов месяца,
-   * доли от оборота и края столбиков — готовыми строками из SQL (`MONTH_WATERFALL`).
+   * Водопад «куда ушли деньги» — кусок S11, шаг 1: доли от оборота и края столбиков — готовыми
+   * строками из SQL (`MONTH_WATERFALL`).
+   *
+   * Кусок S13: семь ступеней от чистой выручки.
    *
    * Необязательное по той же причине, что `устарели`: отчёты, собранные руками в принятых
    * проверках прошлых кусков, о нём не знают. Нет поля — сказать нечего, блок не рисуется.
@@ -209,8 +211,6 @@ export type MonthReport = {
       amount: Maybe
       sharePct: Maybe
       basePct: Maybe
-      /** Самое большое вычитание — признак из того же запроса; при равенстве до цента — у всех равных. */
-      largest?: boolean
     }>
     scaleLowPct: Maybe
     scaleHighPct: Maybe
@@ -531,7 +531,6 @@ export async function monthlyReport(
           amount: row.amount as string | null,
           sharePct: row.share_pct as string | null,
           basePct: row.base_pct as string | null,
-          largest: row.largest === true,
         })),
         scaleLowPct: (waterfallResult.rows[0]?.scale_low_pct ?? null) as string | null,
         scaleHighPct: (waterfallResult.rows[0]?.scale_high_pct ?? null) as string | null,
