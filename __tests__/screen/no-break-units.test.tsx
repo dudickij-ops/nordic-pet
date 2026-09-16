@@ -26,7 +26,7 @@ import { ПЕРЕПИСЬ } from './fixture.ts'
  */
 
 /** Элементы, которым таблица стилей запрещает перенос. Выписаны буквально: тег, класс, родитель. */
-const ПОД_ЗАПРЕТОМ = ['dd', 'td', 'span.kpi-value', 'span.waterfall-amount', 'span.waterfall-share', 'div.daily-axis > span', 'strong.share-value']
+const ПОД_ЗАПРЕТОМ = ['dd', 'td', 'p.result-profit', 'span.waterfall-amount', 'span.waterfall-share', 'div.daily-axis > span', 'strong.share-value']
 
 /**
  * Элементы, которым таблица стилей **возвращает** перенос, отменяя запрет у родителя. Найдено
@@ -115,7 +115,7 @@ test('элементам под защитой таблица стилей за�
   const правила = [...стили.matchAll(/([^{}]+)\{([^}]*)\}/g)]
     .filter(([, , тело]) => /white-space:\s*nowrap/.test(тело))
     .flatMap(([, селекторы]) => селекторы.split(',').map((с) => с.trim()))
-  expect(правила).toEqual(expect.arrayContaining(['dd', 'td', '.kpi-value', '.waterfall-amount', '.waterfall-share', '.daily-axis span', '.share-value']))
+  expect(правила).toEqual(expect.arrayContaining(['dd', 'td', '.result-profit', '.waterfall-amount', '.waterfall-share', '.daily-axis span', '.share-value']))
 })
 
 /**

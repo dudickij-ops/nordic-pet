@@ -1,8 +1,8 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 
 import { проверитьДоступ } from '@/lib/auth/guard'
-import { count, money, percent, points } from '@/lib/metrics/format'
+import { count, money, percent, points, ratio } from '@/lib/metrics/format'
 import { monthlyReport, type MonthReport } from '@/lib/metrics/report'
 import { LogoutButton } from './logout-button'
 import { RefreshPanel } from './refresh-panel'
@@ -32,19 +32,6 @@ const ПОДПИСИ_СТУПЕНЕЙ: Record<string, string> = {
 }
 
 /**
- * Подписи полосы показателей — кусок S11, шаг 7. У отношений база названа в самой подписи (правило
- * владельца: отношение называет свою базу рядом с собой) — маржа от чистой выручки; дельта маржи —
- * в процентных пунктах, и это говорит единица дельты.
- *
- * **Кусок S13:** доли рекламы в полосе нет — решение владельца, пункт 8 договора.
- */
-const ПОДПИСИ_ПОКАЗАТЕЛЕЙ: Record<string, string> = {
-  profit: 'Прибыль',
-  margin: 'Маржа от чистой выручки',
-  net: 'Чистая выручка',
-}
-
-/**
  * Число со знаком единицы внутри предложения — неразрывно (кусок S11). Общий формат денег ставит перед
  * знаком обычный пробел — отложенная задача S5, общая починка тронула бы ожидаемые строки принятых
  * проверок нескольких кусков. Поэтому по отдельности: в ячейках значений перенос запрещён таблицей
@@ -57,26 +44,25 @@ function вместе(значение: string): string {
 }
 
 type Полоса = NonNullable<MonthReport['kpis']>
-type Показатель = Полоса['items'][number]
-
-/** Значение карточки — всегда: деньгами или процентами, `null` — словами «нет данных». */
-function значениеПоказателя(п: Показатель): string {
-  if (п.unit === 'pp') return percent(п.value)
-  return п.value === null ? 'нет данных' : money(п.value)
-}
 
 /**
- * Строка дельты карточки — одна короткая строка. Базы нет — так и сказано, с месяцем, у которого нет
- * заказов; база есть, а дельты нет (у прошлого месяца нет рекламы или маржи) — «нет данных».
+ * Дельта одного числа результата — кусок S13. Без базы строки у числа нет: о том, что сравнить не с
+ * чем, говорит одна строка на весь блок. Текст дельты — прежний, куска S11. Обёртка `kpi` с признаком
+ * и строка `kpi-delta` — прежние: на них стоят правила цвета дельты, а граница зелёного прибита к ним.
  */
-function строкаДельты(полоса: Полоса, п: Показатель): string {
-  if (!полоса.hasBase) {
-    return полоса.prevMonth === null
-      ? 'нет базы для сравнения'
-      : `нет базы: в ${полоса.prevMonth} заказов нет`
-  }
-  if (п.delta === null) return `к ${полоса.prevMonth}: нет данных`
-  return `${п.unit === 'eur' ? вместе(money(п.delta)) : points(п.delta)} к ${полоса.prevMonth} · ${п.verdict}`
+function строкаПоказателя(полоса: Полоса | undefined, ключ: string): ReactNode {
+  if (полоса === undefined || !полоса.hasBase) return null
+  const п = полоса.items.find((показатель) => показатель.key === ключ)
+  if (п === undefined) return null
+  const текст =
+    п.delta === null
+      ? `к ${полоса.prevMonth}: нет данных`
+      : `${п.unit === 'eur' ? вместе(money(п.delta)) : points(п.delta)} к ${полоса.prevMonth} · ${п.verdict}`
+  return (
+    <span className="kpi" data-verdict={п.verdict ?? undefined}>
+      <span className="kpi-delta">{текст}</span>
+    </span>
+  )
 }
 
 /**
@@ -134,25 +120,46 @@ export function Dashboard({ report }: { report: MonthReport }) {
       </header>
 
       {/*
-        Полоса показателей — кусок S11, шаг 7. Значение стоит всегда; пустой бывает только дельта, и
-        тогда на её месте одна короткая строка. Дельта, её знак и её смысл («лучше», «хуже», «без
-        изменений») приходят готовыми из SQL: разметка знак с нулём не сравнивает, а прошлых значений,
-        из которых дельту можно было бы посчитать, в отчёте нет вовсе. Смысл назван словом, а не
-        только цветом: признак на карточке нужен таблице стилей, слово — человеку.
+        Результат месяца — кусок S13, задача 9. Прибыль — единственное крупное число; соседи мельче.
+        Дельта, её знак и смысл, признак базы, слово окупаемости и признак приблизительности приходят
+        готовыми: разметка ничего не сравнивает.
       */}
-      {полоса !== undefined && (
-        <section className="block kpis" aria-label="Показатели месяца">
-          <ul className="kpi-list">
-            {полоса.items.map((п) => (
-              <li key={п.key} className="kpi" data-verdict={п.verdict ?? undefined}>
-                <span className="kpi-label">{ПОДПИСИ_ПОКАЗАТЕЛЕЙ[п.key] ?? п.key}</span>
-                <span className="kpi-value">{значениеПоказателя(п)}</span>
-                <span className="kpi-delta">{строкаДельты(полоса, п)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <section className="block result" aria-label="Результат месяца">
+        <div className="result-main">
+          <h2>Прибыль</h2>
+          <p className="result-profit">{money(report.bottom.profit)}</p>
+          {строкаПоказателя(полоса, 'profit')}
+          <p className="result-accuracy">
+            {report.findings?.approximate === true && <span className="result-approx">приблизительно</span>}
+            {`Посчитано по настоящей цене поставщика: ${вместе(percent(report.honesty.sharePct))} · `}
+            <a href="#kachestvo">что подставлено</a>
+          </p>
+        </div>
+        <dl className="result-stats">
+          <dt>Чистая выручка</dt>
+          <dd>{money(report.revenue.net)}{строкаПоказателя(полоса, 'net')}</dd>
+          <dt>Маржа от чистой выручки</dt>
+          <dd>{percent(report.bottom.marginPct)}{строкаПоказателя(полоса, 'margin')}</dd>
+          <dt>Окупаемость рекламы по обороту</dt>
+          <dd>
+            {ratio(report.bottom.roasByGross)}
+            {report.findings?.adsVerdict != null && report.payback !== undefined && (
+              <span className="result-verdict" data-verdict={report.findings.adsVerdict}>
+                {report.findings.adsVerdict === 'порога нет'
+                  ? 'порога нет'
+                  : `${report.findings.adsVerdict} · порог ${ratio(report.payback.breakevenRoas)}`}
+              </span>
+            )}
+          </dd>
+        </dl>
+        {полоса !== undefined && !полоса.hasBase && (
+          <p className="result-base">
+            {полоса.prevMonth === null
+              ? 'Сравнить не с чем: прошлого месяца в данных нет.'
+              : `Сравнить с ${полоса.prevMonth} нельзя: в ${полоса.prevMonth} заказов нет.`}
+          </p>
+        )}
+      </section>
 
       {report.waterfall !== undefined && (
         <section className="block waterfall">
