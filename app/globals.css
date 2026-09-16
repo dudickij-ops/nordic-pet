@@ -1069,6 +1069,7 @@ button.primary:active:not(:disabled) {
 .waterfall-steps li {
   display: grid;
   grid-column: 1 / -1;
+  /* Первое `subgrid` в таблице стилей; принятая цена — вид проверен только в Chrome. */
   grid-template-columns: subgrid;
   gap: var(--spacingHorizontalL);
   align-items: center;
