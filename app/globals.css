@@ -985,7 +985,13 @@ button.primary:active:not(:disabled) {
  */
 /* **Отступление от контракта:** контракт называл строки неполноты Body 1; ненулевая набрана
  * насыщенностью `fontWeightSemibold`, то есть Body 1 Strong. Довод — абзацем выше. */
-.gaps li:not([data-zero='true']) {
+/*
+ * Кусок S13, задача 13: на виду — только виды с дырами, `data-zero` у них нет; под раскрытием признак
+ * ставится по `hasHoles`. `:not(…)` стоит и у списка на виду нарочно: он даёт правилу тот же вес, что
+ * был у прежнего `.gaps li:not(…)`, и оно по-прежнему перебивает общее правило строки ниже по файлу.
+ */
+.gaps-holes li:not([data-zero='true']),
+.gaps-more li:not([data-zero='true']) {
   color: var(--text);
   font-weight: var(--fontWeightSemibold);
 }
@@ -1003,7 +1009,13 @@ button.primary:active:not(:disabled) {
  * Проза остаётся прозой: Body 1, приглушённым цветом. Caption 1 у Fluent — подпись, а не абзац,
  * и загонять в неё связный текст значило бы взять ступень не по роли.
  */
-.honesty > p:nth-of-type(2) {
+/*
+ * Кусок S13, задача 13: блоки качества и неполноты слиты в `.quality`. Абзацев после подписи доли
+ * теперь до трёх — артикулы без цены, пояснение неполноты и «Дыр в данных нет.»; все — прежняя проза
+ * (прежнее `.gaps > p` было тем же Body 1 приглушённым), поэтому правило берёт все абзацы, начиная со
+ * второго, а не второй по счёту: без артикулов без цены «второй» — это уже пояснение неполноты.
+ */
+.quality > p:nth-of-type(n + 2) {
   margin-bottom: 0;
   color: var(--text-dim);
   font-size: var(--fontSizeBase300);
@@ -1404,13 +1416,9 @@ button.primary:active:not(:disabled) {
 
 /* ——— Неполнота ——— */
 
-.gaps > p {
-  color: var(--text-dim);
-  font-size: var(--fontSizeBase300);
-  line-height: var(--lineHeightBase300);
-}
-
-.gaps ul {
+/* Кусок S13, задача 13: список на виду и список под раскрытием устроены одинаково. */
+.gaps-holes,
+.gaps-more ul {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1440,7 +1448,8 @@ button.primary:active:not(:disabled) {
  * текст: у однострочных соседей он прижат к верху рослой ячейки, и под ним остаётся дыра. Поэтому
  * текст ставится по середине ячейки, а не по её верху.
  */
-.gaps li {
+.gaps-holes li,
+.gaps-more li {
   display: flex;
   align-items: center;
   padding: var(--spacingVerticalXS) 0;

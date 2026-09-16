@@ -508,7 +508,7 @@ export function Dashboard({ report }: { report: MonthReport }) {
         )}
       </section>
 
-      <section id="kachestvo" className="block honesty">
+      <section id="kachestvo" className="block quality">
         <h2>Качество данных</h2>
         <p>
           Посчитано по настоящей цене поставщика (доля от чистой выручки):{' '}
@@ -534,19 +534,33 @@ export function Dashboard({ report }: { report: MonthReport }) {
         {report.honesty.skusWithoutPrice.length > 0 && (
           <p>Без цены поставщика (запасные 40%): {report.honesty.skusWithoutPrice.join(', ')}</p>
         )}
-      </section>
-
-      <section className="block gaps">
         <h3>Неполнота данных</h3>
         <p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p>
-        <ul>
-          {report.gaps.map((gap) => (
-            <li key={gap.kind} data-zero={gap.count === 0 ? 'true' : undefined}>
-              {gap.kind}: {count(String(gap.count))}
-              {gap.at.length > 0 ? ` (${gap.at.join(', ')})` : ''}
-            </li>
-          ))}
-        </ul>
+        {report.gaps.some((gap) => gap.hasHoles === true) ? (
+          <ul className="gaps-holes">
+            {report.gaps
+              .filter((gap) => gap.hasHoles === true)
+              .map((gap) => (
+                <li key={gap.kind}>
+                  {gap.kind}: {count(String(gap.count))}
+                  {gap.at.length > 0 ? ` (${gap.at.join(', ')})` : ''}
+                </li>
+              ))}
+          </ul>
+        ) : (
+          <p>Дыр в данных нет.</p>
+        )}
+        <details className="gaps-more">
+          <summary>Показать все виды неполноты</summary>
+          <ul>
+            {report.gaps.map((gap) => (
+              <li key={gap.kind} data-zero={gap.hasHoles === true ? undefined : 'true'}>
+                {gap.kind}: {count(String(gap.count))}
+                {gap.at.length > 0 ? ` (${gap.at.join(', ')})` : ''}
+              </li>
+            ))}
+          </ul>
+        </details>
       </section>
     </main>
   )
