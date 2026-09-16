@@ -26,6 +26,7 @@ type Колонки = {
   skus_total: number
   skus_for_80: number | null
   negative_count: number
+  in_top: boolean
 }
 
 async function колонки(строки: Строка[]): Promise<Колонки[]> {
@@ -101,5 +102,24 @@ describe('товары: новые колонки и строка над таб�
   test('чистая выручка строки ноль — маржа строки пустая', async () => {
     const все = await колонки([{ sku: 'NP-A', net: '0.00', profit: '-4.00' }])
     expect(строка(все, 'NP-A').margin_pct).toBeNull()
+  })
+
+  test('первая пятёрка — пять лучших по прибыли, при равенстве по артикулу', async () => {
+    // Равенство прибыли приходится ровно на пятую и шестую строку: решает артикул, NP-E раньше NP-F.
+    const все = await колонки([
+      { sku: 'NP-F', net: '10.00', profit: '5.00' },
+      { sku: 'NP-A', net: '10.00', profit: '9.00' },
+      { sku: 'NP-C', net: '10.00', profit: '7.00' },
+      { sku: 'NP-B', net: '10.00', profit: '8.00' },
+      { sku: 'NP-E', net: '10.00', profit: '5.00' },
+      { sku: 'NP-D', net: '10.00', profit: '6.00' },
+    ])
+    const пятёрка = все.filter((к) => к.in_top).map((к) => к.sku).sort()
+    expect(пятёрка).toEqual(['NP-A', 'NP-B', 'NP-C', 'NP-D', 'NP-E'])
+  })
+
+  test('при пяти строках и меньше в пятёрке все', async () => {
+    const все = await колонки(ЧЕТЫРЕ)
+    expect(все.every((к) => к.in_top)).toBe(true)
   })
 })

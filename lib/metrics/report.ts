@@ -7,10 +7,8 @@ import {
   MONTH_DAILY,
   MONTH_DELTAS,
   MONTH_GAPS,
+  MONTH_ITEMS,
   MONTH_ITEMS_EXTRA,
-  ПОРЯДОК_ТОВАРОВ_ПО_УМОЛЧАНИЮ,
-  запросТоваров,
-  type ПорядокТоваров,
   MONTH_FINDINGS,
   MONTH_PAYBACK,
   MONTH_TOTALS,
@@ -172,6 +170,8 @@ export type MonthReport = {
     profitSharePct?: Maybe
     /** Прибыль строки строго меньше нуля — тот же признак берёт счётчик над таблицей. */
     loss?: boolean
+    /** Строка входит в первую пятёрку по валовой прибыли — кусок S13, решение владельца Э4. */
+    inTop?: boolean
     /**
      * Себестоимость строки подставлена запасными процентами — кусок S12, задача 2.
      *
@@ -413,12 +413,6 @@ export function подстановкаСтроки(
 export async function monthlyReport(
   month?: string,
   deps: Partial<MetricsDeps> = {},
-  /**
-   * Порядок таблицы товаров — кусок S12, задача 1. Доводом, а не полем отчёта: порядок приходит
-   * из адреса страницы и живёт ровно столько, сколько один заход. Умолчание здесь одно на весь
-   * проект — и экран, и команда метрик берут его отсюда, второго определения нет.
-   */
-  порядокТоваров: ПорядокТоваров = ПОРЯДОК_ТОВАРОВ_ПО_УМОЛЧАНИЮ,
 ): Promise<MonthReport> {
   if (month !== undefined && !MONTH_SHAPE.test(month)) {
     throw new ОтказОтчёта(
@@ -469,7 +463,7 @@ export async function monthlyReport(
     const dayParam = resolvedMonth === null ? null : `${resolvedMonth}-01`
 
     const totalsResult = await client.query(MONTH_TOTALS, [dayParam])
-    const itemsResult = await client.query(запросТоваров(порядокТоваров), [dayParam])
+    const itemsResult = await client.query(MONTH_ITEMS, [dayParam])
     const gapsResult = await client.query(MONTH_GAPS, [dayParam])
     const waterfallResult = await client.query(MONTH_WATERFALL, [dayParam])
     const dailyResult = await client.query(MONTH_DAILY, [dayParam])
@@ -525,6 +519,7 @@ export async function monthlyReport(
         marginPct: (itemsExtra.get(item.sku)?.margin_pct ?? null) as string | null,
         profitSharePct: (itemsExtra.get(item.sku)?.profit_share_pct ?? null) as string | null,
         loss: itemsExtra.get(item.sku)?.loss === true,
+        inTop: itemsExtra.get(item.sku)?.in_top === true,
       })),
       itemsSummary:
         itemsFirst === undefined
