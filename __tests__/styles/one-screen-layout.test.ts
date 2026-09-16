@@ -95,7 +95,7 @@ describe('раскладка одного экрана', () => {
     expect(одноПравило('.daily-mean')).toContain('inset: 0;')
     const подпись = одноПравило('.daily-mean-label')
     expect(подпись).toContain('bottom: 100%;')
-    expect(подпись).not.toContain('background')
+    expect(подпись).toContain('background: var(--colorNeutralBackground1);')
   })
 
   test('у ступеней водопада одна сетка на все строки, сумма и доля шириной по своему тексту', () => {
@@ -103,10 +103,15 @@ describe('раскладка одного экрана', () => {
     expect(одноПравило('.waterfall-steps li')).toContain('grid-template-columns: subgrid;')
   })
 
-  test('на узком экране таблицы товаров не уже порога и прокручиваются в карточке', () => {
+  /*
+   * Отступление, названное: на узком экране раскладка таблиц — по содержимому, и колонки двух таблиц
+   * могут не стоять друг под другом. Числа не переносятся — `td` с `white-space: nowrap`.
+   */
+  test('на узком экране таблицы товаров раскладываются по своим числам и прокручиваются в карточке', () => {
     const узкий = запрос('max-width: 48rem')
     expect(одноПравило('.items', узкий)).toContain('overflow-x: auto;')
-    expect(одноПравило('.items table', узкий)).toMatch(/min-width: [^;]+;/)
+    expect(одноПравило('.items table', узкий)).toContain('table-layout: auto;')
+    expect(правила('td').some((тело) => тело.includes('white-space: nowrap;')), 'у td запрет переноса').toBe(true)
   })
 
   test('подзаголовок в блоке не крупнее заголовка блока', () => {
