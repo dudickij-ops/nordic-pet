@@ -244,6 +244,17 @@ export type MonthReport = {
     bottomNet: Maybe
     /** В месяце были заказы. Нет — вместо графика слова «нет данных за месяц». */
     hasOrders: boolean
+    /**
+     * Средняя по дням — кусок S13, решение владельца Э7: чистая выручка месяца ÷ все дни месяца, до
+     * цента. Дни без заказов входят в делитель. Пусто — в месяце нет заказов.
+     */
+    avgNet?: Maybe
+    /** Место средней на шкале ряда — тем же способом, что края столбиков. */
+    avgPct?: Maybe
+    /** Подпись базы готовой строкой: «по 31 дню месяца», «по 30 дням месяца». */
+    avgBase?: string
+    /** В ряду есть дни без заказов. */
+    hasEmptyDays?: boolean
   }
   /**
    * Строка над таблицей товаров — кусок S11, шаг 4: база долей (сумма прибыли строк), сколько
@@ -566,6 +577,10 @@ export async function monthlyReport(
         topNet: (dailyResult.rows[0]?.top_net ?? null) as string | null,
         bottomNet: (dailyResult.rows[0]?.bottom_net ?? null) as string | null,
         hasOrders: dailyResult.rows[0]?.month_has_orders === true,
+        avgNet: (dailyResult.rows[0]?.avg_net ?? null) as string | null,
+        avgPct: (dailyResult.rows[0]?.avg_pct ?? null) as string | null,
+        avgBase: dailyResult.rows[0]?.avg_base as string,
+        hasEmptyDays: dailyResult.rows[0]?.has_empty_days === true,
       },
       payback: {
         roasByProfit: (paybackResult.rows[0]?.roas_by_profit ?? null) as string | null,

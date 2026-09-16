@@ -87,4 +87,22 @@ export const BREAKS: Break[] = [
     replace: 'coalesce(s.honest <= 100, false)           as approximate',
     tests: 'все',
   },
+  {
+    id: 'mean-over-order-days',
+    claim: 'делить на дни с заказами, а не на все дни месяца',
+    mustRedden: 'средняя — чистая выручка ÷ все дни месяца, дни без заказов в делителе',
+    file: 'lib/metrics/sql.ts',
+    find: 'round(sum(bd.net) / count(*), 2)                as avg_net',
+    replace: 'round(sum(bd.net) / count(bd.day), 2)          as avg_net',
+    tests: 'все',
+  },
+  {
+    id: 'mean-base-word',
+    claim: 'писать «дням» при числе дней, оканчивающемся на единицу',
+    mustRedden: 'подпись базы средней согласована с числом дней',
+    file: 'lib/metrics/sql.ts',
+    find: "then ' дню' else ' дням' end || ' месяца'",
+    replace: "then ' дням' else ' дням' end || ' месяца'",
+    tests: 'все',
+  },
 ]

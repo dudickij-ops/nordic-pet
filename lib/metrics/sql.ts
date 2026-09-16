@@ -678,6 +678,10 @@ ${WATERFALL_FROM_TOTALS}`
  * подставляет `MONEY_CTES`. Проверки подставляют выдуманные строки `money`, у которых выручка
  * нарочно не равна «оборот − скидка − возврат»: ряд, посчитавший выручку своим выражением, это
  * покажет.
+ *
+ * **Средняя по дням** — кусок S13, задача 3 (решение владельца Э7): чистая выручка месяца ÷ **все**
+ * дни месяца, до цента. Дни без заказов входят в делитель — средняя размазывает выручку месяца по
+ * календарю, а не по дням с продажами. Заказов в месяце нет вовсе — средней нет: делить нечего.
  */
 export const DAILY_FROM_MONEY = `
 days as (
@@ -698,6 +702,13 @@ peak as (
          greatest(0.00, max(net)) as high_net,
          count(net) > 0           as has_orders
     from by_day
+),
+mean as (
+  select count(*)::int                                   as days_in_month,
+         count(*) filter (where bd.day is null) > 0      as has_empty_days,
+         round(sum(bd.net) / count(*), 2)                as avg_net
+    from days d
+    left join by_day bd on bd.day = d.day
 )
 select to_char(d.day, 'YYYY-MM-DD')                                             as day,
        extract(day from d.day)::int || ' ' ||
@@ -715,10 +726,17 @@ select to_char(d.day, 'YYYY-MM-DD')                                             
        -- Тридцать одна подпись в ширину не входит; доступная подпись при этом есть у каждого дня.
        case when (extract(day from d.day)::int - 1) % 5 = 0
             then extract(day from d.day)::int::text end                          as tick,
+       m.avg_net::text                                                           as avg_net,
+       round(m.avg_net / p.top * 100, 1)::text                                   as avg_pct,
+       'по ' || m.days_in_month ||
+         case when m.days_in_month % 10 = 1 and m.days_in_month % 100 <> 11
+              then ' дню' else ' дням' end || ' месяца'                          as avg_base,
+       m.has_empty_days                                                          as has_empty_days,
        p.has_orders                                                              as month_has_orders
   from days d
   left join by_day bd on bd.day = d.day
  cross join peak p
+ cross join mean m
  order by d.day
 `
 
