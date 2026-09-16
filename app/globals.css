@@ -365,6 +365,19 @@ h2 {
   color: var(--colorNeutralForeground2);
 }
 
+/*
+ * Подзаголовок внутри блока — кусок S13, задача 16b. Своего правила у `h3` не было, и браузер набирал
+ * «Неполноту данных» своим кеглем — крупнее заголовка блока `h2`. Ступень — та же Body 1 Strong, что у
+ * `h2`: подзаголовок не крупнее заголовка. Цвет основной, чтобы подзаголовок не сливался с заголовком
+ * блока, и отступы из шкалы. **Наш выбор** из объявленных токенов, а не выписка из Fluent.
+ */
+h3 {
+  margin: var(--spacingVerticalL) 0 var(--spacingVerticalS);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
+  font-weight: var(--fontWeightSemibold);
+}
+
 p {
   margin: 0 0 var(--spacingVerticalS);
 }
@@ -1037,15 +1050,26 @@ button.primary:active:not(:disabled) {
  * Итог и вычитание различаются не одним цветом: итог — насыщенный столбик от нуля и полужирные
  * подпись и сумма; вычитание — светлый столбик обычного начертания, висящий от остатка.
  */
+/*
+ * Колонки ступеней — кусок S13, задача 16b. Прежде у каждой строки была своя сетка с долями
+ * `2fr 3fr 1fr 1fr`, и на широком экране «100,0 % чистой выручки» не помещалось в свою седьмую часть и
+ * уезжало за край карточки. Теперь сетка одна — у списка, — и строки берут её колонки (`subgrid`):
+ * сумма и доля шириной по самому длинному тексту во всех строках, дорожка — остаток. Колонки у всех
+ * строк при этом по-прежнему одни, числа стоят друг под другом.
+ */
 .waterfall-steps {
   margin: 0;
   padding: 0;
   list-style: none;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto auto;
+  column-gap: var(--spacingHorizontalL);
 }
 
 .waterfall-steps li {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   gap: var(--spacingHorizontalL);
   align-items: center;
   padding: var(--spacingVerticalXS) 0;
@@ -1323,7 +1347,6 @@ button.primary:active:not(:disabled) {
   margin: 0;
   padding: 0;
   list-style: none;
-  grid-column: 2;
 }
 
 .daily-bars li {
@@ -1356,6 +1379,7 @@ button.primary:active:not(:disabled) {
 }
 
 .daily-ticks {
+  grid-column: 2;
   grid-row: 2;
   color: var(--colorNeutralForeground3);
   font-size: var(--fontSizeBase200);
@@ -1374,37 +1398,67 @@ button.primary:active:not(:disabled) {
 
 /*
  * Пунктир средней — кусок S13. Место — та же формула, что у края столбика дня, от той же шкалы:
- * величина приходит из отчёта готовой. Подпись на своём фоне — линия не идёт по тексту.
+ * величина приходит из отчёта готовой. Подпись стоит над областью (задача 16b, ниже).
  *
  * Столбики и пунктир лежат в общей области `.daily-plot`: она занимает место списка столбиков в
  * сетке ряда (колонка графика, строка высоты области), а сама — сетка из одной ячейки, чтобы список
  * растянулся на всю её высоту, как прежде в сетке ряда. Ось стоит в соседней колонке, поэтому левый
  * край пунктира — ноль, своей величины не заводится.
+ *
+ * Кусок S13, задача 16b: место в сетке ряда стоит у области, и только у неё. Прежде `grid-column: 2`
+ * оставался и у списка столбиков — внутри области он заводил вторую колонку, и столбики сжимались в
+ * правую половину, мимо подписей дней.
  */
 .daily-plot {
   position: relative;
   display: grid;
   grid-column: 2;
+  grid-row: 1;
+}
+
+/*
+ * Подпись средней — кусок S13, задача 16b. Стоя у самой линии, подпись своим фоном закрывала верхушки
+ * столбиков, которые выше средней. Теперь элемент средней накрывает всю область, линию рисует его
+ * `::before` той же формулой и от тех же величин, а подпись стоит над областью, у правого края, — там,
+ * где столбиков нет. Связь подписи с линией держит отрезок того же пунктира перед текстом. Место над
+ * областью отведено отступом сетки ряда высотой строки подписи — тем же токеном.
+ */
+.daily-chart {
+  padding-top: var(--lineHeightBase200);
 }
 
 .daily-mean {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.daily-mean::before {
+  content: '';
   position: absolute;
   left: 0;
   right: 0;
   bottom: calc((var(--mean-at) - var(--scale-from)) / (var(--scale-to) - var(--scale-from)) * 100%);
   border-top: var(--strokeWidthThin) dashed var(--colorBrandStroke1);
-  pointer-events: none;
 }
 
 .daily-mean-label {
   position: absolute;
   right: 0;
-  bottom: var(--spacingVerticalXS);
-  padding: 0 var(--spacingHorizontalS);
-  background: var(--colorNeutralBackground1);
+  bottom: 100%;
   color: var(--colorNeutralForeground2);
   font-size: var(--fontSizeBase200);
   line-height: var(--lineHeightBase200);
+  white-space: nowrap;
+}
+
+.daily-mean-label::before {
+  content: '';
+  display: inline-block;
+  width: var(--spacingHorizontalL);
+  margin-right: var(--spacingHorizontalS);
+  vertical-align: middle;
+  border-top: var(--strokeWidthThin) dashed var(--colorBrandStroke1);
 }
 
 .daily-note {
@@ -1659,6 +1713,20 @@ button.primary:active:not(:disabled) {
     overflow-x: auto;
   }
 
+  /*
+   * Кусок S13, задача 16b. Колонки двух таблиц заданы долями (`col`) при `table-layout: fixed`, и уже
+   * этого порога доли сжимали колонки меньше их чисел: суммы наезжали на соседей. Поэтому ниже порога
+   * таблица не становится уже самого порога и прокручивается внутри карточки, как до задачи 12;
+   * описание колонок у двух таблиц по-прежнему одно, и они стоят друг под другом.
+   *
+   * **Длина — наше число и названа слабым местом.** Это тот же порог `48rem`, записанный через
+   * объявленную ширину страницы: `72rem × 2 / 3`. Проверка длин таблицы стилей производную длину через
+   * `calc` не видит — сторожит её только текстовая проверка задачи 16b.
+   */
+  .items table {
+    min-width: calc(var(--page) * 2 / 3);
+  }
+
   .items-scroll {
     display: block;
     margin: 0 0 var(--spacingVerticalM);
@@ -1731,6 +1799,10 @@ button.primary:active:not(:disabled) {
    * Водопад на узком экране: четыре колонки не помещают сумму вида «18 764,00 €». Строка ступени
    * становится двумя — подпись и сумма, под ними дорожка и доля. Вид тот же, направление то же.
    */
+  .waterfall-steps {
+    display: block;
+  }
+
   .waterfall-steps li {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
