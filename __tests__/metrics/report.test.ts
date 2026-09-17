@@ -560,6 +560,34 @@ describe('блок неполноты — каждый счётчик доказ
   })
 })
 
+/**
+ * Признак «есть дыры» у видов неполноты — задача 5. Готов из SQL (`has_holes`), второго места,
+ * где решается, есть ли у вида дыра, в коде нет.
+ */
+describe('признак «есть дыры» у видов неполноты', () => {
+  test('у каждого вида неполноты признак «есть дыры» совпадает с ненулевым счётом', async () => {
+    const прежняя = process.env.NORDIC_PET_DB_TARGET
+    process.env.NORDIC_PET_DB_TARGET = 'local'
+    try {
+      const отчёт = await monthlyReport()
+      expect(отчёт.gaps).toHaveLength(11)
+      for (const вид of отчёт.gaps) expect(вид.hasHoles).toBe(вид.count > 0)
+    } finally {
+      if (прежняя === undefined) delete process.env.NORDIC_PET_DB_TARGET
+      else process.env.NORDIC_PET_DB_TARGET = прежняя
+    }
+  })
+
+  test('у подставленной строки без цены поставщика признак «есть дыры» истинен', async () => {
+    // Та же раскладка, что доказывает счётчик «строки продаж без цены поставщика» выше
+    // (раскладкаБезЦены, test.each ниже): она даёт ровно одну дыру этого вида, и только его.
+    const о = await reportOn(раскладкаБезЦены, '2026-03')
+    const вид = о.gaps.find((g) => g.kind === 'строки продаж без цены поставщика')!
+    expect(вид.count).toBeGreaterThan(0)
+    expect(вид.hasHoles).toBe(true)
+  })
+})
+
 describe('кривой месяц отклоняется до похода в базу', () => {
   // Дверь, которая не должна открыться: проверка формы обязана отказать раньше первого
   // обращения к соединению. Если бы отказ приходил из SQL («invalid input syntax for

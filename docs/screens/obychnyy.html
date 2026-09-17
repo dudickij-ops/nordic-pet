@@ -35,7 +35,9 @@
  *     остальное ровным весом. Уточнение владельцем 11 сентября 2026 года, кусок S11; прежде здесь стояло
  *     «крупных чисел единицы — прибыль, маржа, окупаемость; остальное ровным весом», а у правила
  *     «Итога» — «Три крупных числа — Title 2 (28 / 36, 600). Их ровно три, и больше на экране
- *     крупного нет.»;
+ *     крупного нет.». **Кусок S13:** вкладок нет, экран один, и крупное число на нём одно — прибыль
+ *     (`--fontSizeHero700`; договор S13, пункт 11, сторож — проверка «прибыль — единственное число
+ *     крупного кегля»); счёт «на вкладку» выше — история S11;
  *   · два смысловых цвета: красный — отказы и значения, которые плохи по смыслу; зелёный — только
  *     вердикт «лучше» в полосе показателей. Изменения ориентира владельцем в куске S11: 10 сентября
  *     2026 года — о красном, прежде здесь стояло «один цвет для смысловых пометок, красный только для
@@ -367,6 +369,19 @@ h2 {
   color: var(--colorNeutralForeground2);
 }
 
+/*
+ * Подзаголовок внутри блока — кусок S13, задача 16b. Своего правила у `h3` не было, и браузер набирал
+ * «Неполноту данных» своим кеглем — крупнее заголовка блока `h2`. Ступень — та же Body 1 Strong, что у
+ * `h2`: подзаголовок не крупнее заголовка. Цвет основной, чтобы подзаголовок не сливался с заголовком
+ * блока, и отступы из шкалы. **Наш выбор** из объявленных токенов, а не выписка из Fluent.
+ */
+h3 {
+  margin: var(--spacingVerticalL) 0 var(--spacingVerticalS);
+  font-size: var(--fontSizeBase300);
+  line-height: var(--lineHeightBase300);
+  font-weight: var(--fontWeightSemibold);
+}
+
 p {
   margin: 0 0 var(--spacingVerticalS);
 }
@@ -417,6 +432,8 @@ dl {
    * шириной 375 пикселей разметка расползалась до 559 и уезжала за край.
    *
    * Четыре — потому что больше четырёх показателей в блоке нет ни в одном из трёх блоков.
+   * **Кусок S13:** этих трёх блоков нет; единственный список определений экрана — `.result-stats`,
+   * и у него своя сетка строками (правило ниже). Общее правило осталось как было.
    */
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--spacingVerticalL) var(--spacingHorizontalXXL);
@@ -502,7 +519,7 @@ td {
  * честности. Предложения защищены иначе — неразрывным пробелом в самой строке. Сторож обоих способов —
  * проверка «денежное значение внутри предложения не бывает без защиты от переноса».
  */
-.kpi-value,
+.result-profit,
 .waterfall-amount,
 .waterfall-share,
 .daily-axis span,
@@ -564,6 +581,47 @@ tbody tr:last-child td {
 .items tr[data-loss='true'] td {
   background: var(--colorPaletteRedBackground2);
   color: var(--colorNeutralForeground1);
+}
+
+/*
+ * Раскрытие товаров и неполноты — кусок S13. Родной элемент страницы, без клиентского кода.
+ * Вид — как у кнопки без заливки: обводка, скругление, отступы из объявленных токенов.
+ */
+.items-more > summary,
+.gaps-more > summary {
+  display: inline-block;
+  margin-top: var(--spacingVerticalS);
+  padding: var(--spacingVerticalXS) var(--spacingHorizontalM);
+  border: var(--strokeWidthThin) solid var(--colorNeutralStroke1);
+  border-radius: var(--borderRadiusMedium);
+  cursor: pointer;
+}
+
+.items table {
+  table-layout: fixed;
+}
+
+/*
+ * Полоска доли в валовой прибыли товаров — кусок S13, задача 12. Устроена как полоса честности
+ * (`.share`, `.share-fill`): значение приходит величиной из разметки, длину делает `clamp`, дорожка и
+ * заливка — те же токены. Толщина — `--strokeWidthThicker` и отступ `--spacingVerticalXS`: наш выбор
+ * из объявленных токенов для малой полоски в ячейке, а не выписка из Fluent.
+ */
+.items-bar {
+  display: block;
+  height: var(--strokeWidthThicker);
+  margin-top: var(--spacingVerticalXS);
+  background: var(--colorNeutralBackground6);
+  border-radius: var(--borderRadiusCircular);
+  overflow: hidden;
+}
+
+.items-bar-fill {
+  display: block;
+  width: clamp(0%, var(--item-share, 0%), 100%);
+  height: 100%;
+  background: var(--colorCompoundBrandBackground);
+  border-radius: var(--borderRadiusCircular);
 }
 
 /* ——— Ссылки и кнопки ——— */
@@ -874,47 +932,6 @@ button.primary:active:not(:disabled) {
   border-color: var(--on-accent);
 }
 
-/* ——— Главные числа ——— */
-
-/*
- * Крупных чисел единицы, и считаются они на вкладку (уточнение владельца от 11 сентября 2026 года,
- * кусок S11): на «Деньгах» три — прибыль и маржа здесь, окупаемость по обороту в своём блоке, — на
- * «Главном» четыре значения полосы показателей. Прежде здесь стояло: «Крупных чисел на экране ровно
- * три — прибыль, маржа, окупаемость». Остальные показатели идут ровным весом. Экран, где выделено всё,
- * не выделяет ничего.
- *
- * **Отступление, названное вслух.** Справочник, дословно (fluent2.microsoft.design/color): «Apply
- * brand colors to different areas of an interface not only to create visual prominence, but also
- * to anchor people in a specific product experience. Avoid overusing brand colors or using them on
- * large surfaces as they can dilute a hierarchy and make an experience difficult to navigate.»
- * Карточка «Итог» идёт на смысловом цвете — то есть против второй половины этой цитаты. Довод
- * владельца (9 сентября 2026 года, до вкладок): одна карточка из шести, и она главная на экране. С
- * куска S11 она одна из четырёх карточек вкладки «Деньги». Названо здесь, в описи снимков и в теле
- * pull request.
- */
-.bottom-line {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.bottom-line h2,
-.bottom-line dt,
-.bottom-line dd {
-  color: var(--on-accent);
-}
-
-/*
- * Крупные числа «Итога» — Title 2 (28 / 36, 600). Крупные числа считаются на вкладку (уточнение
- * владельца от 11 сентября 2026 года): на «Деньгах» их три — два здесь и окупаемость по обороту в
- * своём блоке. Прежде здесь стояло: «Три крупных числа — Title 2 (28 / 36, 600). Их ровно три, и
- * больше на экране крупного нет.»
- */
-.bottom-line dd {
-  font-size: var(--fontSizeHero700);
-  line-height: var(--lineHeightHero700);
-  font-weight: var(--fontWeightSemibold);
-}
-
 /* ——— Полоса доли честности ——— */
 
 /*
@@ -987,7 +1004,13 @@ button.primary:active:not(:disabled) {
  */
 /* **Отступление от контракта:** контракт называл строки неполноты Body 1; ненулевая набрана
  * насыщенностью `fontWeightSemibold`, то есть Body 1 Strong. Довод — абзацем выше. */
-.gaps li:not([data-zero='true']) {
+/*
+ * Кусок S13, задача 13: на виду — только виды с дырами, `data-zero` у них нет; под раскрытием признак
+ * ставится по `hasHoles`. `:not(…)` стоит и у списка на виду нарочно: он даёт правилу тот же вес, что
+ * был у прежнего `.gaps li:not(…)`, и оно по-прежнему перебивает общее правило строки ниже по файлу.
+ */
+.gaps-holes li:not([data-zero='true']),
+.gaps-more li:not([data-zero='true']) {
   color: var(--text);
   font-weight: var(--fontWeightSemibold);
 }
@@ -1005,7 +1028,13 @@ button.primary:active:not(:disabled) {
  * Проза остаётся прозой: Body 1, приглушённым цветом. Caption 1 у Fluent — подпись, а не абзац,
  * и загонять в неё связный текст значило бы взять ступень не по роли.
  */
-.honesty > p:nth-of-type(2) {
+/*
+ * Кусок S13, задача 13: блоки качества и неполноты слиты в `.quality`. Абзацев после подписи доли
+ * теперь до трёх — артикулы без цены, пояснение неполноты и «Дыр в данных нет.»; все — прежняя проза
+ * (прежнее `.gaps > p` было тем же Body 1 приглушённым), поэтому правило берёт все абзацы, начиная со
+ * второго, а не второй по счёту: без артикулов без цены «второй» — это уже пояснение неполноты.
+ */
+.quality > p:nth-of-type(n + 2) {
   margin-bottom: 0;
   color: var(--text-dim);
   font-size: var(--fontSizeBase300);
@@ -1027,15 +1056,27 @@ button.primary:active:not(:disabled) {
  * Итог и вычитание различаются не одним цветом: итог — насыщенный столбик от нуля и полужирные
  * подпись и сумма; вычитание — светлый столбик обычного начертания, висящий от остатка.
  */
+/*
+ * Колонки ступеней — кусок S13, задача 16b. Прежде у каждой строки была своя сетка с долями
+ * `2fr 3fr 1fr 1fr`, и на широком экране «100,0 % чистой выручки» не помещалось в свою седьмую часть и
+ * уезжало за край карточки. Теперь сетка одна — у списка, — и строки берут её колонки (`subgrid`):
+ * сумма и доля шириной по самому длинному тексту во всех строках, дорожка — остаток. Колонки у всех
+ * строк при этом по-прежнему одни, числа стоят друг под другом.
+ */
 .waterfall-steps {
   margin: 0;
   padding: 0;
   list-style: none;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto auto;
+  column-gap: var(--spacingHorizontalL);
 }
 
 .waterfall-steps li {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-column: 1 / -1;
+  /* Первое `subgrid` в таблице стилей; принятая цена — вид проверен только в Chrome. */
+  grid-template-columns: subgrid;
   gap: var(--spacingHorizontalL);
   align-items: center;
   padding: var(--spacingVerticalXS) 0;
@@ -1088,11 +1129,6 @@ button.primary:active:not(:disabled) {
   background: var(--colorBrandStroke2);
 }
 
-/* «Съедает больше всего» — подпись, а не тревога: цвет текста обычный, свой не заводится. */
-.waterfall-largest {
-  margin: 0 0 var(--spacingVerticalS);
-}
-
 /* Строка о центах округления — пояснение к числам, а не число: мелко и приглушённо. */
 .waterfall-gap {
   margin: var(--spacingVerticalS) 0 0;
@@ -1101,117 +1137,78 @@ button.primary:active:not(:disabled) {
   line-height: var(--lineHeightBase200);
 }
 
-/* ——— Полоса вкладок ——— */
+/* ——— Результат месяца ——— */
 
 /*
- * Рецепт вкладки Fluent 2 — `react-tabs/library/src/components/Tab/useTabStyles.styles.ts` на коммите
- * выписки `43665d5`: средний размер, горизонтально, вид `transparent`. Сверка по каждому свойству
- * блоков — `docs/сверка/рецепты-fluent.md`, раздел 8. Признаков текущей вкладки три, и цвет среди них
- * не единственный: `aria-current` в разметке, полоса-указатель под текстом, полужирное начертание.
- *
- * Отступ ссылки по горизонтали — `spacingHorizontalM` (12): у Fluent это `spacingHorizontalMNudge` (10)
- * у кнопки плюс `spacingHorizontalXXS` (2) у текста — **совпало по действию**: текст отстоит от края на
- * те же 12, на которые отстоит указатель. Двух величин с `Nudge` в выписке нет.
+ * Результат месяца — кусок S13. Прибыль — единственное число кегля Hero700; соседи — Base400
+ * полужирным. Иерархия строится уменьшением соседей, а не новым заимствованным кеглем.
  */
-.tabs {
-  margin: 0 0 var(--gap);
-}
-
-.tabs ul {
-  display: flex;
-  flex-wrap: wrap;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tabs a {
-  position: relative;
-  display: inline-block;
-  padding: var(--spacingVerticalM) var(--spacingHorizontalM);
-  border-radius: var(--borderRadiusMedium);
-  color: var(--colorNeutralForeground2);
-  font-size: var(--fontSizeBase300);
-  line-height: var(--lineHeightBase300);
-  font-weight: var(--fontWeightRegular);
-  text-decoration: none;
-}
-
-.tabs a[aria-current='page'] {
-  color: var(--colorNeutralForeground1);
-  font-weight: var(--fontWeightSemibold);
-}
-
-.tabs a[aria-current='page']::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: var(--spacingHorizontalM);
-  right: var(--spacingHorizontalM);
-  height: var(--strokeWidthThicker);
-  border-radius: var(--borderRadiusCircular);
-  background: var(--colorCompoundBrandStroke);
-}
-
-/* ——— «Деньги»: «Выручка» и «Затраты» рядом ——— */
-
-/*
- * «Выручка» и «Затраты» — свой ряд, кусок S12, задача 4.
- *
- * **Что было и почему поменялось.** Прежде обе карточки были строчными блоками у `main`, и высоты
- * у них не совпадали: строчные блоки друг с другом не равняются, и ряд выглядел рваным. Цена была
- * названа в этом же файле прошлым куском. Сетку у `main` тот кусок отверг по снимку: её блок
- * открывает свой поток форматирования, не заходит под плавающую полосу действия и сжимается рядом
- * с ней — узкими становились разделы всех вкладок разом.
- *
- * **Почему обёртка этого не наследует.** Она начинается ниже плавающей полосы: между ними целая
- * шапка — название, месяцы, время чтения и полоса вкладок. Плавающее сжимает только то, что стоит
- * с ним вровень. Проверено снимком заново, а не принято на веру, и сжатие разделов сторожится
- * своей проверкой со сломом.
- *
- * `align-items: stretch` — умолчание флексбокса, и высоты равняются им. `min-width: 0` у карточек
- * обязателен: без него длинная подпись внутри не даёт колонке ужаться, и ряд уезжает за край.
- */
-.row-two {
-  display: flex;
-  gap: var(--gap);
-  margin: 0 0 var(--gap);
-}
-
-.row-two > .block {
-  flex: 1 1 0;
-  min-width: 0;
-  margin-bottom: 0;
-}
-
-/* ——— Полоса показателей ——— */
-
-/*
- * Четыре показателя в ряд (кусок S11, шаг 7), на узком экране — по два. Значение набрано Title 2
- * (28 / 36, 600), как числа «Итога», — решение владельца на шаге вкладок по паре снимков: «Главное»
- * обязано отвечать за десять секунд, и без крупного числа глаз садится на водопад. Крупных на вкладке
- * четыре. Строка дельты — мелко; смысл в ней несут знак и слово, цвет — второй канал того же смысла.
- */
-.kpi-list {
+.result {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--spacingVerticalM) var(--spacingHorizontalL);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--spacingVerticalM) var(--spacingHorizontalXXL);
+  align-items: start;
 }
 
+.result h2 {
+  margin: 0;
+}
+
+/*
+ * Общие правила `dl` ставят подписи в первую строку сетки, значения — во вторую (`grid-row`). Здесь
+ * пары идут строками — подпись слева, число справа, — и закреплённая строка сетки снимается.
+ */
+.result-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--spacingVerticalS) var(--spacingHorizontalM);
+  margin: 0;
+}
+
+.result-stats dt {
+  grid-row: auto;
+  color: var(--colorNeutralForeground2);
+}
+
+.result-stats dd {
+  font-size: var(--fontSizeBase400);
+  font-weight: var(--fontWeightSemibold);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  grid-row: auto;
+}
+
+.result-verdict {
+  font-size: var(--fontSizeBase200);
+  font-weight: var(--fontWeightRegular);
+}
+
+.result-approx {
+  color: var(--colorPaletteRedForeground3);
+  margin-right: var(--spacingHorizontalS);
+}
+
+.result-base {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--colorNeutralForeground3);
+}
+
+/*
+ * Строка дельты у числа результата — мелко; смысл в ней несут знак и слово, цвет — второй канал того
+ * же смысла. Обёртка `.kpi` несёт признак смысла для правил цвета ниже.
+ */
 .kpi {
   display: flex;
   flex-direction: column;
   gap: var(--spacingVerticalXS);
 }
 
-.kpi-label {
-  color: var(--colorNeutralForeground2);
-}
-
-.kpi-value {
+.result-profit {
   font-size: var(--fontSizeHero700);
   line-height: var(--lineHeightHero700);
   font-weight: var(--fontWeightSemibold);
@@ -1226,7 +1223,8 @@ button.primary:active:not(:disabled) {
 
 /*
  * Цвет дельты по смыслу — решение владельца по развилке Ж4, вариант Б, 11 сентября 2026 года. Цвет
- * берётся из признака, который дал счёт, а не из знака: рост доли рекламы — «хуже».
+ * берётся из признака, который дал счёт, а не из знака: рост доли рекламы — «хуже» (пример S11; доли рекламы
+ * среди показателей с куска S13, задача 6, нет — у трёх оставшихся рост — «лучше»).
  *   · «лучше» — зелёный `colorPaletteGreenForeground1` (green.shade10 / green.tint30). Единственное
  *     место зелёного на экране — это утверждает проверка чисел таблицы стилей;
  *   · «хуже» — красный `colorPaletteRedForeground3` (red.primary в светлой теме, red.tint30 в тёмной —
@@ -1254,57 +1252,33 @@ button.primary:active:not(:disabled) {
   color: var(--colorPaletteRedForeground3);
 }
 
-/* ——— Доли статей затрат ——— */
-
 /*
- * Доля статьи в обороте — под суммой, в той же ячейке: число «… % оборота» и полоска той же длины.
- * Рецепт — тот же, что у полосы доли честности (полоса прогресса Fluent, решение владельца по Г1 в
- * S10): дорожка `colorNeutralBackground6`, заливка `colorCompoundBrandBackground`. Светлый оттенок
- * бренда, как у вычитаний водопада, здесь не годится: к дорожке он дал бы около 1,2 : 1 — наш счёт,
- * та же беда, что у полосы доли во втором круге S10. `clamp` держит длину в пределах дорожки.
+ * Выводы — кусок S13. Смысл строки несут знак и слово; черта слева — второй канал того же смысла.
+ * Красная черта — только у тревоги. У «хорошо» черта нейтральная, как у «обычно»: зелёный на экране —
+ * только у дельты «лучше» (решение владельца Ж4); «хорошо» отличают знак ✓, слово и `data-kind`.
  */
-.cost-share {
-  display: block;
-  margin-top: var(--spacingVerticalXS);
-  color: var(--colorNeutralForeground3);
-  font-size: var(--fontSizeBase200);
-  line-height: var(--lineHeightBase200);
-  font-weight: var(--fontWeightRegular);
+.findings ul {
+  display: grid;
+  gap: var(--spacingVerticalS);
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.cost-bar {
-  display: block;
-  height: var(--spacingVerticalXS);
-  margin-top: var(--spacingVerticalXS);
-  background: var(--colorNeutralBackground6);
-  border-radius: var(--borderRadiusCircular);
-  overflow: hidden;
+.finding {
+  padding-left: var(--spacingHorizontalM);
+  border-left: var(--strokeWidthThick) solid var(--colorNeutralStroke1);
 }
 
-.cost-bar-fill {
-  display: block;
-  width: clamp(0%, calc(var(--cost-share) * 1%), 100%);
-  height: 100%;
-  background: var(--colorCompoundBrandBackground);
+.finding p {
+  margin: 0;
 }
 
-/* ——— Окупаемость рекламы ——— */
-
-/*
- * Окупаемость по обороту — крупным числом рядом с порогом, с которым её сравнивают (решение владельца
- * по В7). Title 2 (28 / 36, 600), как числа «Итога»: на вкладке «Деньги» крупных чисел три — прибыль,
- * маржа и она.
- */
-.payback-main {
-  font-size: var(--fontSizeHero700);
-  line-height: var(--lineHeightHero700);
-  font-weight: var(--fontWeightSemibold);
+.finding[data-kind='тревога'] {
+  border-left-color: var(--colorPaletteRedForeground3);
 }
 
-
-/* Строка об определениях — пояснение к числам, а не число: мелко и приглушённо, как у водопада. */
-.payback-note {
-  margin: var(--spacingVerticalM) 0 0;
+.finding-why {
   color: var(--colorNeutralForeground3);
   font-size: var(--fontSizeBase200);
   line-height: var(--lineHeightBase200);
@@ -1314,8 +1288,8 @@ button.primary:active:not(:disabled) {
  * Пометка подставленной себестоимости в строке товара — кусок S12, задача 2.
  *
  * Отдельной строкой под числом, а не рядом с ним: рядом она растянула бы столбец и увела бы числа
- * от правого края, а числа у нас стоят справа. Цвет — приглушённый текст, тот же, что у пояснения
- * окупаемости: это оговорка, а не тревога, и красный ей не положен — красный в этом проекте
+ * от правого края, а числа у нас стоят справа. Цвет — приглушённый текст, тот же, что был у пояснения
+ * окупаемости (пояснения на экране больше нет, кусок S12): это оговорка, а не тревога, и красный ей не положен — красный в этом проекте
  * означает отказ и плохое значение, и потраченный на оговорку он перестал бы значить это.
  *
  * Размер — Caption 1 (12 / 16), как у прочих пояснений экрана. Своих величин строка не заводит.
@@ -1328,8 +1302,9 @@ button.primary:active:not(:disabled) {
    * половиной таблицы: на узком снимке «Товаров» она не читалась целиком вовсе.
    *
    * **11rem — наш выбор, а не выписка из Fluent:** справочник ширины подписи в ячейке не называет.
-   * Взято по снимку узких «Товаров» — при мартовском тексте пометка укладывается в две строки и не
-   * делает колонку шире соседних. Денежного значения в пометке нет, поэтому возврат переноса
+   * Взято по снимку узких «Товаров»: при мартовском тексте пометка ложится в три строки, а колонка
+   * «Себестоимость» перестаёт быть шире всех прочих — на снимке при этом видна и колонка «Прибыль»,
+   * которой прежде за краем не было вовсе. Денежного значения в пометке нет, поэтому возврат переноса
    * ничего не рвёт; место со снятой защитой названо в списке проверки, как и положено.
    */
   max-width: 11rem;
@@ -1380,7 +1355,6 @@ button.primary:active:not(:disabled) {
   margin: 0;
   padding: 0;
   list-style: none;
-  grid-column: 2;
 }
 
 .daily-bars li {
@@ -1413,6 +1387,7 @@ button.primary:active:not(:disabled) {
 }
 
 .daily-ticks {
+  grid-column: 2;
   grid-row: 2;
   color: var(--colorNeutralForeground3);
   font-size: var(--fontSizeBase200);
@@ -1429,15 +1404,85 @@ button.primary:active:not(:disabled) {
   color: var(--colorNeutralForeground3);
 }
 
-/* ——— Неполнота ——— */
-
-.gaps > p {
-  color: var(--text-dim);
-  font-size: var(--fontSizeBase300);
-  line-height: var(--lineHeightBase300);
+/*
+ * Пунктир средней — кусок S13. Место — та же формула, что у края столбика дня, от той же шкалы:
+ * величина приходит из отчёта готовой. Подпись стоит над областью (задача 16b, ниже).
+ *
+ * Столбики и пунктир лежат в общей области `.daily-plot`: она занимает место списка столбиков в
+ * сетке ряда (колонка графика, строка высоты области), а сама — сетка из одной ячейки, чтобы список
+ * растянулся на всю её высоту, как прежде в сетке ряда. Ось стоит в соседней колонке, поэтому левый
+ * край пунктира — ноль, своей величины не заводится.
+ *
+ * Кусок S13, задача 16b: место в сетке ряда стоит у области, и только у неё. Прежде `grid-column: 2`
+ * оставался и у списка столбиков — внутри области он заводил вторую колонку, и столбики сжимались в
+ * правую половину, мимо подписей дней.
+ */
+.daily-plot {
+  position: relative;
+  display: grid;
+  grid-column: 2;
+  grid-row: 1;
 }
 
-.gaps ul {
+/*
+ * Подпись средней — кусок S13, задача 16b. Стоя у самой линии, подпись своим фоном закрывала верхушки
+ * столбиков, которые выше средней. Теперь элемент средней накрывает всю область, линию рисует его
+ * `::before` той же формулой и от тех же величин, а подпись стоит над областью, у правого края, — там,
+ * где столбиков нет. Связь подписи с линией держит отрезок того же пунктира перед текстом. Фон подписи —
+ * `colorNeutralBackground1` с тёмным значением (решение контролёра): линия не идёт по тексту ни в одной теме. Место над
+ * областью отведено отступом сетки ряда высотой строки подписи — тем же токеном.
+ */
+.daily-chart {
+  padding-top: var(--lineHeightBase200);
+}
+
+.daily-mean {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.daily-mean::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc((var(--mean-at) - var(--scale-from)) / (var(--scale-to) - var(--scale-from)) * 100%);
+  border-top: var(--strokeWidthThin) dashed var(--colorBrandStroke1);
+}
+
+.daily-mean-label {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  color: var(--colorNeutralForeground2);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+  white-space: nowrap;
+  background: var(--colorNeutralBackground1);
+}
+
+.daily-mean-label::before {
+  content: '';
+  display: inline-block;
+  width: var(--spacingHorizontalL);
+  margin-right: var(--spacingHorizontalS);
+  vertical-align: middle;
+  border-top: var(--strokeWidthThin) dashed var(--colorBrandStroke1);
+}
+
+.daily-note {
+  margin: var(--spacingVerticalS) 0 0;
+  color: var(--colorNeutralForeground3);
+  font-size: var(--fontSizeBase200);
+  line-height: var(--lineHeightBase200);
+}
+
+/* ——— Неполнота ——— */
+
+/* Кусок S13, задача 13: список на виду и список под раскрытием устроены одинаково. */
+.gaps-holes,
+.gaps-more ul {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1467,7 +1512,8 @@ button.primary:active:not(:disabled) {
  * текст: у однострочных соседей он прижат к верху рослой ячейки, и под ним остаётся дыра. Поэтому
  * текст ставится по середине ячейки, а не по её верху.
  */
-.gaps li {
+.gaps-holes li,
+.gaps-more li {
   display: flex;
   align-items: center;
   padding: var(--spacingVerticalXS) 0;
@@ -1503,7 +1549,8 @@ button.primary:active:not(:disabled) {
  * смыслового цвета к источнику:** тот же фильтр `grayscale(1)` движком браузера делает фон «Итога»
  * `rgb(94, 94, 94)` в светлой теме и `rgb(83, 83, 83)` в тёмной, и белый текст на нём — 6,48 : 1 и
  * 7,69 : 1; основной текст и подписи остаются при своих 15,52 : 1 и 6,19 : 1. Прежняя редакция
- * называла 5,83 и 6,29 — они были сняты на неверном смысловом цвете.
+ * называла 5,83 и 6,29 — они были сняты на неверном смысловом цвете. **Кусок S13:** карточки «Итог»
+ * на экране нет; замер этого абзаца снят на карточке S10–S12 и на одном экране не повторялся.
  *
  * Так на экране не осталось ни одного места, где приглушение делается прозрачностью.
  */
@@ -1677,6 +1724,20 @@ button.primary:active:not(:disabled) {
     overflow-x: auto;
   }
 
+  /*
+   * Кусок S13, задача 16b, решение контролёра. Колонки двух таблиц заданы долями (`col`) при
+   * `table-layout: fixed`, и уже этого порога доли сжимали колонки меньше их чисел: суммы наезжали на
+   * соседей. Ниже порога раскладка таблиц — по содержимому, как до задачи 12: ячейки не переносятся
+   * (`td` — `white-space: nowrap`), таблица шире карточки и прокручивается внутри неё.
+   *
+   * **Отступление, названное:** на узком экране колонки двух таблиц могут не стоять друг под другом —
+   * каждая таблица меряет свои числа. Держать их общей наименьшей шириной нечем: подходящей длины нет
+   * ни в шкалах, ни в исключениях проверки длин, а производная длина обходила бы эту проверку.
+   */
+  .items table {
+    table-layout: auto;
+  }
+
   .items-scroll {
     display: block;
     margin: 0 0 var(--spacingVerticalM);
@@ -1708,11 +1769,6 @@ button.primary:active:not(:disabled) {
     margin-bottom: var(--spacingVerticalXXXL);
   }
 
-  .row-two {
-    gap: var(--spacingVerticalXXXL);
-    margin-bottom: var(--spacingVerticalXXXL);
-  }
-
   /*
    * На узком экране пары разворачиваются в строки: подпись слева, число справа. Это и
    * единственная раскладка, которая тут читается, и ровно то, как владелец просил показывать
@@ -1740,27 +1796,24 @@ button.primary:active:not(:disabled) {
     line-height: var(--lineHeightBase300);
   }
 
-  .bottom-line dd,
-  .payback-main,
-  .kpi-value {
+  .result-profit {
     font-size: var(--fontSizeBase600);
     line-height: var(--lineHeightBase600);
   }
 
-  /* «Выручка» и «Затраты» на узком экране — одна под другой. */
-  .row-two {
-    flex-direction: column;
-  }
-
-  /* Полоса показателей на узком экране — по две карточки в ряд. */
-  .kpi-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Результат месяца на узком экране — прибыль над соседями, в одну колонку. */
+  .result {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /*
    * Водопад на узком экране: четыре колонки не помещают сумму вида «18 764,00 €». Строка ступени
    * становится двумя — подпись и сумма, под ними дорожка и доля. Вид тот же, направление то же.
    */
+  .waterfall-steps {
+    display: block;
+  }
+
   .waterfall-steps li {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
@@ -1913,4 +1966,4 @@ button.primary:active:not(:disabled) {
   --font: var(--fontFamilyBase);
 
                                                                                                                                                                                                                                                               
-  --page: 72rem;}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><div data-stale="false" class="numbers"><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01" data-empty="true">2026-01</a></li><li><a href="/?m=2026-02">2026-02</a></li><li><a href="/?m=2026-03" aria-current="page">2026-03</a></li></ul></nav><p class="report-read-at">Источники прочитаны по состоянию на 2026-09-11 07:47 UTC</p></header><nav class="tabs" aria-label="Разделы отчёта"><ul><li><a href="/?m=2026-03&amp;tab=glavnoe" aria-current="page">Главное</a></li><li><a href="/?m=2026-03&amp;tab=dengi">Деньги</a></li><li><a href="/?m=2026-03&amp;tab=tovary">Товары</a></li><li><a href="/?m=2026-03&amp;tab=kachestvo">Качество данных</a></li></ul></nav><section class="block kpis" aria-label="Показатели месяца"><ul class="kpi-list"><li class="kpi" data-verdict="хуже"><span class="kpi-label">Прибыль</span><span class="kpi-value">1 738,53 €</span><span class="kpi-delta">−163,61 € к 2026-02 · хуже</span></li><li class="kpi" data-verdict="хуже"><span class="kpi-label">Маржа от чистой выручки</span><span class="kpi-value">10,1 %</span><span class="kpi-delta">−2,7 п. п. к 2026-02 · хуже</span></li><li class="kpi" data-verdict="лучше"><span class="kpi-label">Чистая выручка</span><span class="kpi-value">17 277,04 €</span><span class="kpi-delta">+2 396,74 € к 2026-02 · лучше</span></li><li class="kpi" data-verdict="лучше"><span class="kpi-label">Доля рекламы от оборота</span><span class="kpi-value">23,6 %</span><span class="kpi-delta">−2,0 п. п. к 2026-02 · лучше</span></li></ul></section><section class="block waterfall"><h2>Куда ушли деньги</h2><p class="waterfall-largest">Съедает больше всего: себестоимость проданного · 32,1 % оборота</p><ol class="waterfall-steps" style="--scale-from:0.0;--scale-to:100.0"><li data-kind="итог"><span class="waterfall-label">Оборот</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:0.0;--step-size:100.0"></span></span><span class="waterfall-amount">18 764,00 €</span><span class="waterfall-share">100,0 % оборота</span></li><li data-kind="вычитание"><span class="waterfall-label">Скидки</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:97.7;--step-size:2.3"></span></span><span class="waterfall-amount">427,50 €</span><span class="waterfall-share">2,3 % оборота</span></li><li data-kind="вычитание"><span class="waterfall-label">Возвраты</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:92.1;--step-size:5.6"></span></span><span class="waterfall-amount">1 059,46 €</span><span class="waterfall-share">5,6 % оборота</span></li><li data-kind="итог"><span class="waterfall-label">Чистая выручка</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:0.0;--step-size:92.1"></span></span><span class="waterfall-amount">17 277,04 €</span><span class="waterfall-share">92,1 % оборота</span></li><li data-kind="вычитание"><span class="waterfall-label">Себестоимость проданного</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:59.9;--step-size:32.1"></span></span><span class="waterfall-amount">6 028,11 €</span><span class="waterfall-share">32,1 % оборота</span></li><li data-kind="вычитание"><span class="waterfall-label">Реклама</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:36.3;--step-size:23.6"></span></span><span class="waterfall-amount">4 431,37 €</span><span class="waterfall-share">23,6 % оборота</span></li><li data-kind="вычитание"><span class="waterfall-label">Комиссии платёжных систем</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:33.5;--step-size:2.8"></span></span><span class="waterfall-amount">526,12 €</span><span class="waterfall-share">2,8 % оборота</span></li><li data-kind="вычитание"><span class="waterfall-label">Постоянные расходы</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:9.3;--step-size:24.3"></span></span><span class="waterfall-amount">4 552,90 €</span><span class="waterfall-share">24,3 % оборота</span></li><li data-kind="итог"><span class="waterfall-label">Прибыль</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:0.0;--step-size:9.3"></span></span><span class="waterfall-amount">1 738,53 €</span><span class="waterfall-share">9,3 % оборота</span></li></ol><p class="waterfall-gap">Суммы ступеней округлены до цента по отдельности; сложенные, они расходятся с прибылью на 0,01 €.</p></section><section class="block daily"><h2>Чистая выручка по дням</h2><div class="daily-chart"><div class="daily-axis" aria-hidden="true"><span>1 216,78 €</span><span>0,00 €</span></div><ol class="daily-bars" style="--scale-from:0.0;--scale-to:100.0"><li aria-label="1 марта: 416,61 €"><span class="daily-bar" style="--day-from:0.0;--day-size:34.2"></span></li><li aria-label="2 марта: 381,00 €"><span class="daily-bar" style="--day-from:0.0;--day-size:31.3"></span></li><li aria-label="3 марта: 363,95 €"><span class="daily-bar" style="--day-from:0.0;--day-size:29.9"></span></li><li aria-label="4 марта: 688,62 €"><span class="daily-bar" style="--day-from:0.0;--day-size:56.6"></span></li><li aria-label="5 марта: 499,41 €"><span class="daily-bar" style="--day-from:0.0;--day-size:41.0"></span></li><li aria-label="6 марта: 750,37 €"><span class="daily-bar" style="--day-from:0.0;--day-size:61.7"></span></li><li aria-label="7 марта: 822,80 €"><span class="daily-bar" style="--day-from:0.0;--day-size:67.6"></span></li><li aria-label="8 марта: 421,06 €"><span class="daily-bar" style="--day-from:0.0;--day-size:34.6"></span></li><li data-empty="true" aria-label="9 марта: заказов не было"></li><li aria-label="10 марта: 384,55 €"><span class="daily-bar" style="--day-from:0.0;--day-size:31.6"></span></li><li aria-label="11 марта: 433,06 €"><span class="daily-bar" style="--day-from:0.0;--day-size:35.6"></span></li><li aria-label="12 марта: 447,01 €"><span class="daily-bar" style="--day-from:0.0;--day-size:36.7"></span></li><li aria-label="13 марта: 398,30 €"><span class="daily-bar" style="--day-from:0.0;--day-size:32.7"></span></li><li aria-label="14 марта: 452,00 €"><span class="daily-bar" style="--day-from:0.0;--day-size:37.1"></span></li><li aria-label="15 марта: 620,63 €"><span class="daily-bar" style="--day-from:0.0;--day-size:51.0"></span></li><li aria-label="16 марта: 317,20 €"><span class="daily-bar" style="--day-from:0.0;--day-size:26.1"></span></li><li aria-label="17 марта: 1 162,01 €"><span class="daily-bar" style="--day-from:0.0;--day-size:95.5"></span></li><li aria-label="18 марта: 486,62 €"><span class="daily-bar" style="--day-from:0.0;--day-size:40.0"></span></li><li aria-label="19 марта: 293,21 €"><span class="daily-bar" style="--day-from:0.0;--day-size:24.1"></span></li><li aria-label="20 марта: 969,55 €"><span class="daily-bar" style="--day-from:0.0;--day-size:79.7"></span></li><li aria-label="21 марта: 1 216,78 €"><span class="daily-bar" style="--day-from:0.0;--day-size:100.0"></span></li><li aria-label="22 марта: 556,91 €"><span class="daily-bar" style="--day-from:0.0;--day-size:45.8"></span></li><li aria-label="23 марта: 770,36 €"><span class="daily-bar" style="--day-from:0.0;--day-size:63.3"></span></li><li aria-label="24 марта: 623,57 €"><span class="daily-bar" style="--day-from:0.0;--day-size:51.2"></span></li><li aria-label="25 марта: 515,90 €"><span class="daily-bar" style="--day-from:0.0;--day-size:42.4"></span></li><li aria-label="26 марта: 314,70 €"><span class="daily-bar" style="--day-from:0.0;--day-size:25.9"></span></li><li aria-label="27 марта: 531,46 €"><span class="daily-bar" style="--day-from:0.0;--day-size:43.7"></span></li><li aria-label="28 марта: 528,70 €"><span class="daily-bar" style="--day-from:0.0;--day-size:43.5"></span></li><li aria-label="29 марта: 692,65 €"><span class="daily-bar" style="--day-from:0.0;--day-size:56.9"></span></li><li aria-label="30 марта: 701,90 €"><span class="daily-bar" style="--day-from:0.0;--day-size:57.7"></span></li><li aria-label="31 марта: 516,15 €"><span class="daily-bar" style="--day-from:0.0;--day-size:42.4"></span></li></ol><ol class="daily-ticks" aria-hidden="true"><li>1</li><li></li><li></li><li></li><li></li><li>6</li><li></li><li></li><li></li><li></li><li>11</li><li></li><li></li><li></li><li></li><li>16</li><li></li><li></li><li></li><li></li><li>21</li><li></li><li></li><li></li><li></li><li>26</li><li></li><li></li><li></li><li></li><li>31</li></ol></div></section></main></div></div><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>
+  --page: 72rem;}</style></head><body><form class="logout" action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit">Выйти</button></form><div class="panel"><div class="actions"><button type="submit" class="primary">Обновить данные</button></div><div data-stale="false" class="numbers"><main class="report"><header class="report-head"><h1>Nordic Pet — прибыль за 2026-03</h1><nav class="months"><ul><li><a href="/?m=2026-01" data-empty="true">2026-01</a></li><li><a href="/?m=2026-02">2026-02</a></li><li><a href="/?m=2026-03" aria-current="page">2026-03</a></li></ul></nav><p class="report-read-at">Источники прочитаны по состоянию на 2026-09-11 07:47 UTC</p></header><section class="block result" aria-label="Результат месяца"><div class="result-main"><h2>Прибыль</h2><p class="result-profit">1 738,53 €</p><span class="kpi" data-verdict="хуже"><span class="kpi-delta">−163,61 € к 2026-02 · хуже</span></span><p class="result-accuracy"><span class="result-approx">приблизительно</span>Посчитано по настоящей цене поставщика: 80,3 % · <a href="#kachestvo">что подставлено</a></p></div><dl class="result-stats"><dt>Чистая выручка</dt><dd>17 277,04 €<span class="kpi" data-verdict="лучше"><span class="kpi-delta">+2 396,74 € к 2026-02 · лучше</span></span></dd><dt>Маржа от чистой выручки</dt><dd>10,1 %<span class="kpi" data-verdict="хуже"><span class="kpi-delta">−2,7 п. п. к 2026-02 · хуже</span></span></dd><dt>Окупаемость рекламы по обороту</dt><dd>4,23 ×<span class="result-verdict" data-verdict="окупается">окупается · порог 1,75 ×</span></dd></dl></section><section class="block findings"><h2>Выводы</h2><ul><li class="finding" data-kind="хорошо"><p>✓ Реклама окупается: 4,23 × при пороге 1,75 ×.</p><p class="finding-why">Порог — наш счёт: 100 ÷ вклад с евро оборота, 57,1 %. Это итог по всей рекламе месяца, а не отдача от следующего вложенного евро.</p></li><li class="finding" data-kind="обычно"><p>Постоянные расходы 4 552,90 € съедают 72,4 % маржинального дохода.</p><p class="finding-why">Маржинальный доход — наш счёт: чистая выручка − себестоимость − реклама − комиссии, 6 291,44 €. Тревога — когда месяц в убытке: прибыль меньше нуля.</p></li><li class="finding" data-kind="тревога"><p>⚠ Прибыль приблизительная: у NP-011, NP-012 нет цены поставщика.</p><p class="finding-why">Их себестоимость подставлена запасными 40 %; по настоящей цене посчитано 80,3 % чистой выручки.</p></li></ul></section><section class="block waterfall"><h2>Куда ушли деньги</h2><ol class="waterfall-steps" style="--scale-from:0.0;--scale-to:100.0"><li data-kind="итог"><span class="waterfall-label">Чистая выручка</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:0.0;--step-size:100.0"></span></span><span class="waterfall-amount">17 277,04 €</span><span class="waterfall-share">100,0 % чистой выручки</span></li><li data-kind="вычитание"><span class="waterfall-label">Себестоимость проданного</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:65.1;--step-size:34.9"></span></span><span class="waterfall-amount">6 028,11 €</span><span class="waterfall-share">34,9 % чистой выручки</span></li><li data-kind="вычитание"><span class="waterfall-label">Реклама</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:39.5;--step-size:25.6"></span></span><span class="waterfall-amount">4 431,37 €</span><span class="waterfall-share">25,6 % чистой выручки</span></li><li data-kind="вычитание"><span class="waterfall-label">Комиссии платёжных систем</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:36.4;--step-size:3.0"></span></span><span class="waterfall-amount">526,12 €</span><span class="waterfall-share">3,0 % чистой выручки</span></li><li data-kind="итог"><span class="waterfall-label">Маржинальный доход</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:0.0;--step-size:36.4"></span></span><span class="waterfall-amount">6 291,44 €</span><span class="waterfall-share">36,4 % чистой выручки</span></li><li data-kind="вычитание"><span class="waterfall-label">Постоянные расходы</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:10.1;--step-size:26.4"></span></span><span class="waterfall-amount">4 552,90 €</span><span class="waterfall-share">26,4 % чистой выручки</span></li><li data-kind="итог"><span class="waterfall-label">Прибыль</span><span class="waterfall-track" aria-hidden="true"><span class="waterfall-bar" style="--step-from:0.0;--step-size:10.1"></span></span><span class="waterfall-amount">1 738,53 €</span><span class="waterfall-share">10,1 % чистой выручки</span></li></ol><p class="waterfall-gap">Скидки 427,50 € и возвраты 1 059,46 € сняты с оборота 18 764,00 € до этой шкалы.</p><p class="waterfall-gap">Суммы ступеней округлены до цента по отдельности; сложенные, они расходятся с прибылью на 0,01 €.</p></section><section class="block daily"><h2>Чистая выручка по дням</h2><div class="daily-chart"><div class="daily-axis" aria-hidden="true"><span>1 216,78 €</span><span>0,00 €</span></div><div class="daily-plot"><ol class="daily-bars" style="--scale-from:0.0;--scale-to:100.0"><li aria-label="1 марта: 416,61 €"><span class="daily-bar" style="--day-from:0.0;--day-size:34.2"></span></li><li aria-label="2 марта: 381,00 €"><span class="daily-bar" style="--day-from:0.0;--day-size:31.3"></span></li><li aria-label="3 марта: 363,95 €"><span class="daily-bar" style="--day-from:0.0;--day-size:29.9"></span></li><li aria-label="4 марта: 688,62 €"><span class="daily-bar" style="--day-from:0.0;--day-size:56.6"></span></li><li aria-label="5 марта: 499,41 €"><span class="daily-bar" style="--day-from:0.0;--day-size:41.0"></span></li><li aria-label="6 марта: 750,37 €"><span class="daily-bar" style="--day-from:0.0;--day-size:61.7"></span></li><li aria-label="7 марта: 822,80 €"><span class="daily-bar" style="--day-from:0.0;--day-size:67.6"></span></li><li aria-label="8 марта: 421,06 €"><span class="daily-bar" style="--day-from:0.0;--day-size:34.6"></span></li><li data-empty="true" aria-label="9 марта: заказов не было"></li><li aria-label="10 марта: 384,55 €"><span class="daily-bar" style="--day-from:0.0;--day-size:31.6"></span></li><li aria-label="11 марта: 433,06 €"><span class="daily-bar" style="--day-from:0.0;--day-size:35.6"></span></li><li aria-label="12 марта: 447,01 €"><span class="daily-bar" style="--day-from:0.0;--day-size:36.7"></span></li><li aria-label="13 марта: 398,30 €"><span class="daily-bar" style="--day-from:0.0;--day-size:32.7"></span></li><li aria-label="14 марта: 452,00 €"><span class="daily-bar" style="--day-from:0.0;--day-size:37.1"></span></li><li aria-label="15 марта: 620,63 €"><span class="daily-bar" style="--day-from:0.0;--day-size:51.0"></span></li><li aria-label="16 марта: 317,20 €"><span class="daily-bar" style="--day-from:0.0;--day-size:26.1"></span></li><li aria-label="17 марта: 1 162,01 €"><span class="daily-bar" style="--day-from:0.0;--day-size:95.5"></span></li><li aria-label="18 марта: 486,62 €"><span class="daily-bar" style="--day-from:0.0;--day-size:40.0"></span></li><li aria-label="19 марта: 293,21 €"><span class="daily-bar" style="--day-from:0.0;--day-size:24.1"></span></li><li aria-label="20 марта: 969,55 €"><span class="daily-bar" style="--day-from:0.0;--day-size:79.7"></span></li><li aria-label="21 марта: 1 216,78 €"><span class="daily-bar" style="--day-from:0.0;--day-size:100.0"></span></li><li aria-label="22 марта: 556,91 €"><span class="daily-bar" style="--day-from:0.0;--day-size:45.8"></span></li><li aria-label="23 марта: 770,36 €"><span class="daily-bar" style="--day-from:0.0;--day-size:63.3"></span></li><li aria-label="24 марта: 623,57 €"><span class="daily-bar" style="--day-from:0.0;--day-size:51.2"></span></li><li aria-label="25 марта: 515,90 €"><span class="daily-bar" style="--day-from:0.0;--day-size:42.4"></span></li><li aria-label="26 марта: 314,70 €"><span class="daily-bar" style="--day-from:0.0;--day-size:25.9"></span></li><li aria-label="27 марта: 531,46 €"><span class="daily-bar" style="--day-from:0.0;--day-size:43.7"></span></li><li aria-label="28 марта: 528,70 €"><span class="daily-bar" style="--day-from:0.0;--day-size:43.5"></span></li><li aria-label="29 марта: 692,65 €"><span class="daily-bar" style="--day-from:0.0;--day-size:56.9"></span></li><li aria-label="30 марта: 701,90 €"><span class="daily-bar" style="--day-from:0.0;--day-size:57.7"></span></li><li aria-label="31 марта: 516,15 €"><span class="daily-bar" style="--day-from:0.0;--day-size:42.4"></span></li></ol><div class="daily-mean" style="--mean-at:45.8;--scale-from:0.0;--scale-to:100.0"><span class="daily-mean-label">средняя 557,32 € по 31 дню месяца</span></div></div><ol class="daily-ticks" aria-hidden="true"><li>1</li><li></li><li></li><li></li><li></li><li>6</li><li></li><li></li><li></li><li></li><li>11</li><li></li><li></li><li></li><li></li><li>16</li><li></li><li></li><li></li><li></li><li>21</li><li></li><li></li><li></li><li></li><li>26</li><li></li><li></li><li></li><li></li><li>31</li></ol></div><p class="daily-note">Пунктир у дня — заказов в этот день не было; в среднюю такой день входит нулём.</p></section><section class="block items"><h2>Товары</h2><p class="items-summary">80 % валовой прибыли товаров дают 8 из 12 артикулов; в минусе — 0. Валовая прибыль товаров — выручка минус себестоимость, 11 248,93 €; это не прибыль месяца, 1 738,53 €.</p><p class="items-scroll">Таблица прокручивается вбок: за правым краем есть ещё колонки.</p><table><colgroup><col style="width:13%"/><col style="width:10%"/><col style="width:15%"/><col style="width:15%"/><col style="width:16%"/><col style="width:10%"/><col style="width:21%"/></colgroup><thead><tr><th scope="col">Артикул</th><th scope="col">Продано за вычетом возвратов</th><th scope="col">Чистая выручка</th><th scope="col">Себестоимость</th><th scope="col">Валовая прибыль</th><th>Маржа от чистой выручки</th><th>Доля в валовой прибыли товаров</th></tr></thead><tbody><tr><td>NP-004</td><td>58</td><td>2 778,30 €</td><td>1 135,20 €</td><td>1 643,10 €</td><td>59,1 %</td><td>14,6 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:14.6%"></span></span></td></tr><tr><td>NP-003</td><td>50</td><td>1 679,60 €</td><td>340,00 €</td><td>1 339,60 €</td><td>79,8 %</td><td>11,9 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:11.9%"></span></span></td></tr><tr><td>NP-009</td><td>36</td><td>2 070,90 €</td><td>770,40 €</td><td>1 300,50 €</td><td>62,8 %</td><td>11,6 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:11.6%"></span></span></td></tr><tr><td>NP-012</td><td>54</td><td>2 086,50 €</td><td>834,60 €<a class="substituted" href="#kachestvo">⚠ подставлена</a></td><td>1 251,90 €</td><td>60,0 %</td><td>11,1 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:11.1%"></span></span></td></tr><tr><td>NP-002</td><td>83</td><td>1 581,45 €</td><td>531,20 €</td><td>1 050,25 €</td><td>66,4 %</td><td>9,3 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:9.3%"></span></span></td></tr></tbody></table><details class="items-more"><summary>Показать все артикулы месяца — 12</summary><table><colgroup><col style="width:13%"/><col style="width:10%"/><col style="width:15%"/><col style="width:15%"/><col style="width:16%"/><col style="width:10%"/><col style="width:21%"/></colgroup><thead><tr><th scope="col">Артикул</th><th scope="col">Продано за вычетом возвратов</th><th scope="col">Чистая выручка</th><th scope="col">Себестоимость</th><th scope="col">Валовая прибыль</th><th>Маржа от чистой выручки</th><th>Доля в валовой прибыли товаров</th></tr></thead><tbody><tr><td>NP-010</td><td>62</td><td>1 444,80 €</td><td>514,60 €</td><td>930,20 €</td><td>64,4 %</td><td>8,3 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:8.3%"></span></span></td></tr><tr><td>NP-011</td><td>47</td><td>1 322,40 €</td><td>528,96 €<a class="substituted" href="#kachestvo">⚠ подставлена</a></td><td>793,44 €</td><td>60,0 %</td><td>7,1 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:7.1%"></span></span></td></tr><tr><td>NP-006</td><td>51</td><td>1 109,25 €</td><td>402,90 €</td><td>706,35 €</td><td>63,7 %</td><td>6,3 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:6.3%"></span></span></td></tr><tr><td>NP-008</td><td>58</td><td>904,00 €</td><td>272,60 €</td><td>631,40 €</td><td>69,8 %</td><td>5,6 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:5.6%"></span></span></td></tr><tr><td>NP-001</td><td>59</td><td>856,75 €</td><td>300,90 €</td><td>555,85 €</td><td>64,9 %</td><td>4,9 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:4.9%"></span></span></td></tr><tr><td>NP-007</td><td>74</td><td>723,69 €</td><td>192,40 €</td><td>531,29 €</td><td>73,4 %</td><td>4,7 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:4.7%"></span></span></td></tr><tr><td>NP-005</td><td>67</td><td>719,40 €</td><td>204,35 €</td><td>515,05 €</td><td>71,6 %</td><td>4,6 %<span class="items-bar" aria-hidden="true"><span class="items-bar-fill" style="--item-share:4.6%"></span></span></td></tr></tbody></table></details></section><section id="kachestvo" class="block quality"><h2>Качество данных</h2><p>Посчитано по настоящей цене поставщика (доля от чистой выручки): <strong class="share-value">80,3 %</strong></p><div class="share" aria-hidden="true"><div class="share-fill" style="--share:80.3%"></div></div><p>Без цены поставщика (запасные 40%): NP-011, NP-012</p><h3>Неполнота данных</h3><p>Сколько пустых ячеек и по каким адресам — по каждому виду дыры отдельно.</p><ul class="gaps-holes"><li>строки продаж без цены поставщика: 77 (NP-011, NP-012)</li></ul><details class="gaps-more"><summary>Показать все виды неполноты</summary><ul><li data-zero="true">скидки: 0</li><li data-zero="true">оборот: 0</li><li data-zero="true">возвраты без суммы: 0</li><li data-zero="true">возвраты, не попавшие в счёт: 0</li><li data-zero="true">возвращено больше, чем куплено: 0</li><li>строки продаж без цены поставщика: 77 (NP-011, NP-012)</li><li data-zero="true">ставки без процента или без фиксированной части: 0</li><li data-zero="true">заказы с разными способами оплаты: 0</li><li data-zero="true">постоянные расходы без суммы: 0</li><li data-zero="true">реклама без суммы: 0</li><li data-zero="true">дни рекламы без курса: 0</li></ul></details></section></main></div></div><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body></html>

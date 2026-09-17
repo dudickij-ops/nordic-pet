@@ -7,10 +7,9 @@ import {
   MONTH_DAILY,
   MONTH_DELTAS,
   MONTH_GAPS,
+  MONTH_ITEMS,
   MONTH_ITEMS_EXTRA,
-  ПОРЯДОК_ТОВАРОВ_ПО_УМОЛЧАНИЮ,
-  запросТоваров,
-  type ПорядокТоваров,
+  MONTH_FINDINGS,
   MONTH_PAYBACK,
   MONTH_TOTALS,
   MONTH_WATERFALL,
@@ -171,6 +170,8 @@ export type MonthReport = {
     profitSharePct?: Maybe
     /** Прибыль строки строго меньше нуля — тот же признак берёт счётчик над таблицей. */
     loss?: boolean
+    /** Строка входит в первую пятёрку по валовой прибыли — кусок S13, решение владельца Э4. */
+    inTop?: boolean
     /**
      * Себестоимость строки подставлена запасными процентами — кусок S12, задача 2.
      *
@@ -181,7 +182,13 @@ export type MonthReport = {
     подстановка?: 'вся' | 'часть'
   }>
   honesty: { sharePct: Maybe; skusWithoutPrice: string[] }
-  gaps: Array<{ kind: string; count: number; at: string[] }>
+  gaps: Array<{
+    kind: string
+    count: number
+    at: string[]
+    /** Признак «есть дыры» — кусок S13, задача 5: то же самое `count > 0`, готовое из SQL. */
+    hasHoles?: boolean
+  }>
   /**
    * Сырьё новее фактов — числа на экране отстали (задача 5 куска S8).
    *
@@ -195,8 +202,10 @@ export type MonthReport = {
    */
   устарели?: boolean
   /**
-   * Водопад «куда ушли деньги» — кусок S11, шаг 1: девять ступеней из строки итогов месяца,
-   * доли от оборота и края столбиков — готовыми строками из SQL (`MONTH_WATERFALL`).
+   * Водопад «куда ушли деньги» — кусок S11, шаг 1: доли и края столбиков — готовыми строками из SQL
+   * (`MONTH_WATERFALL`).
+   *
+   * Кусок S13: семь ступеней, доли и края — от чистой выручки (в S11–S12 — от оборота).
    *
    * Необязательное по той же причине, что `устарели`: отчёты, собранные руками в принятых
    * проверках прошлых кусков, о нём не знают. Нет поля — сказать нечего, блок не рисуется.
@@ -209,8 +218,6 @@ export type MonthReport = {
       amount: Maybe
       sharePct: Maybe
       basePct: Maybe
-      /** Самое большое вычитание — признак из того же запроса; при равенстве до цента — у всех равных. */
-      largest?: boolean
     }>
     scaleLowPct: Maybe
     scaleHighPct: Maybe
@@ -243,6 +250,17 @@ export type MonthReport = {
     bottomNet: Maybe
     /** В месяце были заказы. Нет — вместо графика слова «нет данных за месяц». */
     hasOrders: boolean
+    /**
+     * Средняя по дням — кусок S13, решение владельца Э7: чистая выручка месяца ÷ все дни месяца, до
+     * цента. Дни без заказов входят в делитель. Пусто — в месяце нет заказов.
+     */
+    avgNet?: Maybe
+    /** Место средней на шкале ряда — тем же способом, что края столбиков. */
+    avgPct?: Maybe
+    /** Подпись базы готовой строкой: «по 31 дню месяца», «по 30 дням месяца». Пусто — ряда нет. */
+    avgBase?: string | null
+    /** В ряду есть дни без заказов. */
+    hasEmptyDays?: boolean
   }
   /**
    * Строка над таблицей товаров — кусок S11, шаг 4: база долей (сумма прибыли строк), сколько
@@ -267,14 +285,27 @@ export type MonthReport = {
     breakevenNote: string | null
   }
   /**
+   * Признаки выводов — кусок S13. Готовыми из SQL (`MONTH_FINDINGS`); экран выбирает слова по ним и
+   * ничего не сравнивает. Необязательное по той же причине, что `устарели`.
+   */
+  findings?: {
+    /** Пусто — рекламы за месяц нет, или окупаемость не посчитана, или нет оборота. */
+    adsVerdict: 'окупается' | 'не окупается' | 'порога нет' | null
+    marginIncome: Maybe
+    /** Пусто, когда маржинальный доход не положителен. */
+    fixedSharePct: Maybe
+    loss: boolean
+    approximate: boolean
+  }
+  /**
    * Время чтения источников — кусок S11, шаг 6: готовой строкой `ГГГГ-ММ-ДД ЧЧ:ММ UTC` из SQL
    * (`SOURCES_READ_AT`). `null` — отметки нет, и на экране слова; поля нет вовсе — строка не
    * рисуется (прежние раскладки о нём не знают, как и об `устарели`).
    */
   sourcesReadAt?: string | null
   /**
-   * Полоса показателей — кусок S11, шаг 7: четыре показателя и дельты к предыдущему календарному
-   * месяцу, готовыми строками из SQL (`MONTH_DELTAS`). Дельта — со знаком; `verdict` — «лучше»,
+   * Полоса показателей — кусок S11, шаг 7; с куска S13 (задача 6) — три показателя, доли рекламы
+   * нет, — и дельты к предыдущему календарному месяцу, готовыми строками из SQL (`MONTH_DELTAS`). Дельта — со знаком; `verdict` — «лучше»,
    * «хуже», «без изменений» по признаку «рост — это хорошо» из слоя счёта. `hasBase` ложно — у
    * прошлого месяца нет заказов, и дельты пусты у всех разом; значения стоят всегда.
    */
@@ -388,12 +419,6 @@ export function подстановкаСтроки(
 export async function monthlyReport(
   month?: string,
   deps: Partial<MetricsDeps> = {},
-  /**
-   * Порядок таблицы товаров — кусок S12, задача 1. Доводом, а не полем отчёта: порядок приходит
-   * из адреса страницы и живёт ровно столько, сколько один заход. Умолчание здесь одно на весь
-   * проект — и экран, и команда метрик берут его отсюда, второго определения нет.
-   */
-  порядокТоваров: ПорядокТоваров = ПОРЯДОК_ТОВАРОВ_ПО_УМОЛЧАНИЮ,
 ): Promise<MonthReport> {
   if (month !== undefined && !MONTH_SHAPE.test(month)) {
     throw new ОтказОтчёта(
@@ -444,13 +469,14 @@ export async function monthlyReport(
     const dayParam = resolvedMonth === null ? null : `${resolvedMonth}-01`
 
     const totalsResult = await client.query(MONTH_TOTALS, [dayParam])
-    const itemsResult = await client.query(запросТоваров(порядокТоваров), [dayParam])
+    const itemsResult = await client.query(MONTH_ITEMS, [dayParam])
     const gapsResult = await client.query(MONTH_GAPS, [dayParam])
     const waterfallResult = await client.query(MONTH_WATERFALL, [dayParam])
     const dailyResult = await client.query(MONTH_DAILY, [dayParam])
     const paybackResult = await client.query(MONTH_PAYBACK, [dayParam])
     const itemsExtraResult = await client.query(MONTH_ITEMS_EXTRA, [dayParam])
     const deltasResult = await client.query(MONTH_DELTAS, [dayParam])
+    const findingsResult = await client.query(MONTH_FINDINGS, [dayParam])
     // Новые колонки строки — по артикулу; слой метрик их не считает, а только прикладывает.
     const itemsExtra = new Map(itemsExtraResult.rows.map((row) => [row.sku as string, row]))
     const itemsFirst = itemsExtraResult.rows[0]
@@ -470,6 +496,7 @@ export async function monthlyReport(
       kind: row.kind as string,
       count: row.count as number,
       at: row.at as string[],
+      hasHoles: row.has_holes === true,
     }))
     const skusWithoutPrice = gaps.find((g) => g.kind === NO_PRICE_GAP)?.at ?? []
 
@@ -499,6 +526,7 @@ export async function monthlyReport(
         marginPct: (itemsExtra.get(item.sku)?.margin_pct ?? null) as string | null,
         profitSharePct: (itemsExtra.get(item.sku)?.profit_share_pct ?? null) as string | null,
         loss: itemsExtra.get(item.sku)?.loss === true,
+        inTop: itemsExtra.get(item.sku)?.in_top === true,
       })),
       itemsSummary:
         itemsFirst === undefined
@@ -531,7 +559,6 @@ export async function monthlyReport(
           amount: row.amount as string | null,
           sharePct: row.share_pct as string | null,
           basePct: row.base_pct as string | null,
-          largest: row.largest === true,
         })),
         scaleLowPct: (waterfallResult.rows[0]?.scale_low_pct ?? null) as string | null,
         scaleHighPct: (waterfallResult.rows[0]?.scale_high_pct ?? null) as string | null,
@@ -552,12 +579,29 @@ export async function monthlyReport(
         topNet: (dailyResult.rows[0]?.top_net ?? null) as string | null,
         bottomNet: (dailyResult.rows[0]?.bottom_net ?? null) as string | null,
         hasOrders: dailyResult.rows[0]?.month_has_orders === true,
+        avgNet: (dailyResult.rows[0]?.avg_net ?? null) as string | null,
+        avgPct: (dailyResult.rows[0]?.avg_pct ?? null) as string | null,
+        // Ряда нет (месяца нет) — подписи базы тоже нет: пусто, а не `undefined` (задача 17, М4).
+        avgBase: (dailyResult.rows[0]?.avg_base ?? null) as string | null,
+        hasEmptyDays: dailyResult.rows[0]?.has_empty_days === true,
       },
       payback: {
         roasByProfit: (paybackResult.rows[0]?.roas_by_profit ?? null) as string | null,
         contributionPct: (paybackResult.rows[0]?.contribution_pct ?? null) as string | null,
         breakevenRoas: (paybackResult.rows[0]?.breakeven_roas ?? null) as string | null,
         breakevenNote: (paybackResult.rows[0]?.breakeven_note ?? null) as string | null,
+      },
+      findings: {
+        adsVerdict: (findingsResult.rows[0]?.ads_verdict ?? null) as
+          | 'окупается'
+          | 'не окупается'
+          | 'порога нет'
+          | null,
+        // Выдача признаков пуста — суммы нет: пусто, а не `undefined` (задача 17, правка по проверке правок, М-2).
+        marginIncome: (findingsResult.rows[0]?.margin_income ?? null) as string | null,
+        fixedSharePct: (findingsResult.rows[0]?.fixed_share_pct ?? null) as string | null,
+        loss: findingsResult.rows[0]?.loss === true,
+        approximate: findingsResult.rows[0]?.approximate === true,
       },
     }
   }, { ...deps, announce })

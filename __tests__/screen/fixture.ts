@@ -46,20 +46,23 @@ export const ПЕРЕПИСЬ: MonthReport = {
     { sku: 'NP-202', units: '82', net: '4040.40', cogs: '5050.50', profit: '6060.60', marginPct: '48.8', profitSharePct: '66.6', подстановка: 'вся' as const },
   ],
   honesty: { sharePct: '78.9', skusWithoutPrice: ['NP-101', 'NP-202'] },
-  gaps: ОДИННАДЦАТЬ.map((kind, i) => ({ kind, count: i + 1, at: [] })),
-  // Кусок S11, шаг 1. Суммы ступеней нарочно не совпадают с итогами выше: разметка, напечатавшая
-  // колонку итогов вместо суммы ступени, покраснит перепись. Доли все числами: пустая доля
-  // напечатала бы «нет данных», и эти слова пришли бы проверке полосы честности от водопада.
+  // Кусок S13, задача 5: признак «есть дыры» — здесь он равен `count > 0`, а не выдуман сам по себе.
+  // У всех одиннадцати видов здесь счёт от 1 до 11 (см. выше — «ни одно не выводится из соседей»
+  // об этом не говорит: счёт видов дыр как раз последовательный по замыслу самой раскладки), то
+  // есть ненулевой у каждого, поэтому здесь `hasHoles: true` стоит у всех одиннадцати.
+  gaps: ОДИННАДЦАТЬ.map((kind, i) => ({ kind, count: i + 1, at: [], hasHoles: i + 1 > 0 })),
+  // Кусок S11, шаг 1; кусок S13, задача 1 — семь ступеней от чистой выручки, маржинальный доход
+  // пятым, `largest` убран. Суммы ступеней нарочно не совпадают с итогами выше: разметка,
+  // напечатавшая колонку итогов вместо суммы ступени, покраснит перепись. Доли все числами:
+  // пустая доля напечатала бы «нет данных», и эти слова пришли бы проверке полосы честности от водопада.
   waterfall: {
     steps: [
-      { key: 'gross', kind: 'итог', amount: '1212.12', sharePct: '91.1', basePct: '0.0' },
-      { key: 'discounts', kind: 'вычитание', amount: '1313.13', sharePct: '12.2', basePct: '78.9' },
-      { key: 'refunds', kind: 'вычитание', amount: '1414.14', sharePct: '13.3', basePct: '65.6' },
       { key: 'net', kind: 'итог', amount: '1515.15', sharePct: '84.4', basePct: '0.0' },
       { key: 'cogs', kind: 'вычитание', amount: '1616.16', sharePct: '15.5', basePct: '68.9' },
       { key: 'ads', kind: 'вычитание', amount: '1717.17', sharePct: '16.6', basePct: '52.3' },
       { key: 'fees', kind: 'вычитание', amount: '1818.18', sharePct: '17.7', basePct: '34.6' },
-      { key: 'fixed', kind: 'вычитание', amount: '1919.19', sharePct: '18.8', basePct: '15.8', largest: true },
+      { key: 'margin_income', kind: 'итог', amount: '2020.20', sharePct: '20.2', basePct: '0.0' },
+      { key: 'fixed', kind: 'вычитание', amount: '1919.19', sharePct: '18.8', basePct: '15.8' },
       { key: 'profit', kind: 'итог', amount: '2121.21', sharePct: '19.9', basePct: '0.0' },
     ],
     scaleLowPct: '0.0',
@@ -83,15 +86,22 @@ export const ПЕРЕПИСЬ: MonthReport = {
     topNet: '979.79',
     bottomNet: '0.00',
     hasOrders: true,
+    avgNet: '271.83',
+    avgPct: '41.9',
+    avgBase: 'по 31 дню месяца',
+    hasEmptyDays: true,
   },
   // Кусок S11, шаг 3. Окупаемость: числа не выводятся из итогов раскладки нарочно.
   // Кусок S11, шаг 4. Строка над таблицей: числа не выводятся из строк раскладки нарочно.
   itemsSummary: { productsProfit: '9090.90', skusTotal: 2, skusFor80: 2, negativeCount: 0 },
   payback: { roasByProfit: '0.31', contributionPct: '43.2', breakevenRoas: '2.31', breakevenNote: null },
+  // Кусок S13, задача 2. Признаки выводов: числа не выводятся из раскладки нарочно.
+  findings: { adsVerdict: 'окупается', marginIncome: '3141.59', fixedSharePct: '64.2', loss: false, approximate: true },
   // Кусок S11, шаг 6. Строка готовая, как из SQL; ни с одним числом раскладки не совпадает.
   sourcesReadAt: '2026-04-02 07:15 UTC',
   // Кусок S11, шаг 7. Значения нарочно не совпадают с итогами и с долей ступени рекламы выше: разметка,
   // напечатавшая колонку итогов вместо значения полосы, покраснит перепись. Смысл дельт — из поля.
+  // Кусок S13, задача 6: показателей в полосе три — доля рекламы уходит с экрана.
   kpis: {
     prevMonth: '2026-02',
     hasBase: true,
@@ -99,7 +109,6 @@ export const ПЕРЕПИСЬ: MonthReport = {
       { key: 'profit', unit: 'eur', value: '2323.23', delta: '+141.41', verdict: 'лучше' },
       { key: 'margin', unit: 'pp', value: '34.5', delta: '-2.7', verdict: 'хуже' },
       { key: 'net', unit: 'eur', value: '2424.24', delta: '+151.51', verdict: 'лучше' },
-      { key: 'ad_share', unit: 'pp', value: '25.6', delta: '+1.9', verdict: 'хуже' },
     ],
   },
 }

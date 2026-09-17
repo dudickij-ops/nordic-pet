@@ -35,7 +35,6 @@ describe('разделение блоков на узком экране', () =>
   test('зазор на узком экране больше обычного', () => {
     const запрос = узкийЗапрос()
     expect(запрос).toContain('margin-bottom: var(--spacingVerticalXXXL);')
-    expect(запрос).toContain('gap: var(--spacingVerticalXXXL);')
     // Обычный зазор — `--gap`, то есть `--spacingVerticalL`. Узкий обязан быть другим и большим.
     expect(СТИЛИ).toContain('--gap: var(--spacingVerticalL);')
     expect(СТИЛИ).toContain('--spacingVerticalXXXL: 32px;')

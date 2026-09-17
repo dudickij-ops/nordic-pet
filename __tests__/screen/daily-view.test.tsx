@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 
 import { Dashboard } from '@/app/page'
+import { money } from '@/lib/metrics/format'
 import type { MonthReport } from '@/lib/metrics/report'
 import { ПЕРЕПИСЬ } from './fixture.ts'
 
@@ -105,4 +106,41 @@ test('каждый день берёт свой край, а ряд — свои
   const ряд = блок(разметка).replace(/\s/g, '')
   expect(ряд.match(/--day-from:[^;"]*/g)).toEqual(['--day-from:-12.5', '--day-from:-3.0'])
   expect(ряд).toContain('<olclass="daily-bars"style="--scale-from:-20.0;--scale-to:80.0"')
+})
+
+/**
+ * Пунктир средней — кусок S13, задача 11. Место и подпись — готовые поля отчёта: доля средней на той же
+ * шкале, что столбики, сумма и база словами. Строка о пустых днях — только по признаку отчёта.
+ */
+test('пунктир средней стоит на той же величине, что в отчёте, и подпись называет базу', () => {
+  const html = renderToStaticMarkup(<Dashboard report={ПЕРЕПИСЬ} />)
+  expect(html.replace(/\s/g, '')).toContain(`--mean-at:${ПЕРЕПИСЬ.daily!.avgPct}`)
+  expect(html).toContain(`средняя ${money(ПЕРЕПИСЬ.daily!.avgNet!).replace(/ €$/, '\u00A0€')} ${ПЕРЕПИСЬ.daily!.avgBase}`)
+})
+
+test('строка о пустых днях — только по признаку', () => {
+  const есть = renderToStaticMarkup(<Dashboard report={ПЕРЕПИСЬ} />)
+  expect(есть).toContain('в среднюю такой день входит нулём')
+  const нет = renderToStaticMarkup(<Dashboard report={{ ...ПЕРЕПИСЬ, daily: { ...ПЕРЕПИСЬ.daily!, hasEmptyDays: false } }} />)
+  expect(нет).not.toContain('в среднюю такой день входит нулём')
+})
+
+test('средней нет — пунктира и подписи нет', () => {
+  const html = renderToStaticMarkup(<Dashboard report={{ ...ПЕРЕПИСЬ, daily: { ...ПЕРЕПИСЬ.daily!, avgNet: null, avgPct: null } }} />)
+  expect(html).not.toContain('daily-mean')
+})
+
+/**
+ * Пределы шкалы у пунктира — кусок S13, задача 11, решение контролёра. Переменные шкалы стоят и на списке
+ * столбиков, и на пунктире (пунктир не может жить внутри `ol`): это обход, и сторожится он здесь. Пределы
+ * ряда отличаются от пределов водопада и от нуля, средняя — от обоих краёв.
+ */
+test('пунктир средней берёт те же пределы шкалы, что столбики ряда', () => {
+  const ряд = блок(
+    сРядом({ ...РЯД, scaleLowPct: '-20.0', scaleHighPct: '80.0', avgPct: '30.0', avgNet: '123.45' }),
+  ).replace(/\s/g, '')
+  const пунктир = ряд.match(/<divclass="daily-mean"style="([^"]*)"/)?.[1]
+  const столбики = ряд.match(/<olclass="daily-bars"style="([^"]*)"/)?.[1]
+  expect(пунктир).toBe('--mean-at:30.0;--scale-from:-20.0;--scale-to:80.0')
+  expect(столбики).toBe('--scale-from:-20.0;--scale-to:80.0')
 })

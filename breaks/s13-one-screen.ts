@@ -1,0 +1,760 @@
+import type { Break } from './types.ts'
+
+/**
+ * Список сломов куска S13 — один экран: сколько магазин заработал на самом деле.
+ *
+ * Набор проверок у каждого слома — весь `npm test`. Перепись экрана снимает весь видимый текст по
+ * порядку, поэтому слом разметки красит и её — это объявляется у каждого такого слома.
+ */
+
+const ПЕРЕПИСЬ = 'перепись экрана: весь видимый текст, по порядку и без единой потери'
+const ПЕРЕПИСЬ_ПРИЧИНА = 'перепись снимает весь видимый текст по порядку, а слом его меняет'
+
+/*
+ * Проверки генератора снимков — задача 14, часть B, решение контролёра. Генератор сверяет с эталоном побайтно
+ * разметку тела каждой страницы; таблица стилей в сверку не входит. Модель: слом, меняющий разметку
+ * мартовской раскладки снимков (`docs/screens/fixture.ts`, состояние `obychnyy`), красит полный набор и пять
+ * проверок режима пар; если он меняет видимый текст выше строки оборота «18 764,00 €» (шапка, результат,
+ * выводы, ступени каскада), краснеет и проверка отказа «разметка разошлась» — её отказ называет первую
+ * разошедшуюся строку, и это уже не строка оборота. Слом, не меняющий разметку ни одной раскладки снимков,
+ * генератора не красит. Это наш вывод из чтения генератора и его проверок; наблюдением его сделает прогон
+ * задачи 17.
+ */
+const ГЕН_ПОЛНЫЙ = 'генератор собирает полный набор и сверяет все четырнадцать страниц'
+const ГЕН_ВСЕ = [
+  'генератор собирает снимки на настоящем пути',
+  ГЕН_ПОЛНЫЙ,
+  'генератор отказывает, когда картинка не оказалась на диске',
+  'генератор отказывает, когда страница свёрстана не на запрошенной ширине',
+  'генератор отказывает, когда замер ширины не удался',
+  'генератор отказывает, когда светлая и тёмная картинки совпали',
+]
+const ГЕН_ПРИЧИНА =
+  'слом меняет разметку мартовской раскладки снимков, а режим пар и полный набор сверяют её с эталоном побайтно'
+const генВсе = () => ГЕН_ВСЕ.map((name) => ({ name, why: ГЕН_ПРИЧИНА }))
+const РАЗОШЛАСЬ = {
+  name: 'генератор отказывает, когда разметка разошлась с эталоном',
+  why: 'слом меняет видимый текст выше строки оборота «18 764,00 €», и отказ называет первой разошедшейся другую строку',
+}
+
+export const BREAKS: Break[] = [
+  {
+    id: 'waterfall-base-gross',
+    claim: 'вернуть базу долей каскада к обороту',
+    mustRedden: 'доли и края ступеней — от чистой выручки',
+    file: 'lib/metrics/sql.ts',
+    find: "select case when t.net::numeric > 0 then t.net::numeric end as denom,",
+    replace: "select case when t.gross::numeric > 0 then t.gross::numeric end as denom,",
+    alsoRedden: [
+      { name: 'чистая выручка не положительна — долей и краёв нет, суммы стоят', why: 'при обороте больше нуля доли появляются и при нулевой чистой выручке' },
+      // Задача 17, правка по итоговой проверке (И3): замечено рецензентом чтением.
+      { name: 'три итога водопада — от нуля; отрицательная прибыль идёт вниз', why: 'доля прибыли −100 считается от оборота 1000, а не от чистой выручки 850: −10,0 вместо −11,8' },
+      // Задача 17: проверка М6 дописана после слома и читает те же пределы шкалы.
+      { name: 'чистая выручка не положительна — пределов шкалы нет', why: 'при обороте больше нуля делитель есть и при чистой выручке не больше нуля, и пределы шкалы появляются' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'waterfall-scale-without-base',
+    // Задача 17, правка по итоговой проверке (М6).
+    claim: 'давать нижний предел шкалы каскада и при чистой выручке не больше нуля',
+    mustRedden: 'чистая выручка не положительна — пределов шкалы нет',
+    file: 'lib/metrics/sql.ts',
+    find: 'round(least(0, min(least(s.edge_from, s.edge_to)) over ()) / b.denom * 100, 1)::text',
+    replace: 'round(least(0, min(least(s.edge_from, s.edge_to)) over ()) / coalesce(b.denom, 1) * 100, 1)::text',
+    tests: 'все',
+  },
+  {
+    id: 'margin-income-own-expression',
+    claim: 'посчитать маржинальный доход из прибыли и постоянных, а не разностью показанных сумм',
+    mustRedden: 'маржинальный доход — разность показанных сумм',
+    alsoRedden: [
+      // Кусок S13, задача 17: объявлено по выводу первого сплошного прогона (`docs/сверка/прогон-1/s13-one-screen.txt`).
+      { name: 'без строк рекламы ступень рекламы пуста, маржинальный доход считается с нулём', why: 'она утверждает сумму маржинального дохода на месяце без рекламы, а слом считает её из прибыли и постоянных' },
+    ],
+    file: 'lib/metrics/sql.ts',
+    find: '(5, \'margin_income\', \'итог\',      m.mi,             0::numeric,      m.mi),',
+    replace: '(5, \'margin_income\', \'итог\',      t.profit::numeric + t.fixed::numeric, 0::numeric, m.mi),',
+    tests: 'все',
+  },
+  {
+    id: 'waterfall-share-says-gross',
+    claim: 'назвать базу доли на экране оборотом',
+    mustRedden: 'у каждой ступени названа база доли — чистая выручка',
+    file: 'app/page.tsx',
+    find: '`${percent(ступень.sharePct)} чистой выручки`',
+    replace: '`${percent(ступень.sharePct)} оборота`',
+    alsoRedden: [
+      { name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ,
+      // Кусок S13, задача 17: объявлено по выводу первого сплошного прогона (`docs/сверка/прогон-1/s13-one-screen.txt`).
+      { name: 'столбик ступени берёт ту же долю и тот же край, что напечатаны', why: 'она читает напечатанный текст доли ступени — «37,5 % чистой выручки», а слом пишет «оборота»' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'ads-verdict-strict',
+    claim: 'считать окупаемость, равную порогу, неокупившейся',
+    mustRedden: 'реклама: окупаемость, равная порогу, — «окупается»',
+    file: 'lib/metrics/sql.ts',
+    find: "when s.roas >= pb.breakeven_roas::numeric then 'окупается'",
+    replace: "when s.roas > pb.breakeven_roas::numeric then 'окупается'",
+    tests: 'все',
+  },
+  {
+    id: 'ads-verdict-without-ads',
+    claim: 'давать признак рекламы месяцу без строк рекламы',
+    mustRedden: 'реклама: строк рекламы нет, окупаемость пуста или оборота нет — признака нет',
+    file: 'lib/metrics/sql.ts',
+    find: 'select case when not cs.has_ads or s.roas is null or pb.contribution_pct is null then null',
+    replace: 'select case when s.roas is null or pb.contribution_pct is null then null',
+    tests: 'все',
+  },
+  {
+    // Задача 17, решение владельца по И6: заменяет `loss-from-unrounded` — правила «от доли» больше нет.
+    id: 'loss-from-fixed-share',
+    claim: 'ставить убыток по доле постоянных от 100 % и неположительному маржинальному доходу, а не по прибыли',
+    mustRedden: 'убыток — по показанной прибыли, а не по доле: 100,0 % при прибыли +0,10 — нет',
+    file: 'lib/metrics/sql.ts',
+    find: '(s.profit < 0)                             as loss,',
+    replace: '(s.mi <= 0 or s.fixed_share >= 100)        as loss,',
+    alsoRedden: [
+      { name: 'убыток: прибыль −0,01 — да, ровно 0,00 — нет', why: 'при прибыли 0,00 доля постоянных показана 100,0 %, и правило «от доли» ставит убыток' },
+      { name: 'убыток — по показанной прибыли, а не по разности «МД − постоянные»', why: 'при постоянных 200,01 и МД 200,00 доля показана 100,0 %, и правило «от доли» ставит убыток при прибыли 0,00' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'loss-from-income-minus-fixed',
+    // Задача 17, правка по проверке правок (И-1): отменённое владельцем правило — убыток по разности показанных сумм.
+    claim: 'ставить убыток по разности «маржинальный доход − постоянные», а не по показанной прибыли',
+    mustRedden: 'убыток — по показанной прибыли, а не по разности «МД − постоянные»',
+    file: 'lib/metrics/sql.ts',
+    find: '(s.profit < 0)                             as loss,',
+    replace: '(s.mi - s.fixed < 0)                       as loss,',
+    tests: 'все',
+  },
+  {
+    // Задача 17, решение владельца по И6: заменяет `loss-misses-nonpositive-income` — признак больше не
+    // смотрит на маржинальный доход; край правила теперь ноль прибыли.
+    id: 'loss-at-zero-profit',
+    claim: 'ставить убыток и при прибыли ровно ноль',
+    mustRedden: 'убыток: прибыль −0,01 — да, ровно 0,00 — нет',
+    file: 'lib/metrics/sql.ts',
+    find: '(s.profit < 0)                             as loss,',
+    replace: '(s.profit <= 0)                            as loss,',
+    alsoRedden: [
+      { name: 'убыток — по показанной прибыли, а не по разности «МД − постоянные»', why: 'её вторая половина — прибыль ровно 0,00' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'approximate-at-hundred',
+    claim: 'называть прибыль приблизительной и при доле ровно 100 %',
+    mustRedden: 'приблизительная: ниже 100 % — да, ровно 100 % и без доли — нет',
+    file: 'lib/metrics/sql.ts',
+    find: 'coalesce(s.honest < 100, false)            as approximate',
+    replace: 'coalesce(s.honest <= 100, false)           as approximate',
+    tests: 'все',
+  },
+  {
+    id: 'mean-over-order-days',
+    claim: 'делить на дни с заказами, а не на все дни месяца',
+    mustRedden: 'средняя — чистая выручка ÷ все дни месяца, дни без заказов в делителе',
+    file: 'lib/metrics/sql.ts',
+    find: 'round(sum(bd.net) / count(*), 2)                as avg_net',
+    replace: 'round(sum(bd.net) / count(bd.day), 2)          as avg_net',
+    tests: 'все',
+  },
+  {
+    id: 'mean-base-word',
+    claim: 'писать «дням» при числе дней, оканчивающемся на единицу',
+    mustRedden: 'подпись базы средней согласована с числом дней',
+    file: 'lib/metrics/sql.ts',
+    find: "then ' дню' else ' дням' end || ' месяца'",
+    replace: "then ' дням' else ' дням' end || ' месяца'",
+    tests: 'все',
+  },
+  {
+    id: 'top-is-six',
+    claim: 'класть в первую пятёрку шесть строк',
+    mustRedden: 'первая пятёрка — пять лучших по прибыли',
+    file: 'lib/metrics/sql.ts',
+    find: '(row_number() over (order by k.profit desc, k.sku) <= 5)',
+    replace: '(row_number() over (order by k.profit desc, k.sku) <= 6)',
+    tests: 'все',
+  },
+  {
+    id: 'top-ties-by-chance',
+    claim: 'решать равенство прибыли в пятёрке не артикулом',
+    mustRedden: 'первая пятёрка — пять лучших по прибыли',
+    file: 'lib/metrics/sql.ts',
+    find: '(row_number() over (order by k.profit desc, k.sku) <= 5)',
+    replace: '(row_number() over (order by k.profit desc, k.sku desc) <= 5)',
+    tests: 'все',
+  },
+  {
+    id: 'items-order-by-net',
+    claim: 'упорядочить товары по чистой выручке',
+    // Задача 17, правка по итоговой проверке (И5): своё ожидание — проверка поведения, раскладка которой
+    // различает порядки по прибыли, по выручке и по артикулу; текстовая проверка запроса краснеет от любой
+    // правки его хвоста и объявлена заодно. Перепись, объявленная «на случай», снята: раскладка переписи идёт
+    // через отчёт, а не через запрос, и слом её не трогает.
+    mustRedden: 'товары отсортированы по прибыли убыванием, штуки — за вычетом возвращённых',
+    file: 'lib/metrics/sql.ts',
+    find: 'order by sum(net) - sum(cogs) desc, sku',
+    replace: 'order by sum(net) desc, sku',
+    alsoRedden: [
+      { name: 'порядок товаров один — валовая прибыль по убыванию, при равенстве по артикулу', why: 'проверка читает текст хвоста запроса, а слом его меняет' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'holes-on-zero',
+    claim: 'ставить признак дыр и нулевому виду',
+    mustRedden: 'у каждого вида неполноты признак «есть дыры» совпадает с ненулевым счётом',
+    file: 'lib/metrics/sql.ts',
+    find: 'select kind, count, at, count > 0 as has_holes',
+    replace: 'select kind, count, at, count >= 0 as has_holes',
+    tests: 'все',
+  },
+  {
+    id: 'kpis-keep-ad-share',
+    claim: 'вернуть долю рекламы в полосу показателей',
+    mustRedden: 'показателей в полосе три',
+    // Задача 17, правка по итоговой проверке (И4): объявлены все проверки, которые читают полосу целиком и
+    // видят четвёртую строку.
+    alsoRedden: [
+      { name: 'три показателя в названном порядке, значения — готовые колонки итогов', why: 'проверка утверждает ровно три ключа, а слом добавляет четвёртый' },
+      { name: 'нет предыдущего месяца с заказами — дельты пустые, а не нулевые, у всех трёх разом', why: 'проверка сличает три строки дельт, а их четыре' },
+      { name: 'база сравнения — предыдущий календарный месяц, даже когда он пуст', why: 'проверка сличает три строки дельт, а их четыре' },
+      { name: 'появился предыдущий месяц — дельты считаются; исчез — снова слова', why: 'проверка сличает дельты трёх показателей полосы, а их четыре' },
+      { name: 'отчёт несёт полосу показателей: значения — те же, что в итогах и в водопаде', why: 'значения полосы сличаются с тремя ключами, а четвёртый лишний' },
+    ],
+    file: 'lib/metrics/sql.ts',
+    find: "     (3, 'net',      'eur', true,  c.net,        c.net::numeric,        p.net::numeric)",
+    replace: "     (3, 'net',      'eur', true,  c.net,        c.net::numeric,        p.net::numeric),\n     (4, 'ad_share', 'pp',  false, null::text, null::numeric, null::numeric)",
+    tests: 'все',
+  },
+  {
+    id: 'command-verdict-swapped',
+    claim: 'печатать «месяц в убытке: да» у месяца в плюсе',
+    mustRedden: 'в конце вывода — выводы и средняя по дням',
+    file: 'scripts/print-metrics.ts',
+    find: "announce(`  месяц в убытке: ${f.loss ? 'да' : 'нет'}`)",
+    replace: "announce(`  месяц в убытке: ${f.loss ? 'нет' : 'да'}`)",
+    tests: 'все',
+  },
+  {
+    id: 'command-mean-base-unguarded',
+    // Задача 17, правка по итоговой проверке (М4).
+    claim: 'печатать подпись базы средней и тогда, когда её нет',
+    mustRedden: 'месяца нет — строка средней говорит «нет данных» словами, без undefined',
+    file: 'scripts/print-metrics.ts',
+    find: "const база = report.daily.avgBase == null ? '' : ` ${report.daily.avgBase}`",
+    replace: 'const база = ` ${report.daily.avgBase}`',
+    tests: 'все',
+  },
+  {
+    id: 'report-mean-base-undefined',
+    // Задача 17, правка по итоговой проверке (М4).
+    claim: 'отдавать в отчёте подпись базы средней без запасного значения',
+    mustRedden: 'месяца нет — строка средней говорит «нет данных» словами, без undefined',
+    file: 'lib/metrics/report.ts',
+    find: 'avgBase: (dailyResult.rows[0]?.avg_base ?? null) as string | null,',
+    replace: 'avgBase: dailyResult.rows[0]?.avg_base as string,',
+    tests: 'все',
+  },
+  {
+    id: 'report-margin-income-undefined',
+    // Задача 17, правка по проверке правок (М-2).
+    claim: 'отдавать в отчёте сумму маржинального дохода без запасного значения',
+    mustRedden: 'выдача признаков пуста — маржинальный доход пуст, и команда пишет «нет данных»',
+    file: 'lib/metrics/report.ts',
+    find: 'marginIncome: (findingsResult.rows[0]?.margin_income ?? null) as string | null,',
+    replace: 'marginIncome: findingsResult.rows[0]?.margin_income as string,',
+    tests: 'все',
+  },
+  {
+    id: 'command-margin-income-no-words',
+    // Задача 17, правка по проверке правок (М-2).
+    claim: 'печатать пустую сумму маржинального дохода форматом денег, а не словами',
+    mustRedden: 'выдача признаков пуста — маржинальный доход пуст, и команда пишет «нет данных»',
+    file: 'scripts/print-metrics.ts',
+    find: 'маржинальный доход: ${moneyMaybe(f.marginIncome)}',
+    replace: 'маржинальный доход: ${money(f.marginIncome as string)}',
+    tests: 'все',
+  },
+  {
+    id: 'findings-column-misread',
+    // Задача 17, правка по итоговой проверке (М5).
+    claim: 'читать признак приблизительной прибыли из колонки с перепутанным именем',
+    mustRedden: 'настоящий путь признаков на посеве: каждое поле читает свою колонку',
+    file: 'lib/metrics/report.ts',
+    find: 'approximate: findingsResult.rows[0]?.approximate === true,',
+    replace: 'approximate: findingsResult.rows[0]?.approximated === true,',
+    tests: 'все',
+  },
+  {
+    id: 'tabs-come-back',
+    claim: 'вернуть чтение вкладки из адреса и отказ на незнакомую',
+    mustRedden: 'старые адреса со вкладкой и порядком открывают тот же единственный экран',
+    file: 'app/page.tsx',
+    find: "if ((await проверитьДоступ()) === 'отказать') redirect('/login')",
+    replace: "if ((await проверитьДоступ()) === 'отказать') redirect('/login')\n  { const п = await searchParams as { tab?: string }; if (п.tab !== undefined) return <main><p role=\"alert\">Раздела «{п.tab}» в отчёте нет.</p></main> }",
+    tests: 'все',
+  },
+  {
+    id: 'money-cards-come-back',
+    claim: 'вернуть карточку «Итог»',
+    mustRedden: 'карточек «Выручка», «Затраты», «Итог» и блока окупаемости нет',
+    file: 'app/page.tsx',
+    find: '<section className="block waterfall">',
+    replace: '<section className="block waterfall">\n          <section className="block bottom-line"><h2>Итог</h2></section>',
+    alsoRedden: [
+      { name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ,
+      // Кусок S13, задача 17: объявлено по выводу первого сплошного прогона (`docs/сверка/прогон-1/s13-one-screen.txt`).
+      { name: 'нет строк рекламы — у ступени «Реклама» слова и в сумме, и в доле, а столбика нет', why: 'она режет текст от начала блока каскада до первого закрытия раздела, а вставленная карточка закрывается раньше ступеней' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'no-base-per-number',
+    claim: 'вернуть строку «нет базы» к каждому числу',
+    mustRedden: 'нет базы — одна строка на блок',
+    file: 'app/page.tsx',
+    find: '<dt>Чистая выручка</dt>',
+    replace: '<dt>Чистая выручка</dt><dd hidden>{полоса !== undefined && !полоса.hasBase ? `в ${полоса.prevMonth} заказов нет` : null}</dd>',
+    alsoRedden: [...генВсе()],
+    tests: 'все',
+  },
+  {
+    id: 'approx-always',
+    claim: 'ставить пометку «приблизительно» без признака',
+    mustRedden: 'пометка «приблизительно» — только по признаку',
+    file: 'app/page.tsx',
+    find: '{report.findings?.approximate === true && <span className="result-approx">приблизительно</span>}',
+    replace: '{<span className="result-approx">приблизительно</span>}',
+    tests: 'все',
+  },
+  {
+    id: 'second-hero-size',
+    claim: 'завести второе число крупного кегля',
+    mustRedden: 'прибыль — единственное число крупного кегля',
+    file: 'app/globals.css',
+    find: '.result-stats dd {\n  font-size: var(--fontSizeBase400);',
+    replace: '.result-stats dd {\n  font-size: var(--fontSizeHero700);',
+    tests: 'все',
+  },
+  {
+    id: 'margin-prints-nan',
+    claim: 'печатать маржу результата путём, который даёт NaN',
+    mustRedden: 'на экране нет NaN',
+    file: 'app/page.tsx',
+    find: '<dd>{percent(report.bottom.marginPct)}',
+    replace: '<dd>{String(Number(\'x\'))}',
+    alsoRedden: [
+      { name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА },
+      { name: 'нет базы для сравнения — три числа результата стоят числами', why: 'проверка читает значение маржи в ячейке, а слом его подменяет' },
+      ...генВсе(),
+      РАЗОШЛАСЬ,
+      // Кусок S13, задача 17: объявлено по выводу первого сплошного прогона (`docs/сверка/прогон-1/s13-one-screen.txt`).
+      { name: 'parseFloat и Number(...) не встречаются в тексте слоя метрик и экрана', why: 'порча ставит в текст экрана превращение в число — ровно то, что эта проверка запрещает' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'result-no-threshold-as-no-data',
+    claim: 'печатать у окупаемости в блоке результата «нет данных» там, где порога нет по делу',
+    mustRedden: 'признак «порога нет» — у окупаемости слова «порога нет», а не «нет данных» и не порог числом',
+    file: 'app/page.tsx',
+    find: "? 'порога нет'",
+    replace: "? 'нет данных'",
+    tests: 'все',
+  },
+  {
+    id: 'findings-no-threshold-as-no-data',
+    claim: 'печатать в выводе о рекламе «нет данных» там, где порога нет по делу',
+    mustRedden: 'реклама: каждое из трёх слов — по своему признаку',
+    file: 'app/page.tsx',
+    find: '`⚠ Порога окупаемости нет: ',
+    replace: '`⚠ Нет данных: ',
+    tests: 'все',
+  },
+  {
+    id: 'findings-ads-without-verdict',
+    claim: 'рисовать строку рекламы без признака',
+    mustRedden: 'строк выводов столько, сколько признаков',
+    file: 'app/page.tsx',
+    find: "report.findings.adsVerdict !== null &&",
+    replace: 'true &&',
+    tests: 'все',
+  },
+  {
+    id: 'findings-order',
+    claim: 'поставить строку о приблизительной прибыли раньше строки о постоянных',
+    mustRedden: 'строк выводов столько, сколько признаков, и в порядке договора',
+    file: 'app/page.tsx',
+    find: '{строкаРекламы}{строкаПостоянных}{строкаПриблизительной}',
+    replace: '{строкаРекламы}{строкаПриблизительной}{строкаПостоянных}',
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ],
+    tests: 'все',
+  },
+  {
+    id: 'findings-fixed-alarm-below-hundred',
+    // Задача 17, решение владельца по И6: признак убытка — по прибыли, не по доле; утверждение строки переписано под это.
+    claim: 'ставить знак тревоги у строки постоянных без признака убытка',
+    // Задача 17, решение владельца по И6: проверка переименована (учёт).
+    mustRedden: 'без убытка — строка постоянных без знака',
+    file: 'app/page.tsx',
+    find: '`Постоянные расходы ${',
+    replace: '`⚠ Постоянные расходы ${',
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ],
+    tests: 'все',
+  },
+  {
+    id: 'margin-income-empty-as-zero-in-loss',
+    // Задача 17, правка по проверке правок (М-5): второе место строки вывода об убытке с пустой суммой.
+    claim: 'печатать пустую сумму маржинального дохода в выводе об убытке нулём',
+    mustRedden: 'маржинальный доход пуст — на экране «нет данных», а не ноль',
+    file: 'app/page.tsx',
+    find: 'маржинальный доход ${вместе(moneyMaybe(report.findings.marginIncome))} не положителен.',
+    replace: "маржинальный доход ${вместе(moneyMaybe(report.findings.marginIncome ?? '0.00'))} не положителен.",
+    tests: 'все',
+  },
+  {
+    id: 'margin-income-empty-as-zero',
+    // Задача 17, правка по проверке правок (М-2, экранная половина).
+    claim: 'печатать пустую сумму маржинального дохода в пояснении нулём',
+    mustRedden: 'маржинальный доход пуст — на экране «нет данных», а не ноль',
+    file: 'app/page.tsx',
+    find: 'вместе(moneyMaybe(report.findings.marginIncome))}. Тревога',
+    replace: "вместе(moneyMaybe(report.findings.marginIncome ?? '0.00'))}. Тревога",
+    tests: 'все',
+  },
+  {
+    id: 'alarm-words-from-share',
+    // Задача 17, решение владельца по И6 (17.09.2026): на экране названо правило тревоги по знаку прибыли.
+    claim: 'вернуть в пояснение слова о тревоге от 100 % доли',
+    mustRedden: 'тревога названа по прибыли',
+    file: 'app/page.tsx',
+    find: '. Тревога — когда месяц в убытке: прибыль меньше нуля.`}',
+    replace: '. Тревога — от 100\\u00A0%.`}',
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ],
+    tests: 'все',
+  },
+  {
+    id: 'findings-drop-our-mark',
+    claim: 'снять пометку «наш счёт» с пояснения порога',
+    mustRedden: 'вклад, порог и маржинальный доход помечены «наш счёт»',
+    file: 'app/page.tsx',
+    find: '`Порог — наш счёт: 100 ÷ вклад с евро оборота, ${',
+    replace: '`Порог: 100 ÷ вклад с евро оборота, ${',
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ],
+    tests: 'все',
+  },
+  {
+    id: 'findings-marginal-claim',
+    claim: 'вернуть ложное утверждение об отдаче следующего евро',
+    mustRedden: 'совета «масштабировать» и слов о следующем евро как отдаче нет',
+    file: 'app/page.tsx',
+    find: 'а не отдача от следующего вложенного евро',
+    replace: 'следующий евро рекламы приносит больше, чем стоит',
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ],
+    tests: 'все',
+  },
+  {
+    id: 'findings-heading-without-flags',
+    claim: 'рисовать заголовок «Выводы», когда признаков в отчёте нет',
+    mustRedden: 'выводов нет, когда отчёт без признаков',
+    file: 'app/page.tsx',
+    find: '  if (report.findings === undefined) return null',
+    replace: '  if (report.findings === undefined) return <section className="block findings"><h2>Выводы</h2></section>',
+    tests: 'все',
+  },
+  {
+    id: 'mean-place-invented',
+    claim: 'ставить пунктир средней не на величину отчёта',
+    mustRedden: 'пунктир средней стоит на той же величине, что в отчёте',
+    file: 'app/page.tsx',
+    find: "'--mean-at': report.daily.avgPct,",
+    replace: "'--mean-at': '50',",
+    alsoRedden: [
+      ...генВсе(),
+      // Кусок S13, задача 17: объявлено по выводу первого сплошного прогона (`docs/сверка/прогон-1/s13-one-screen.txt`).
+      { name: 'пунктир средней берёт те же пределы шкалы, что столбики ряда', why: 'она сличает строку стиля пунктира целиком, вместе с местом средней, а слом подменяет его на 50' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'empty-days-note-always',
+    claim: 'писать строку о пустых днях без признака',
+    mustRedden: 'строка о пустых днях — только по признаку',
+    file: 'app/page.tsx',
+    find: '{report.daily.hasEmptyDays === true && (',
+    replace: '{(',
+    tests: 'все',
+  },
+  {
+    id: 'mean-without-value',
+    claim: 'рисовать пунктир, когда средней нет',
+    mustRedden: 'средней нет — пунктира и подписи нет',
+    file: 'app/page.tsx',
+    find: '{report.daily.avgPct != null && report.daily.avgNet != null && (',
+    replace: '{report.daily.hasOrders && (',
+    alsoRedden: [
+      {
+        name: 'денежное значение внутри предложения не бывает без защиты от переноса',
+        why: 'её раскладка «март» из снимков — ряд без полей средней: подпись пунктира рисуется и роняет отрисовку на пустой сумме',
+      },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'mean-scale-foreign',
+    claim: 'дать пунктиру средней свой нижний предел шкалы, а не предел ряда',
+    mustRedden: 'пунктир средней берёт те же пределы шкалы, что столбики ряда',
+    file: 'app/page.tsx',
+    find: "'--mean-at': report.daily.avgPct,\n                      '--scale-from': report.daily.scaleLowPct ?? undefined,",
+    replace: "'--mean-at': report.daily.avgPct,\n                      '--scale-from': '0',",
+    alsoRedden: [...генВсе()],
+    tests: 'все',
+  },
+  {
+    id: 'top-ignores-flag',
+    claim: 'класть все строки в видимую таблицу',
+    mustRedden: 'строки с признаком пятёрки — в первой таблице',
+    file: 'app/page.tsx',
+    find: 'строки={report.items.filter((item) => item.inTop !== false)}',
+    replace: 'строки={report.items}',
+    alsoRedden: [
+      ...генВсе(),
+      // Задача 17, правка по итоговой проверке (И1): дописаны две проверки признака вразброс.
+      { name: 'пятёрка — по признаку, а не по месту в списке', why: 'все восемь строк раскладки вразброс уходят в первую таблицу, и в ней не пять артикулов' },
+      { name: 'разметка отдаёт строки в том порядке, в каком получила', why: 'в первой таблице оказываются и строки вне пятёрки, и последовательность артикулов в ней другая' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'top-slice-by-index',
+    // Задача 17, правка по итоговой проверке (И1): ловушка договора, утверждение 8 — `slice` в разметке.
+    claim: 'класть в видимую таблицу первые пять строк по месту в списке, а не по признаку',
+    mustRedden: 'пятёрка — по признаку, а не по месту в списке',
+    file: 'app/page.tsx',
+    find: 'строки={report.items.filter((item) => item.inTop !== false)}',
+    replace: 'строки={report.items.slice(0, 5)}',
+    alsoRedden: [
+      { name: 'разметка отдаёт строки в том порядке, в каком получила', why: 'первая таблица получает не те строки, и последовательность артикулов в ней другая' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'toggle-counts-rows',
+    claim: 'печатать в переключателе счёт строк вместо числа из отчёта',
+    mustRedden: 'число в переключателе — из отчёта',
+    file: 'app/page.tsx',
+    find: 'Показать все артикулы месяца — ${count(String(report.itemsSummary.skusTotal))}',
+    replace: 'Показать все артикулы месяца — ${count(String(report.items.length))}',
+    tests: 'все',
+  },
+  {
+    id: 'toggle-always',
+    claim: 'рисовать переключатель без скрытых строк',
+    mustRedden: 'шесть строк — переключатель есть, пять — нет',
+    file: 'app/page.tsx',
+    find: '{report.items.some((item) => item.inTop === false) && report.itemsSummary !== undefined && (',
+    replace: '{report.itemsSummary !== undefined && (',
+    alsoRedden: [
+      { name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА },
+      // Задача 17, правка по итоговой проверке (И1).
+      { name: 'переключатель — по признаку, а не по счёту строк', why: 'у шести строк без признака переключатель появляется, хотя раскрывать нечего' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'toggle-by-row-count',
+    // Задача 17, правка по итоговой проверке (И1): ловушка договора, утверждение 8 — счёт длины в разметке.
+    claim: 'рисовать переключатель по числу строк, а не по признаку',
+    mustRedden: 'переключатель — по признаку, а не по счёту строк',
+    file: 'app/page.tsx',
+    find: '{report.items.some((item) => item.inTop === false) && report.itemsSummary !== undefined && (',
+    replace: '{report.items.length > 5 && report.itemsSummary !== undefined && (',
+    tests: 'все',
+  },
+  {
+    id: 'items-markup-sorts-by-profit',
+    // Задача 17, правка по проверке правок: сортировка разметкой по валовой прибыли по убыванию — тот порядок,
+    // что отдаёт слой метрик, и потому на отчёте неотличимый от честной печати. Сравнение строк числовое
+    // сравнением текста, без превращения денег в число.
+    claim: 'дать разметке сортировать строки товаров по валовой прибыли',
+    mustRedden: 'разметка отдаёт строки в том порядке, в каком получила',
+    file: 'app/page.tsx',
+    find: '        {строки.map((item) => (',
+    replace: '        {[...строки].sort((a, b) => b.profit.localeCompare(a.profit, undefined, { numeric: true })).map((item) => (',
+    alsoRedden: [
+      { name: ПЕРЕПИСЬ, why: 'в раскладке переписи вторая строка прибыльнее первой, и сортировка меняет их местами' },
+      { name: 'подставленная целиком и подставленная частью названы разными словами', why: 'пометки уезжают вместе со строками, которые сортировка переставила' },
+      { name: 'помечена ровно та строка, у которой подстановка, а не соседняя', why: 'та же перестановка строк переписи' },
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'items-markup-sorts-by-sku',
+    // Задача 17, правка по итоговой проверке (И1): разметка сортирует по артикулу — тот порядок, с которым
+    // совпадает раскладка принятой проверки S5 «таблица товаров идёт в порядке отчёта».
+    claim: 'дать разметке сортировать строки товаров по артикулу',
+    mustRedden: 'разметка отдаёт строки в том порядке, в каком получила',
+    file: 'app/page.tsx',
+    find: '        {строки.map((item) => (',
+    replace: '        {[...строки].sort((a, b) => a.sku.localeCompare(b.sku)).map((item) => (',
+    alsoRedden: [...генВсе()],
+    tests: 'все',
+  },
+  {
+    id: 'column-widths-diverge',
+    claim: 'развести ширины колонок у двух таблиц',
+    mustRedden: 'у двух таблиц одно описание колонок',
+    file: 'app/page.tsx',
+    find: '<colgroup>{КОЛОНКИ_ТОВАРОВ.map((ширина, i) => <col key={i} style={{ width: ширина }} />)}</colgroup>',
+    replace: '<colgroup>{КОЛОНКИ_ТОВАРОВ.map((ширина, i) => <col key={i} style={{ width: строки.every((с) => с.inTop !== false) ? ширина : `${i}%` }} />)}</colgroup>',
+    alsoRedden: [...генВсе()],
+    tests: 'все',
+  },
+  {
+    id: 'gross-profit-called-profit',
+    claim: 'назвать колонку «Прибыль»',
+    mustRedden: 'колонка называется «Валовая прибыль»',
+    file: 'app/page.tsx',
+    find: '<th scope="col">Валовая прибыль</th>',
+    replace: '<th scope="col">Прибыль</th>',
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе()],
+    tests: 'все',
+  },
+  {
+    id: 'partial-called-full',
+    claim: 'назвать частичную подстановку словом полной',
+    mustRedden: 'подставленная целиком и подставленная частью названы разными словами',
+    file: 'app/page.tsx',
+    find: "'⚠ подставлена частью'",
+    replace: "'⚠ подставлена'",
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }],
+    tests: 'все',
+  },
+  {
+    id: 'item-share-bar-invented',
+    claim: 'дать полоске доли товара свою длину, а не напечатанную долю',
+    mustRedden: 'полоска доли берёт ту же величину, что напечатана в ячейке',
+    file: 'app/page.tsx',
+    find: "'--item-share': `${item.profitSharePct}%`",
+    replace: "'--item-share': '50%'",
+    alsoRedden: [...генВсе()],
+    tests: 'все',
+  },
+  {
+    id: 'nonpositive-summary-not-gross',
+    claim: 'назвать в строке над таблицей при неположительной сумме прибыль товаров не валовой',
+    mustRedden: 'сумма валовой прибыли товаров не положительна — строка над таблицей называет её валовой',
+    file: 'app/page.tsx',
+    find: ': `Валовая прибыль товаров — выручка минус себестоимость,',
+    replace: ': `Прибыль товаров — выручка минус себестоимость,',
+    tests: 'все',
+  },
+  {
+    id: 'holes-list-unfiltered',
+    claim: 'показывать на виду все виды, а не только с дырами',
+    mustRedden: 'видны только виды с дырами',
+    file: 'app/page.tsx',
+    find: '.filter((gap) => gap.hasHoles === true)',
+    replace: '.filter(() => true)',
+    alsoRedden: [...генВсе()],
+    tests: 'все',
+  },
+  {
+    id: 'no-holes-text-lies',
+    claim: 'не говорить «дыр нет», когда их нет',
+    mustRedden: 'дыр нет — так и написано',
+    file: 'app/page.tsx',
+    find: '<p>Дыр в данных нет.</p>',
+    replace: '<p></p>',
+    tests: 'все',
+  },
+  {
+    id: 'quality-anchor-lost',
+    claim: 'потерять якорь блока качества',
+    mustRedden: 'ссылка из результата и пометки товаров ведёт на этот блок',
+    file: 'app/page.tsx',
+    find: '<section id="kachestvo" className="block quality">',
+    replace: '<section className="block quality">',
+    alsoRedden: [
+      { name: 'видны только виды с дырами; все одиннадцать — под раскрытием', why: 'проверка режет текст с блока по якорю и без него отказывает' },
+      { name: 'дыр нет — так и написано', why: 'проверка режет текст с блока по якорю и без него отказывает' },
+      { name: 'пометка ведёт на блок качества на том же экране', why: 'проверка пометки считает на странице ровно один якорь «kachestvo»' },
+      // Задача 17, правка по итоговой проверке (И2): обвязка этой проверки дописана в задаче 14, после слома.
+      { name: 'доля подписана словами «от чистой выручки»', why: 'проверка режет текст с блока качества по якорю и без него отказывает' },
+      ...генВсе(),
+    ],
+    tests: 'все',
+  },
+  {
+    id: 'expand-count-unguarded',
+    claim: 'принять раскрытый вид, на котором раскрыто не два переключателя',
+    mustRedden: 'отказ: у раскрытого вида раскрыто не два переключателя',
+    file: 'docs/screens/guards.ts',
+    find: '  if (сколько === 2) return\n',
+    replace: '  return\n',
+    tests: 'все',
+  },
+  {
+    id: 'daily-bars-own-column',
+    claim: 'вернуть списку столбиков свою колонку сетки внутри области ряда',
+    mustRedden: 'место в сетке ряда у области столбиков, а у списка столбиков своей колонки нет',
+    file: 'app/globals.css',
+    find: '.daily-bars,\n.daily-ticks {\n  display: flex;\n  margin: 0;\n  padding: 0;\n  list-style: none;\n}',
+    replace: '.daily-bars,\n.daily-ticks {\n  display: flex;\n  margin: 0;\n  padding: 0;\n  list-style: none;\n  grid-column: 2;\n}',
+    tests: 'все',
+  },
+  {
+    id: 'mean-label-over-bars',
+    claim: 'поставить подпись средней у линии, поверх столбиков',
+    mustRedden: 'подпись средней стоит над областью столбиков, а не у линии поверх них',
+    file: 'app/globals.css',
+    find: '  bottom: 100%;\n  color: var(--colorNeutralForeground2);',
+    replace: '  bottom: var(--spacingVerticalXS);\n  color: var(--colorNeutralForeground2);',
+    tests: 'все',
+  },
+  {
+    id: 'waterfall-share-own-grid',
+    claim: 'вернуть каждой ступени водопада свою сетку долями',
+    mustRedden: 'у ступеней водопада одна сетка на все строки, сумма и доля шириной по своему тексту',
+    file: 'app/globals.css',
+    find: '  grid-template-columns: subgrid;\n',
+    replace: '  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1fr);\n',
+    tests: 'все',
+  },
+  {
+    id: 'items-table-fixed-narrow',
+    claim: 'оставить таблицам товаров на узком экране раскладку долями',
+    mustRedden: 'на узком экране таблицы товаров раскладываются по своим числам и прокручиваются в карточке',
+    file: 'app/globals.css',
+    find: '  .items table {\n    table-layout: auto;\n  }\n',
+    replace: '',
+    tests: 'все',
+  },
+  {
+    id: 'mean-label-no-background',
+    claim: 'снять фон подписи средней',
+    mustRedden: 'подпись средней стоит над областью столбиков, а не у линии поверх них',
+    file: 'app/globals.css',
+    find: '  white-space: nowrap;\n  background: var(--colorNeutralBackground1);\n}',
+    replace: '  white-space: nowrap;\n}',
+    tests: 'все',
+  },
+  {
+    id: 'h3-larger-than-h2',
+    claim: 'набрать подзаголовок блока крупнее заголовка блока',
+    mustRedden: 'подзаголовок в блоке не крупнее заголовка блока',
+    file: 'app/globals.css',
+    find: 'h3 {\n  margin: var(--spacingVerticalL) 0 var(--spacingVerticalS);\n  font-size: var(--fontSizeBase300);',
+    replace: 'h3 {\n  margin: var(--spacingVerticalL) 0 var(--spacingVerticalS);\n  font-size: var(--fontSizeBase400);',
+    tests: 'все',
+  },
+]

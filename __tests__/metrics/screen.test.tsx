@@ -84,56 +84,35 @@ function baseReport(overrides: Partial<MonthReport> = {}): MonthReport {
 
 describe('экран /', () => {
   test('экран печатает поля отчёта, а не свои числа', () => {
-    const html = (['dengi', 'tovary', 'kachestvo'] as const).map((tab) => renderToStaticMarkup(<Dashboard report={ОТЧЁТ} tab={tab} />)).join('')
+    const html = renderToStaticMarkup(<Dashboard report={ОТЧЁТ} />)
     // Каждое денежное поле отчёта обязано появиться на экране своим числом. Ни одно из них
     // не выводится из соседей, поэтому досчитанное в разметке число сюда не подойдёт.
     for (const ожидание of [
-      '1 234,50 €', '11,11 €', '22,22 €', '3 333,33 €',
-      '444,44 €', '55,55 €', '6,66 €', '77,77 €', '8 888,88 €',
       '202,02 €', '303,03 €', '404,04 €', '50,50 €', '60,60 €', '70,70 €',
     ]) expect(html).toContain(ожидание)
-    expect(html).toContain('9,9 %')
-    // Окупаемость — отношение, знак «×», а не «%»: подстрока '1,23' совпала бы и со
-    // старым дефектом ('1,23 %'), поэтому здесь утверждается число вместе со знаком.
-    expect(html).toContain('1,23 ×')
     expect(html).toContain('80,3 %')
     expect(html).toContain('101')
   })
 
-  test('окупаемость печатается отношением, а не процентами', () => {
-    // Найдено на приёмке: экран печатал окупаемость через тот же формат, что и маржу, и
-    // «оборот больше рекламы в 4,23 раза» превращалось в «реклама вернула 4,23 %» — смысл,
-    // противоположный настоящему. Проверка точная, а не подстрочная: знак процента рядом
-    // с тем же числом эту проверку не пройдёт.
-    const html = renderToStaticMarkup(<Dashboard report={ОТЧЁТ} tab="dengi" />)
-    expect(html).toContain('1,23 ×')
-    expect(html).not.toContain('1,23 %')
-  })
-
-  test('окупаемость подписана словом «по обороту»', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="dengi" />)
-    expect(html).toMatch(/окупаемость рекламы[^<]*по обороту/i)
-  })
-
   test('доля подписана словами «от чистой выручки»', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="kachestvo" />)
+    // Кусок S13, задача 14: блок результата всегда печатает «Маржа от чистой выручки», и поиск по всему
+    // экрану находил эти слова мимо подписи доли. Текст снимается только с блока качества, где стоит
+    // доля; без блока — отказ. Утверждение прежнее.
+    const страница = renderToStaticMarkup(<Dashboard report={baseReport()} />)
+    const начало = страница.indexOf('<section id="kachestvo"')
+    if (начало < 0) throw new Error('блока качества в разметке нет')
+    const html = страница.slice(начало, страница.indexOf('</section>', начало))
     expect(html).toMatch(/от чистой выручки/i)
   })
 
   test('блок неполноты виден, даже когда все нули', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="kachestvo" />)
+    const html = renderToStaticMarkup(<Dashboard report={baseReport()} />)
     expect(html).toContain('пустых ячеек')
     expect(html).toContain('скидки: 0')
   })
 
-  test('нет данных печатается словами, а не как 0 и не как NaN', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="dengi" />)
-    expect(html).toContain('нет данных')
-    expect(html).not.toContain('NaN')
-  })
-
   test('таблица товаров идёт в порядке отчёта', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="tovary" />)
+    const html = renderToStaticMarkup(<Dashboard report={baseReport()} />)
     expect(html.indexOf('NP-001')).toBeLessThan(html.indexOf('NP-012'))
   })
 
@@ -143,13 +122,13 @@ describe('экран /', () => {
         i === 0 ? gap(kind, 2, ['3', '7']) : gap(kind),
       ),
     })
-    const html = renderToStaticMarkup(<Dashboard report={отчёт} tab="kachestvo" />)
+    const html = renderToStaticMarkup(<Dashboard report={отчёт} />)
     expect(html).toContain('скидки: 2')
     expect(html).toContain('3, 7')
   })
 
   test('экран называет товары без цены поставщика', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} tab="kachestvo" />)
+    const html = renderToStaticMarkup(<Dashboard report={baseReport()} />)
     expect(html).toContain('NP-011')
     expect(html).toContain('NP-012')
   })

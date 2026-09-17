@@ -3,11 +3,7 @@ import { afterAll, beforeAll } from 'vitest'
 
 import { projectDatabaseUrl } from '@/lib/db-url'
 import { monthTotals, withFactSnapshot, type MetricsClient } from '@/lib/metrics/report'
-import {
-  ПОРЯДОК_ТОВАРОВ_ПО_УМОЛЧАНИЮ,
-  запросТоваров,
-  type ПорядокТоваров,
-} from '@/lib/metrics/sql'
+import { MONTH_ITEMS } from '@/lib/metrics/sql'
 
 /**
  * Подставка `totalsOn` — общая для проверок задачи 2 (выручка, скидки, возвраты) и
@@ -124,7 +120,8 @@ export async function totalsOn(
 }
 
 /**
- * Строки таблицы товаров в названном порядке — кусок S12, задача 1.
+ * Строки таблицы товаров в единственном порядке — кусок S13, задача 4 (было: кусок S12, задача 1,
+ * с шестью порядками по адресу; решение владельца Э4 их отменило).
  *
  * Пользуется тем же способом положить факты, что и `totalsOn`: второй способ разошёлся бы с
  * первым молча — ровно то, от чего заведена эта подставка.
@@ -134,10 +131,9 @@ export async function itemsOn(
   refunds: RefundRow[],
   month: string,
   costs: CostRow[] = [],
-  порядок: ПорядокТоваров = ПОРЯДОК_ТОВАРОВ_ПО_УМОЛЧАНИЮ,
 ): Promise<Array<Record<string, string>>> {
   return наФактах(orders, refunds, costs, {}, async (mc) => {
-    const { rows } = await mc.query(запросТоваров(порядок), [`${month}-01`])
+    const { rows } = await mc.query(MONTH_ITEMS, [`${month}-01`])
     return rows as Array<Record<string, string>>
   })
 }

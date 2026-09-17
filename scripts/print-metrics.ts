@@ -72,6 +72,25 @@ function printReport(report: MonthReport, announce: (line: string) => void): voi
     const at = gap.at.length > 0 ? ` (${gap.at.join(', ')})` : ''
     announce(`  ${gap.kind}: ${count(String(gap.count))}${at}`)
   }
+
+  if (report.findings !== undefined) {
+    const f = report.findings
+    announce('')
+    announce('выводы')
+    announce(`  маржинальный доход: ${moneyMaybe(f.marginIncome)}`)
+    announce(`  постоянные расходы в маржинальном доходе: ${percent(f.fixedSharePct)}`)
+    announce(`  реклама: ${f.adsVerdict ?? 'признака нет'}`)
+    announce(`  месяц в убытке: ${f.loss ? 'да' : 'нет'}`)
+    announce(`  прибыль приблизительная: ${f.approximate ? 'да' : 'нет'}`)
+  }
+  if (report.daily?.avgNet !== undefined) {
+    announce('')
+    announce('чистая выручка по дням')
+    // Кусок S13, задача 17 (итоговая проверка, М4): у месяца без ряда подписи базы нет, и строка печатает
+    // «нет данных» словами, а не «средняя undefined».
+    const база = report.daily.avgBase == null ? '' : ` ${report.daily.avgBase}`
+    announce(`  средняя${база}: ${moneyMaybe(report.daily.avgNet)}`)
+  }
 }
 
 /**

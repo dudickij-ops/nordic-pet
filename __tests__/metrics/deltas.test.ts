@@ -8,7 +8,6 @@ import {
   MONTH_DELTAS,
   MONTH_TOTALS,
   PREVIOUS_MONTH_TOTALS,
-  WATERFALL_FROM_TOTALS,
 } from '@/lib/metrics/sql'
 
 /**
@@ -60,9 +59,10 @@ const ФЕВРАЛЬ: Итоги = { gross: '640.00', net: '500.00', ads: '96.00
 const ЕСТЬ_БАЗА: Состояние = { month: '2026-02', has_orders: true, has_ads: true, has_ads_cur: true }
 
 describe('полоса показателей: счёт дельт', () => {
-  test('четыре показателя в названном порядке, значения — готовые колонки итогов', async () => {
+  test('три показателя в названном порядке, значения — готовые колонки итогов', async () => {
+    // Кусок S13, задача 6: доля рекламы уходит из полосы — показателей три, не четыре.
     const п = await показатели(МАРТ, ФЕВРАЛЬ, ЕСТЬ_БАЗА)
-    expect(Object.keys(п)).toEqual(['profit', 'margin', 'net', 'ad_share'])
+    expect(Object.keys(п)).toEqual(['profit', 'margin', 'net'])
     expect([п.profit.value, п.margin.value, п.net.value]).toEqual(['120.00', '12.3', '800.00'])
   })
 
@@ -78,54 +78,12 @@ describe('полоса показателей: счёт дельт', () => {
     expect([п.margin.delta, п.margin.unit]).toEqual(['+2.2', 'pp'])
   })
 
-  test('доля рекламы — реклама ÷ оборот, дельта — в пунктах', async () => {
-    // Март: 250 ÷ 1000 = 25,0 %. Февраль: 96 ÷ 640 = 15,0 %. Разность — 10,0 пункта.
-    const п = await показатели(МАРТ, ФЕВРАЛЬ, ЕСТЬ_БАЗА)
-    expect([п.ad_share.value, п.ad_share.delta, п.ad_share.unit]).toEqual(['25.0', '+10.0', 'pp'])
-  })
-
-  /**
-   * Инвариант «доля рекламы полосы = доля ступени рекламы» утверждается **на обоих случаях**, и
-   * второй здесь главный: месяц без единой строки рекламы. Прежде проверка шла только по месяцу, где
-   * реклама есть, и расхождение, ради которого инвариант заведён — пусто в полосе против нуля в
-   * водопаде, — покраснеть на ней не могло никогда (круг проверки кода 2, правило владельца о
-   * стороже, прибитом к лёгкой раскладке).
-   */
-  async function доляСтупениРекламы(естьРеклама: boolean): Promise<string | null> {
-    const итоги = `select '1000.00'::text as gross, '30.00'::text as discounts, '170.00'::text as refunds,
-                          '800.00'::text as net, '310.00'::text as cogs, '${естьРеклама ? '250.00' : '0.00'}'::text as ads,
-                          '20.00'::text as fees, '100.00'::text as fixed, '120.00'::text as profit`
-    const { rows } = await pool.query(
-      `with totals_row as (${итоги}),\n       cur_state as (select ${естьРеклама} as has_ads),\n${WATERFALL_FROM_TOTALS}`,
-    )
-    return (rows.find((с) => с.key === 'ads')?.share_pct ?? null) as string | null
-  }
-
-  test('доля рекламы полосы — та же, что у ступени рекламы в водопаде', async () => {
-    const п = await показатели(МАРТ, ФЕВРАЛЬ, ЕСТЬ_БАЗА)
-    expect(await доляСтупениРекламы(true)).toBe(п.ad_share.value)
-  })
-
-  test('месяц без строк рекламы: пусто и в полосе, и у ступени водопада — обе стороны разом', async () => {
-    const п = await показатели({ ...МАРТ, ads: '0.00' }, ФЕВРАЛЬ, { ...ЕСТЬ_БАЗА, has_ads_cur: false })
-    expect([п.ad_share.value, await доляСтупениРекламы(false)]).toEqual([null, null])
-  })
-
-  test('у доли рекламы рост — это плохо, у прибыли — хорошо', async () => {
-    const п = await показатели(МАРТ, ФЕВРАЛЬ, ЕСТЬ_БАЗА)
-    expect([п.ad_share.good_when_up, п.ad_share.verdict]).toEqual([false, 'хуже'])
-    expect([п.profit.good_when_up, п.profit.verdict]).toEqual([true, 'лучше'])
-    const вниз = await показатели(ФЕВРАЛЬ, МАРТ, { ...ЕСТЬ_БАЗА, month: '2026-01' })
-    expect([вниз.ad_share.delta, вниз.ad_share.verdict]).toEqual(['-10.0', 'лучше'])
-    expect([вниз.profit.delta, вниз.profit.verdict]).toEqual(['-19.50', 'хуже'])
-  })
-
   test('без изменений — ноль без знака и слово «без изменений»', async () => {
     const п = await показатели(МАРТ, { ...МАРТ }, ЕСТЬ_БАЗА)
     expect([п.profit.delta, п.profit.verdict]).toEqual(['0.00', 'без изменений'])
   })
 
-  test('нет предыдущего месяца с заказами — дельты пустые, а не нулевые, у всех четырёх разом', async () => {
+  test('нет предыдущего месяца с заказами — дельты пустые, а не нулевые, у всех трёх разом', async () => {
     const п = await показатели(МАРТ, { gross: '0.00', net: '0.00', ads: '0.00', profit: '0.00', margin_pct: null }, {
       month: '2026-02',
       has_orders: false,
@@ -136,30 +94,10 @@ describe('полоса показателей: счёт дельт', () => {
       [null, null, false],
       [null, null, false],
       [null, null, false],
-      [null, null, false],
     ])
     // Значения при этом стоят: пустой бывает дельта, а не показатель.
-    expect(Object.values(п).map((к) => к.value)).toEqual(['120.00', '12.3', '800.00', '25.0'])
+    expect(Object.values(п).map((к) => к.value)).toEqual(['120.00', '12.3', '800.00'])
     expect(п.profit.prev_month).toBe('2026-02')
-  })
-
-  test('в прошлом месяце нет рекламы — дельта доли рекламы пустая, остальные считаются', async () => {
-    const п = await показатели(МАРТ, { ...ФЕВРАЛЬ, ads: '0.00' }, { ...ЕСТЬ_БАЗА, has_ads: false })
-    expect([п.ad_share.delta, п.ad_share.verdict]).toEqual([null, null])
-    expect(п.profit.delta).toBe('+19.50')
-  })
-
-  test('у текущего месяца нет ни одной строки рекламы — доля рекламы пустая, а не ноль', async () => {
-    // Круг проверки кода 1. Прежде такой месяц печатал «0,0 %» и настоящую дельту к прошлому: ноль
-    // вместо «нет данных», да ещё с вердиктом «лучше». Прочие три показателя при этом стоят и считаются.
-    const п = await показатели({ ...МАРТ, ads: '0.00' }, ФЕВРАЛЬ, { ...ЕСТЬ_БАЗА, has_ads_cur: false })
-    expect([п.ad_share.value, п.ad_share.delta, п.ad_share.verdict]).toEqual([null, null, null])
-    expect([п.profit.value, п.profit.delta]).toEqual(['120.00', '+19.50'])
-  })
-
-  test('оборот ноль — доля рекламы пустая', async () => {
-    const п = await показатели({ ...МАРТ, gross: '0.00' }, ФЕВРАЛЬ, ЕСТЬ_БАЗА)
-    expect([п.ad_share.value, п.ad_share.delta]).toEqual([null, null])
   })
 
   test('маржа прошлого месяца пустая — дельта маржи пустая, а не ноль', async () => {
@@ -232,18 +170,7 @@ describe('полоса показателей: боевая сборка', () =>
         [null, false, '2026-02'],
         [null, false, '2026-02'],
         [null, false, '2026-02'],
-        [null, false, '2026-02'],
       ])
-    })
-  })
-
-  test('в месяце нет строк рекламы — боевой запрос отдаёт долю рекламы пустой', async () => {
-    // Та же правка на боевом запросе: `положить` снимает все строки `fact.ads`, то есть это месяц, для
-    // которого выгрузка рекламы ещё не загружена, — путь, который владелец увидит первым в апреле.
-    await вТранзакции([МАРТОВСКИЙ, ФЕВРАЛЬСКИЙ], async (client) => {
-      const п = await дельтыМарта(client)
-      const доля = п.find((к) => к.key === 'ad_share')
-      expect([доля?.value, доля?.delta, доля?.verdict]).toEqual([null, null, null])
     })
   })
 
@@ -302,7 +229,8 @@ async function положитьМартПроверки(): Promise<void> {
     [МАРТ_ПРОВЕРКИ.номер, МАРТ_ПРОВЕРКИ.день, МАРТ_ПРОВЕРКИ.заказ],
   )
   // Круг проверки кода 4: реклама и курс тоже кладутся. Без них доля рекламы в полосе и доля
-  // ступени были пустотой против пустоты — сличение, зелёное при любом коде.
+  // ступени были пустотой против пустоты — сличение, зелёное при любом коде. Кусок S13, задача 6:
+  // доли рекламы в полосе нет, и этого сличения тоже; раскладка оставлена как была.
   await pool.query(
     `insert into raw.fx (row_no, date, usd_per_eur) values ($1, $2, '2.000000')`,
     [МАРТ_ПРОВЕРКИ.номер, МАРТ_ПРОВЕРКИ.день],
@@ -353,7 +281,7 @@ describe('полоса показателей в отчёте', () => {
     expect(февраль[0].n, 'до проверки у февраля в местной базе нет заказов').toBe(0)
     try {
       const до = await полоса()
-      expect([до?.hasBase, до?.items.map((к) => к.delta)]).toEqual([false, [null, null, null, null]])
+      expect([до?.hasBase, до?.items.map((к) => к.delta)]).toEqual([false, [null, null, null]])
 
       await pool.query(
         `insert into raw.orders (row_no, date, order_id, sku, units, gross_eur, discount_eur, gateway)
@@ -367,7 +295,7 @@ describe('полоса показателей в отчёте', () => {
       )
       const после = await полоса()
       expect(после?.hasBase).toBe(true)
-      // Прибыль и выручка считаются при любых фактах марта в местной базе; маржа и доля рекламы
+      // Прибыль и выручка считаются при любых фактах марта в местной базе; маржа (и доля рекламы — до куска S13)
       // зависят от того, что там лежит (у пустого марта маржа пуста), и здесь не утверждаются.
       expect(после?.items.filter((к) => к.unit === 'eur').map((к) => [к.key, к.delta === null])).toEqual([
         ['profit', false],
@@ -376,7 +304,7 @@ describe('полоса показателей в отчёте', () => {
 
       await убратьФевраль()
       const снова = await полоса()
-      expect([снова?.hasBase, снова?.items.map((к) => к.delta)]).toEqual([false, [null, null, null, null]])
+      expect([снова?.hasBase, снова?.items.map((к) => к.delta)]).toEqual([false, [null, null, null]])
     } finally {
       await убратьФевраль()
     }
@@ -392,14 +320,11 @@ describe('полоса показателей в отчёте', () => {
       expect(отчёт.revenue.net, 'заказ проверки доехал до чистой выручки').toBe('300.00')
       expect(отчёт.bottom.profit, 'прибыль не ноль, иначе сличать нечего').not.toBe('0.00')
       expect(отчёт.bottom.marginPct, 'маржа посчитана, иначе сличать нечего').not.toBeNull()
-      const доляРекламы = отчёт.waterfall?.steps.find((с) => с.key === 'ads')?.sharePct
-      expect(доляРекламы, 'доля рекламы — число, иначе четвёртая пара сличает пустоту с пустотой').not.toBeNull()
       const значения = Object.fromEntries((отчёт.kpis?.items ?? []).map((к) => [к.key, к.value]))
       expect(значения).toEqual({
         profit: отчёт.bottom.profit,
         margin: отчёт.bottom.marginPct,
         net: отчёт.revenue.net,
-        ad_share: отчёт.waterfall?.steps.find((с) => с.key === 'ads')?.sharePct,
       })
       // Стороны различны, значит перепутанные местами показатели краснеют.
       expect(значения.profit).not.toBe(значения.net)
@@ -409,5 +334,11 @@ describe('полоса показателей в отчёте', () => {
       if (прежняя === undefined) delete process.env.NORDIC_PET_DB_TARGET
       else process.env.NORDIC_PET_DB_TARGET = прежняя
     }
+  })
+
+  test('показателей в полосе три: прибыль, маржа, чистая выручка', async () => {
+    // Кусок S13, задача 6: доля рекламы уходит из полосы решением владельца.
+    const кпи = await полоса()
+    expect(кпи?.items.map((п) => п.key)).toEqual(['profit', 'margin', 'net'])
   })
 })
