@@ -257,8 +257,8 @@ export type MonthReport = {
     avgNet?: Maybe
     /** Место средней на шкале ряда — тем же способом, что края столбиков. */
     avgPct?: Maybe
-    /** Подпись базы готовой строкой: «по 31 дню месяца», «по 30 дням месяца». */
-    avgBase?: string
+    /** Подпись базы готовой строкой: «по 31 дню месяца», «по 30 дням месяца». Пусто — ряда нет. */
+    avgBase?: string | null
     /** В ряду есть дни без заказов. */
     hasEmptyDays?: boolean
   }
@@ -581,7 +581,8 @@ export async function monthlyReport(
         hasOrders: dailyResult.rows[0]?.month_has_orders === true,
         avgNet: (dailyResult.rows[0]?.avg_net ?? null) as string | null,
         avgPct: (dailyResult.rows[0]?.avg_pct ?? null) as string | null,
-        avgBase: dailyResult.rows[0]?.avg_base as string,
+        // Ряда нет (месяца нет) — подписи базы тоже нет: пусто, а не `undefined` (задача 17, М4).
+        avgBase: (dailyResult.rows[0]?.avg_base ?? null) as string | null,
         hasEmptyDays: dailyResult.rows[0]?.has_empty_days === true,
       },
       payback: {

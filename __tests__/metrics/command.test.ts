@@ -114,3 +114,26 @@ describe('команда метрик', () => {
     ])
   })
 })
+
+/**
+ * Кусок S13, задача 17, правка по итоговой проверке (М4). Настоящим путём, без подставки отчёта: у пустого
+ * слоя фактов месяца нет, ряда по дням нет, и строка средней печатала «средняя undefined: нет данных».
+ * Слой фактов местной базы после `npm run db:reset` пуст (посев наполняет только сырой слой); другое
+ * состояние базы — отказ с названной причиной, а не зелень.
+ */
+test('месяца нет — строка средней говорит «нет данных» словами, без undefined', async () => {
+  const прежняя = process.env.NORDIC_PET_DB_TARGET
+  process.env.NORDIC_PET_DB_TARGET = 'local'
+  try {
+    const отчёт = await monthlyReport()
+    expect(отчёт.month, 'слой фактов местной базы не пуст — прогоните npm run db:reset').toBeNull()
+    expect(отчёт.daily?.avgBase).toBeNull()
+    const строки: string[] = []
+    await printMetrics([], { announce: (l) => строки.push(l), report: async () => отчёт })
+    expect(строки.slice(-2)).toEqual(['чистая выручка по дням', '  средняя: нет данных'])
+    expect(строки.join('\n')).not.toContain('undefined')
+  } finally {
+    if (прежняя === undefined) delete process.env.NORDIC_PET_DB_TARGET
+    else process.env.NORDIC_PET_DB_TARGET = прежняя
+  }
+})

@@ -53,6 +53,16 @@ export const BREAKS: Break[] = [
     tests: 'все',
   },
   {
+    id: 'waterfall-scale-without-base',
+    // Задача 17, правка по итоговой проверке (М6).
+    claim: 'давать нижний предел шкалы каскада и при чистой выручке не больше нуля',
+    mustRedden: 'чистая выручка не положительна — пределов шкалы нет',
+    file: 'lib/metrics/sql.ts',
+    find: 'round(least(0, min(least(s.edge_from, s.edge_to)) over ()) / b.denom * 100, 1)::text',
+    replace: 'round(least(0, min(least(s.edge_from, s.edge_to)) over ()) / coalesce(b.denom, 1) * 100, 1)::text',
+    tests: 'все',
+  },
+  {
     id: 'margin-income-own-expression',
     claim: 'посчитать маржинальный доход из прибыли и постоянных, а не разностью показанных сумм',
     mustRedden: 'маржинальный доход — разность показанных сумм',
@@ -105,6 +115,11 @@ export const BREAKS: Break[] = [
     file: 'lib/metrics/sql.ts',
     find: '(s.mi <= 0 or s.fixed_share >= 100)        as loss,',
     replace: 'coalesce(s.fixed_share >= 100, false)     as loss,',
+    // Задача 17, правка по итоговой проверке (М3): краевой случай «маржинальный доход отрицательный».
+    alsoRedden: [
+      { name: 'убыток: маржинальный доход отрицательный — доли нет, признак стоит', why: 'при маржинальном доходе −100 доли нет, и без условия на знак признак убытка пропадает' },
+      { name: 'настоящий путь признаков на посеве: каждое поле читает свою колонку', why: 'маржинальный доход посева отрицателен, и якорь «убыток — да» у колонки запроса пропадает' },
+    ],
     tests: 'все',
   },
   {
@@ -202,6 +217,36 @@ export const BREAKS: Break[] = [
     file: 'scripts/print-metrics.ts',
     find: "announce(`  месяц в убытке: ${f.loss ? 'да' : 'нет'}`)",
     replace: "announce(`  месяц в убытке: ${f.loss ? 'нет' : 'да'}`)",
+    tests: 'все',
+  },
+  {
+    id: 'command-mean-base-unguarded',
+    // Задача 17, правка по итоговой проверке (М4).
+    claim: 'печатать подпись базы средней и тогда, когда её нет',
+    mustRedden: 'месяца нет — строка средней говорит «нет данных» словами, без undefined',
+    file: 'scripts/print-metrics.ts',
+    find: "const база = report.daily.avgBase == null ? '' : ` ${report.daily.avgBase}`",
+    replace: 'const база = ` ${report.daily.avgBase}`',
+    tests: 'все',
+  },
+  {
+    id: 'report-mean-base-undefined',
+    // Задача 17, правка по итоговой проверке (М4).
+    claim: 'отдавать в отчёте подпись базы средней без запасного значения',
+    mustRedden: 'месяца нет — строка средней говорит «нет данных» словами, без undefined',
+    file: 'lib/metrics/report.ts',
+    find: 'avgBase: (dailyResult.rows[0]?.avg_base ?? null) as string | null,',
+    replace: 'avgBase: dailyResult.rows[0]?.avg_base as string,',
+    tests: 'все',
+  },
+  {
+    id: 'findings-column-misread',
+    // Задача 17, правка по итоговой проверке (М5).
+    claim: 'читать признак приблизительной прибыли из колонки с перепутанным именем',
+    mustRedden: 'настоящий путь признаков на посеве: каждое поле читает свою колонку',
+    file: 'lib/metrics/report.ts',
+    find: 'approximate: findingsResult.rows[0]?.approximate === true,',
+    replace: 'approximate: findingsResult.rows[0]?.approximated === true,',
     tests: 'все',
   },
   {

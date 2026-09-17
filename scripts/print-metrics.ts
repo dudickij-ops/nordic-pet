@@ -86,7 +86,10 @@ function printReport(report: MonthReport, announce: (line: string) => void): voi
   if (report.daily?.avgNet !== undefined) {
     announce('')
     announce('чистая выручка по дням')
-    announce(`  средняя ${report.daily.avgBase}: ${moneyMaybe(report.daily.avgNet)}`)
+    // Кусок S13, задача 17 (итоговая проверка, М4): у месяца без ряда подписи базы нет, и строка печатает
+    // «нет данных» словами, а не «средняя undefined».
+    const база = report.daily.avgBase == null ? '' : ` ${report.daily.avgBase}`
+    announce(`  средняя${база}: ${moneyMaybe(report.daily.avgNet)}`)
   }
 }
 
