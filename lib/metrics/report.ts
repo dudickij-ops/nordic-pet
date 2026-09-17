@@ -291,7 +291,7 @@ export type MonthReport = {
   findings?: {
     /** Пусто — рекламы за месяц нет, или окупаемость не посчитана, или нет оборота. */
     adsVerdict: 'окупается' | 'не окупается' | 'порога нет' | null
-    marginIncome: Money
+    marginIncome: Maybe
     /** Пусто, когда маржинальный доход не положителен. */
     fixedSharePct: Maybe
     loss: boolean
@@ -597,7 +597,8 @@ export async function monthlyReport(
           | 'не окупается'
           | 'порога нет'
           | null,
-        marginIncome: findingsResult.rows[0]?.margin_income as string,
+        // Выдача признаков пуста — суммы нет: пусто, а не `undefined` (задача 17, правка по проверке правок, М-2).
+        marginIncome: (findingsResult.rows[0]?.margin_income ?? null) as string | null,
         fixedSharePct: (findingsResult.rows[0]?.fixed_share_pct ?? null) as string | null,
         loss: findingsResult.rows[0]?.loss === true,
         approximate: findingsResult.rows[0]?.approximate === true,

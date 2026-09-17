@@ -6,6 +6,7 @@ import { buildFacts } from '@/lib/facts/build'
 import { monthlyReport } from '@/lib/metrics/report'
 import { FINDINGS_FROM_TOTALS } from '@/lib/metrics/sql'
 import { MONTH_FINDINGS } from '@/lib/metrics/sql'
+import { printMetrics } from '@/scripts/print-metrics'
 
 /**
  * Признаки выводов — кусок S13. Строка итогов подставляется выдуманной, как у каскада: признак,
@@ -126,7 +127,8 @@ test('признаки доезжают до отчёта настоящим п�
  * Но сличение двух сторон зелено и тогда, когда обе пусты, поэтому у каждой колонки, кроме доли, есть якорь
  * снаружи: на посеве слово рекламы и сумма есть, а убыток и приблизительная прибыль — «да», то есть не то,
  * что дало бы перепутанное имя. **Чего проверка не ловит:** доля постоянных на посеве законно пуста —
- * маржинальный доход отрицателен (наш заход задачи 17: −32,33), — и перепутанное имя колонки доли здесь
+ * маржинальный доход отрицателен (наш заход задачи 17, `monthlyReport()` на посеве после сборки фактов: чистая
+ * выручка 136,50 − себестоимость 111,72 − реклама 52,88 − комиссии 4,23 = −32,33), — и перепутанное имя колонки доли здесь
  * неотличимо от честной пустоты.
  */
 test('настоящий путь признаков на посеве: каждое поле читает свою колонку', async () => {
@@ -155,5 +157,35 @@ test('настоящий путь признаков на посеве: кажд
       if (прежняя === undefined) delete process.env.NORDIC_PET_DB_TARGET
       else process.env.NORDIC_PET_DB_TARGET = прежняя
     }
+  }
+})
+
+/**
+ * Кусок S13, задача 17, правка по проверке правок (М-2): тот же дефект, что М4, у суммы маржинального дохода.
+ * Запрос признаков на настоящей базе отдаёт строку всегда, поэтому пустая выдача подставлена ровно одному
+ * запросу — `MONTH_FINDINGS`; все прочие идут в местную базу как есть. Сумма пуста — `null`, а не `undefined`,
+ * и команда печатает «нет данных» словами.
+ */
+test('выдача признаков пуста — маржинальный доход пуст, и команда пишет «нет данных»', async () => {
+  const прежняя = process.env.NORDIC_PET_DB_TARGET
+  process.env.NORDIC_PET_DB_TARGET = 'local'
+  try {
+    const отчёт = await monthlyReport('2026-03', {
+      connect: async () => {
+        const клиент = await pool.connect()
+        return {
+          query: (sql: string, params?: unknown[]) =>
+            sql === MONTH_FINDINGS ? Promise.resolve({ rows: [] }) : клиент.query(sql, params),
+          release: async () => клиент.release(),
+        }
+      },
+    })
+    expect(отчёт.findings?.marginIncome).toBeNull()
+    const строки: string[] = []
+    await printMetrics([], { announce: (l) => строки.push(l), report: async () => отчёт })
+    expect(строки).toContain('  маржинальный доход: нет данных')
+  } finally {
+    if (прежняя === undefined) delete process.env.NORDIC_PET_DB_TARGET
+    else process.env.NORDIC_PET_DB_TARGET = прежняя
   }
 })

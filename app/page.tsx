@@ -108,11 +108,11 @@ function Выводы({ report, доля }: { report: MonthReport; доля: Mon
         {report.findings.loss
           ? report.findings.fixedSharePct !== null
             ? `⚠ Месяц в убытке: постоянные расходы ${вместе(money(report.costs.fixed))} — ${вместе(percent(report.findings.fixedSharePct))} маржинального дохода.`
-            : `⚠ Месяц в убытке: маржинальный доход ${вместе(money(report.findings.marginIncome))} не положителен.`
+            : `⚠ Месяц в убытке: маржинальный доход ${вместе(moneyMaybe(report.findings.marginIncome))} не положителен.`
           : `Постоянные расходы ${вместе(money(report.costs.fixed))} съедают ${вместе(percent(report.findings.fixedSharePct))} маржинального дохода.`}
       </p>
       <p className="finding-why">
-        {`Маржинальный доход — наш счёт: чистая выручка − себестоимость − реклама − комиссии, ${вместе(money(report.findings.marginIncome))}. Тревога — от 100\u00A0%.`}
+        {`Маржинальный доход — наш счёт: чистая выручка − себестоимость − реклама − комиссии, ${вместе(moneyMaybe(report.findings.marginIncome))}. Тревога — от 100\u00A0%.`}
       </p>
     </li>
   )

@@ -77,7 +77,7 @@ function printReport(report: MonthReport, announce: (line: string) => void): voi
     const f = report.findings
     announce('')
     announce('выводы')
-    announce(`  маржинальный доход: ${money(f.marginIncome)}`)
+    announce(`  маржинальный доход: ${moneyMaybe(f.marginIncome)}`)
     announce(`  постоянные расходы в маржинальном доходе: ${percent(f.fixedSharePct)}`)
     announce(`  реклама: ${f.adsVerdict ?? 'признака нет'}`)
     announce(`  месяц в убытке: ${f.loss ? 'да' : 'нет'}`)
