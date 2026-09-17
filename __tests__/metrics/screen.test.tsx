@@ -95,7 +95,13 @@ describe('экран /', () => {
   })
 
   test('доля подписана словами «от чистой выручки»', () => {
-    const html = renderToStaticMarkup(<Dashboard report={baseReport()} />)
+    // Кусок S13, задача 14: блок результата всегда печатает «Маржа от чистой выручки», и поиск по всему
+    // экрану находил эти слова мимо подписи доли. Текст снимается только с блока качества, где стоит
+    // доля; без блока — отказ. Утверждение прежнее.
+    const страница = renderToStaticMarkup(<Dashboard report={baseReport()} />)
+    const начало = страница.indexOf('<section id="kachestvo"')
+    if (начало < 0) throw new Error('блока качества в разметке нет')
+    const html = страница.slice(начало, страница.indexOf('</section>', начало))
     expect(html).toMatch(/от чистой выручки/i)
   })
 
