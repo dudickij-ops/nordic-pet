@@ -776,8 +776,13 @@ ${PAYBACK_FROM_TOTALS}`
  *     рекламы ноль) или вклад не посчитан (нет оборота): сказать нечего. Порог — тот же, что у
  *     блока окупаемости: `PAYBACK_FROM_TOTALS` вложен целиком, второго выражения порога нет.
  *     Сравниваются показанные числа;
- *   · доля постоянных в маржинальном доходе — от показанных сумм; «убыток» — доля от 100 % или
- *     маржинальный доход не положителен (решение владельца Э5);
+ *   · доля постоянных в маржинальном доходе — от показанных сумм, пуста при маржинальном доходе не
+ *     больше нуля; «убыток» — показанная прибыль месяца (колонка `profit` той же строки итогов, что
+ *     печатается в блоке результата) строго меньше нуля. Решение владельца по находке И6 итоговой
+ *     проверки, 17 сентября 2026 года: «считать «убыток» не по разности «маржинальный доход минус
+ *     постоянные», а прямо по показанной прибыли меньше нуля». Прежнее правило — доля от 100 % или
+ *     маржинальный доход не положителен (решение Э5) — отменено: на краю 100,0 % оно называло
+ *     убытком месяц с прибылью в плюсе;
  *   · «приблизительная» — доля, посчитанная по настоящей цене, ниже 100 %.
  */
 export const FINDINGS_FROM_TOTALS = `
@@ -785,6 +790,7 @@ payback_row as (with ${PAYBACK_FROM_TOTALS}),
 finding_parts as (
   select ${МАРЖИНАЛЬНЫЙ_ДОХОД}      as mi,
          t.fixed::numeric         as fixed,
+         t.profit::numeric        as profit,
          t.roas_by_gross::numeric as roas,
          t.honest_pct::numeric    as honest
     from totals_row t
@@ -800,7 +806,7 @@ select case when not cs.has_ads or s.roas is null or pb.contribution_pct is null
        end                                        as ads_verdict,
        s.mi::text                                 as margin_income,
        s.fixed_share::text                        as fixed_share_pct,
-       (s.mi <= 0 or s.fixed_share >= 100)        as loss,
+       (s.profit < 0)                             as loss,
        coalesce(s.honest < 100, false)            as approximate
   from finding_shares s
  cross join cur_state cs
