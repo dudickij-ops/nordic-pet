@@ -10,6 +10,33 @@ import type { Break } from './types.ts'
 const ПЕРЕПИСЬ = 'перепись экрана: весь видимый текст, по порядку и без единой потери'
 const ПЕРЕПИСЬ_ПРИЧИНА = 'перепись снимает весь видимый текст по порядку, а слом его меняет'
 
+/*
+ * Проверки генератора снимков — задача 14, часть B, решение контролёра. Генератор сверяет с эталоном побайтно
+ * разметку тела каждой страницы; таблица стилей в сверку не входит. Модель: слом, меняющий разметку
+ * мартовской раскладки снимков (`docs/screens/fixture.ts`, состояние `obychnyy`), красит полный набор и пять
+ * проверок режима пар; если он меняет видимый текст выше строки оборота «18 764,00 €» (шапка, результат,
+ * выводы, ступени каскада), краснеет и проверка отказа «разметка разошлась» — её отказ называет первую
+ * разошедшуюся строку, и это уже не строка оборота. Слом, не меняющий разметку ни одной раскладки снимков,
+ * генератора не красит. Это наш вывод из чтения генератора и его проверок; наблюдением его сделает прогон
+ * задачи 17.
+ */
+const ГЕН_ПОЛНЫЙ = 'генератор собирает полный набор и сверяет все четырнадцать страниц'
+const ГЕН_ВСЕ = [
+  'генератор собирает снимки на настоящем пути',
+  ГЕН_ПОЛНЫЙ,
+  'генератор отказывает, когда картинка не оказалась на диске',
+  'генератор отказывает, когда страница свёрстана не на запрошенной ширине',
+  'генератор отказывает, когда замер ширины не удался',
+  'генератор отказывает, когда светлая и тёмная картинки совпали',
+]
+const ГЕН_ПРИЧИНА =
+  'слом меняет разметку мартовской раскладки снимков, а режим пар и полный набор сверяют её с эталоном побайтно'
+const генВсе = () => ГЕН_ВСЕ.map((name) => ({ name, why: ГЕН_ПРИЧИНА }))
+const РАЗОШЛАСЬ = {
+  name: 'генератор отказывает, когда разметка разошлась с эталоном',
+  why: 'слом меняет видимый текст выше строки оборота «18 764,00 €», и отказ называет первой разошедшейся другую строку',
+}
+
 export const BREAKS: Break[] = [
   {
     id: 'waterfall-base-gross',
@@ -39,7 +66,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: '`${percent(ступень.sharePct)} чистой выручки`',
     replace: '`${percent(ступень.sharePct)} оборота`',
-    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }],
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ],
     tests: 'все',
   },
   {
@@ -176,7 +203,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: '<section className="block waterfall">',
     replace: '<section className="block waterfall">\n          <section className="block bottom-line"><h2>Итог</h2></section>',
-    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }],
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ],
     tests: 'все',
   },
   {
@@ -186,6 +213,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: '<dt>Чистая выручка</dt>',
     replace: '<dt>Чистая выручка</dt><dd hidden>{полоса !== undefined && !полоса.hasBase ? `в ${полоса.prevMonth} заказов нет` : null}</dd>',
+    alsoRedden: [...генВсе()],
     tests: 'все',
   },
   {
@@ -216,7 +244,27 @@ export const BREAKS: Break[] = [
     alsoRedden: [
       { name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА },
       { name: 'нет базы для сравнения — три числа результата стоят числами', why: 'проверка читает значение маржи в ячейке, а слом его подменяет' },
+      ...генВсе(),
+      РАЗОШЛАСЬ,
     ],
+    tests: 'все',
+  },
+  {
+    id: 'result-no-threshold-as-no-data',
+    claim: 'печатать у окупаемости в блоке результата «нет данных» там, где порога нет по делу',
+    mustRedden: 'признак «порога нет» — у окупаемости слова «порога нет», а не «нет данных» и не порог числом',
+    file: 'app/page.tsx',
+    find: "? 'порога нет'",
+    replace: "? 'нет данных'",
+    tests: 'все',
+  },
+  {
+    id: 'findings-no-threshold-as-no-data',
+    claim: 'печатать в выводе о рекламе «нет данных» там, где порога нет по делу',
+    mustRedden: 'реклама: каждое из трёх слов — по своему признаку',
+    file: 'app/page.tsx',
+    find: '`⚠ Порога окупаемости нет: ',
+    replace: '`⚠ Нет данных: ',
     tests: 'все',
   },
   {
@@ -235,7 +283,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: '{строкаРекламы}{строкаПостоянных}{строкаПриблизительной}',
     replace: '{строкаРекламы}{строкаПриблизительной}{строкаПостоянных}',
-    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }],
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ],
     tests: 'все',
   },
   {
@@ -245,7 +293,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: '`Постоянные расходы ${',
     replace: '`⚠ Постоянные расходы ${',
-    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }],
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ],
     tests: 'все',
   },
   {
@@ -255,7 +303,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: '`Порог — наш счёт: 100 ÷ вклад с евро оборота, ${',
     replace: '`Порог: 100 ÷ вклад с евро оборота, ${',
-    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }],
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ],
     tests: 'все',
   },
   {
@@ -265,7 +313,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: 'а не отдача от следующего вложенного евро',
     replace: 'следующий евро рекламы приносит больше, чем стоит',
-    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }],
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе(), РАЗОШЛАСЬ],
     tests: 'все',
   },
   {
@@ -284,6 +332,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: "'--mean-at': report.daily.avgPct,",
     replace: "'--mean-at': '50',",
+    alsoRedden: [...генВсе()],
     tests: 'все',
   },
   {
@@ -317,6 +366,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: "'--mean-at': report.daily.avgPct,\n                      '--scale-from': report.daily.scaleLowPct ?? undefined,",
     replace: "'--mean-at': report.daily.avgPct,\n                      '--scale-from': '0',",
+    alsoRedden: [...генВсе()],
     tests: 'все',
   },
   {
@@ -326,6 +376,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: 'строки={report.items.filter((item) => item.inTop !== false)}',
     replace: 'строки={report.items}',
+    alsoRedden: [...генВсе()],
     tests: 'все',
   },
   {
@@ -354,6 +405,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: '<colgroup>{КОЛОНКИ_ТОВАРОВ.map((ширина, i) => <col key={i} style={{ width: ширина }} />)}</colgroup>',
     replace: '<colgroup>{КОЛОНКИ_ТОВАРОВ.map((ширина, i) => <col key={i} style={{ width: строки.every((с) => с.inTop !== false) ? ширина : `${i}%` }} />)}</colgroup>',
+    alsoRedden: [...генВсе()],
     tests: 'все',
   },
   {
@@ -363,7 +415,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: '<th scope="col">Валовая прибыль</th>',
     replace: '<th scope="col">Прибыль</th>',
-    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }],
+    alsoRedden: [{ name: ПЕРЕПИСЬ, why: ПЕРЕПИСЬ_ПРИЧИНА }, ...генВсе()],
     tests: 'все',
   },
   {
@@ -383,6 +435,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: "'--item-share': `${item.profitSharePct}%`",
     replace: "'--item-share': '50%'",
+    alsoRedden: [...генВсе()],
     tests: 'все',
   },
   {
@@ -401,6 +454,7 @@ export const BREAKS: Break[] = [
     file: 'app/page.tsx',
     find: '.filter((gap) => gap.hasHoles === true)',
     replace: '.filter(() => true)',
+    alsoRedden: [...генВсе()],
     tests: 'все',
   },
   {
@@ -423,6 +477,7 @@ export const BREAKS: Break[] = [
       { name: 'видны только виды с дырами; все одиннадцать — под раскрытием', why: 'проверка режет текст с блока по якорю и без него отказывает' },
       { name: 'дыр нет — так и написано', why: 'проверка режет текст с блока по якорю и без него отказывает' },
       { name: 'пометка ведёт на блок качества на том же экране', why: 'проверка пометки считает на странице ровно один якорь «kachestvo»' },
+      ...генВсе(),
     ],
     tests: 'все',
   },
