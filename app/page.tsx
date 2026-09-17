@@ -112,7 +112,7 @@ function Выводы({ report, доля }: { report: MonthReport; доля: Mon
           : `Постоянные расходы ${вместе(money(report.costs.fixed))} съедают ${вместе(percent(report.findings.fixedSharePct))} маржинального дохода.`}
       </p>
       <p className="finding-why">
-        {`Маржинальный доход — наш счёт: чистая выручка − себестоимость − реклама − комиссии, ${вместе(moneyMaybe(report.findings.marginIncome))}. Тревога — от 100\u00A0%.`}
+        {`Маржинальный доход — наш счёт: чистая выручка − себестоимость − реклама − комиссии, ${вместе(moneyMaybe(report.findings.marginIncome))}. Тревога — когда месяц в убытке: прибыль меньше нуля.`}
       </p>
     </li>
   )
